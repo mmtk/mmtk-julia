@@ -23,7 +23,6 @@ export MMTK_JULIA_DIR=<path-to-mmtk-julia>/mmtk
 ```
 
 Before building Julia, build the Rust binding in `mmtk-julia/mmtk`. Note that we currently support the Immix implementation in mmtk-core (build it with `cargo build --features immix`). To build Julia, navigate to `/vm/julia` and run `make` (or `make debug`). Please also make sure to install any dependency considering any particular requirement from both [Julia](https://github.com/JuliaLang/julia/blob/master/doc/src/devdocs/build/build.md#required-build-tools-and-external-libraries) and [MMTk](https://github.com/mmtk/mmtk-core#requirements). 
-To build MMTk, we use the Rust version specified in the [CI script](https://github.com/udesou/mmtk-julia/blob/34014217512f97d3e524350af8ab2beb997fdb3f/.github/scripts/ci-setup.sh#L15).
 
 ### Heap Size
 
@@ -32,11 +31,11 @@ environment variables `MMTK_HEAP_SIZE` to set the size in MB or `MMTK_HEAP_SIZE_
  
 ### Quick Building Guide
 
-(1) Clone this repo: https://github.com/udesou/mmtk-julia/tree/mmtk-julia-master 
-  (run `git clone https://github.com/udesou/mmtk-julia.git -b mmtk-julia-master`)
+(1) Clone this repo: https://github.com/mmtk/mmtk-julia 
+  (run `git clone https://github.com/mmtk/mmtk-julia`)
 
-(2) Enter the mmtk-julia directory and clone https://github.com/udesou/julia/tree/mmtk-julia-master 
-  (run `git clone https://github.com/udesou/julia.git vm/julia -b mmtk-julia-master`)
+(2) Enter the mmtk-julia directory and clone https://github.com/mmtk/julia/tree/mmtk-julia-master 
+  (run `git clone https://github.com/mmtk/julia.git vm/julia -b mmtk-julia-master`)
 
 (3) inside `mmtk-julia/mmtk` run `cargo build --features immix # --release (optional - needs to match the MMTK_BUILD variable)` and
 inside `mmtk-julia/vm/julia` run `make # debug (optional)`, making sure you have the environment variables above set up and a file in `mmtk-julia/vm/julia` named "Make.user" containing `USE_MMTK=1`.
