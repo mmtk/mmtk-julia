@@ -2621,9 +2621,8 @@ pub struct mmtk__jl_task_t {
     pub _state: u8,
     pub sticky: u8,
     pub _isexception: u8,
-    pub priority: u16,
     pub tid: i16,
-    pub threadpoolid: i8,
+    pub prio: i16,
     pub gcstack: *mut mmtk_jl_gcframe_t,
     pub world_age: size_t,
     pub ptls: *mut ::std::os::raw::c_void,
@@ -2640,7 +2639,7 @@ pub struct mmtk__jl_task_t {
 fn bindgen_test_layout_mmtk__jl_task_t() {
     assert_eq!(
         ::std::mem::size_of::<mmtk__jl_task_t>(),
-        368usize,
+        360usize,
         concat!("Size of: ", stringify!(mmtk__jl_task_t))
     );
     assert_eq!(
@@ -2835,23 +2834,6 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
         );
     }
     test_field__isexception();
-    fn test_field_priority() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<mmtk__jl_task_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).priority) as usize - ptr as usize
-            },
-            92usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(mmtk__jl_task_t),
-                "::",
-                stringify!(priority)
-            )
-        );
-    }
-    test_field_priority();
     fn test_field_tid() {
         assert_eq!(
             unsafe {
@@ -2859,7 +2841,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).tid) as usize - ptr as usize
             },
-            94usize,
+            92usize,
             concat!(
                 "Offset of field: ",
                 stringify!(mmtk__jl_task_t),
@@ -2869,23 +2851,23 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
         );
     }
     test_field_tid();
-    fn test_field_threadpoolid() {
+    fn test_field_prio() {
         assert_eq!(
             unsafe {
                 let uninit = ::std::mem::MaybeUninit::<mmtk__jl_task_t>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).threadpoolid) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).prio) as usize - ptr as usize
             },
-            96usize,
+            94usize,
             concat!(
                 "Offset of field: ",
                 stringify!(mmtk__jl_task_t),
                 "::",
-                stringify!(threadpoolid)
+                stringify!(prio)
             )
         );
     }
-    test_field_threadpoolid();
+    test_field_prio();
     fn test_field_gcstack() {
         assert_eq!(
             unsafe {
@@ -2893,7 +2875,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).gcstack) as usize - ptr as usize
             },
-            104usize,
+            96usize,
             concat!(
                 "Offset of field: ",
                 stringify!(mmtk__jl_task_t),
@@ -2910,7 +2892,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).world_age) as usize - ptr as usize
             },
-            112usize,
+            104usize,
             concat!(
                 "Offset of field: ",
                 stringify!(mmtk__jl_task_t),
@@ -2927,7 +2909,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).ptls) as usize - ptr as usize
             },
-            120usize,
+            112usize,
             concat!(
                 "Offset of field: ",
                 stringify!(mmtk__jl_task_t),
@@ -2944,7 +2926,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).excstack) as usize - ptr as usize
             },
-            128usize,
+            120usize,
             concat!(
                 "Offset of field: ",
                 stringify!(mmtk__jl_task_t),
@@ -2961,7 +2943,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).eh) as usize - ptr as usize
             },
-            136usize,
+            128usize,
             concat!(
                 "Offset of field: ",
                 stringify!(mmtk__jl_task_t),
@@ -2978,7 +2960,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).ctx) as usize - ptr as usize
             },
-            144usize,
+            136usize,
             concat!(
                 "Offset of field: ",
                 stringify!(mmtk__jl_task_t),
@@ -2995,7 +2977,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).stkbuf) as usize - ptr as usize
             },
-            344usize,
+            336usize,
             concat!(
                 "Offset of field: ",
                 stringify!(mmtk__jl_task_t),
@@ -3012,7 +2994,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
                 let ptr = uninit.as_ptr();
                 ::std::ptr::addr_of!((*ptr).bufsz) as usize - ptr as usize
             },
-            352usize,
+            344usize,
             concat!(
                 "Offset of field: ",
                 stringify!(mmtk__jl_task_t),
