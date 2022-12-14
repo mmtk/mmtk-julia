@@ -1,4 +1,4 @@
-// install bindgen with cargo install bindgen
+// install bindgen with cargo install bindgen-cli
 // run ~/.cargo/bin/bindgen /home/eduardo/mmtk-julia/julia/mmtk_julia_types.h -o /home/eduardo/mmtk-julia/mmtk/src/julia_types.rs
 #include <setjmp.h>	
 
@@ -303,12 +303,14 @@ typedef struct mmtk__jl_task_t {
     _Atomic(uint8_t) _state;
     uint8_t sticky; // record whether this Task can be migrated to a new thread
     _Atomic(uint8_t) _isexception; // set if `result` is an exception to throw or that we exited with
+    // multiqueue priority
+    uint16_t priority;
 
 // hidden state:
     // id of owning thread - does not need to be defined until the task runs
     _Atomic(int16_t) tid;
-    // multiqueue priority
-    int16_t prio;
+    // threadpool id
+    int8_t threadpoolid;
     // saved gc stack top for context switches
     mmtk_jl_gcframe_t *gcstack;
     size_t world_age;
