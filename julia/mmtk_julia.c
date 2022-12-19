@@ -694,6 +694,15 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
                     }
                     elem_begin = obj8_begin;
                 }
+            } else if (layout->fielddesc_type == 1) {
+                uint16_t *obj16_begin;
+                uint16_t *obj16_end;
+                obj16_begin = (uint16_t*)jl_dt_layout_ptrs(layout);
+                obj16_end = obj16_begin + npointers;
+                for (; obj16_begin < obj16_end; obj16_begin++) {
+                    jl_value_t **slot = &((jl_value_t**)obj)[*obj16_begin];
+                    process_edge(closure, slot);
+                }
             } else {
                 assert(0 && "unimplemented");
             }
@@ -880,12 +889,18 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
                 }
             }
             else if (layout->fielddesc_type == 2) {
-                // FIXME: scan obj32
-                assert(0 && "unimplemented for obj32");
+                uint32_t *obj32_begin = (uint32_t*)jl_dt_layout_ptrs(layout);
+                uint32_t *obj32_end = obj32_begin + npointers;
+                for (; obj32_begin < obj32_end; obj32_begin++) {
+                    jl_value_t **slot = &((jl_value_t**)obj)[*obj32_begin];
+                    process_edge(closure, slot);
+                }
             }
             else {
                 // simply dispatch the work at the end of the function
                 assert(layout->fielddesc_type == 3);
+                printf("UNIMPLEMENTED\n");
+                fflush(stdout);
             }
         }
     }
