@@ -698,7 +698,6 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
                     elem_begin = obj8_begin;
                 }
             } else if (layout->fielddesc_type == 1) {
-                runtime_panic();
                 uint16_t *obj16_begin;
                 uint16_t *obj16_end;
                 size_t elsize = ((jl_array_t*)obj)->elsize / sizeof(jl_value_t*);
