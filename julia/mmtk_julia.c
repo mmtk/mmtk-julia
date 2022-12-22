@@ -654,6 +654,9 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
             return;
         }
         if (flags.ptrarray) { // inlining label `objarray_loaded` from mark_loop
+            if ((jl_datatype_t*)jl_tparam0(vt) == jl_symbol_type) {
+                return;
+            }
             size_t l = jl_array_len(a);
 
             jl_value_t** objary_begin = (jl_value_t**)a->data;
@@ -695,13 +698,19 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
                     elem_begin = obj8_begin;
                 }
             } else if (layout->fielddesc_type == 1) {
+                runtime_panic();
                 uint16_t *obj16_begin;
                 uint16_t *obj16_end;
+                size_t elsize = ((jl_array_t*)obj)->elsize / sizeof(jl_value_t*);
+                jl_value_t **begin = objary_begin;
+                jl_value_t **end = objary_end;
                 obj16_begin = (uint16_t*)jl_dt_layout_ptrs(layout);
                 obj16_end = obj16_begin + npointers;
-                for (; obj16_begin < obj16_end; obj16_begin++) {
-                    jl_value_t **slot = &((jl_value_t**)obj)[*obj16_begin];
-                    process_edge(closure, slot);
+                for (; begin < end; begin += elsize) {
+                    for (; obj16_begin < obj16_end; obj16_begin++) {
+                        jl_value_t **slot = &((jl_value_t**)obj)[*obj16_begin];
+                        process_edge(closure, slot);
+                    }
                 }
             } else {
                 assert(0 && "unimplemented");
@@ -899,8 +908,7 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
             else {
                 // simply dispatch the work at the end of the function
                 assert(layout->fielddesc_type == 3);
-                printf("UNIMPLEMENTED\n");
-                fflush(stdout);
+                runtime_panic();
             }
         }
     }
