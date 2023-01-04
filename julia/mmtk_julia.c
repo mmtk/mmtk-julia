@@ -238,10 +238,10 @@ void mmtk_exit_from_safepoint(int8_t old_state) {
 // when executing finalizers do not let another thread do GC (set a variable such that while that variable is true, no GC can be done)
 int8_t set_gc_initial_state(void* ptls) 
 {
-    int8_t old_state = ((jl_ptls_t)ptls)->gc_state;
-    jl_atomic_store(&((jl_ptls_t)ptls)->gc_state, JL_GC_STATE_WAITING);
+    int8_t old_state = jl_atomic_load_relaxed(&((jl_ptls_t)ptls)->gc_state);
+    jl_atomic_store_release(&((jl_ptls_t)ptls)->gc_state, JL_GC_STATE_WAITING);
     if (!jl_safepoint_start_gc()) {
-        jl_atomic_store(&((jl_ptls_t)ptls)->gc_state, old_state);
+        jl_gc_state_set(ptls, old_state, JL_GC_STATE_WAITING);
         return -1;
     }
     return old_state;
@@ -260,7 +260,7 @@ void set_gc_old_state(int8_t old_state)
     jl_atomic_store_release(&ptls->gc_state, old_state);
 }
 
-void wait_for_the_world(void) 
+void wait_for_the_world(void)
 {
     if (jl_n_threads > 1)
         jl_wake_libuv();
