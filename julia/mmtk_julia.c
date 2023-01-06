@@ -22,6 +22,7 @@ extern void reset_count_tls(void);
 extern void jl_gc_free_array(jl_array_t *a);
 extern size_t get_obj_size(void* obj);
 extern void jl_rng_split(uint64_t to[4], uint64_t from[4]);
+extern _Atomic(uint32_t) jl_gc_disable_counter;
 
 JL_DLLEXPORT void (jl_mmtk_harness_begin)(void)
 {
@@ -221,10 +222,7 @@ void mark_object_as_scanned(void* obj) {
 
 int8_t mmtk_wait_in_a_safepoint(void) {
     jl_ptls_t ptls = (jl_ptls_t)jl_get_ptls_states();
-    int8_t old_state = ptls->gc_state;
-    jl_atomic_store(&ptls->gc_state, JL_GC_STATE_WAITING);
-
-    return old_state;
+    jl_gc_safepoint_(ptls);
 }
 
 void mmtk_exit_from_safepoint(int8_t old_state) {
@@ -238,6 +236,11 @@ void mmtk_exit_from_safepoint(int8_t old_state) {
 // when executing finalizers do not let another thread do GC (set a variable such that while that variable is true, no GC can be done)
 int8_t set_gc_initial_state(void* ptls) 
 {
+    if(jl_atomic_load_relaxed(&jl_gc_disable_counter)) {
+        printf("GC RUNNING WHEN IT SHOULD BE DISABLED!!!!\n");
+        fflush(stdout);
+        runtime_panic();
+    }
     int8_t old_state = jl_atomic_load_relaxed(&((jl_ptls_t)ptls)->gc_state);
     jl_atomic_store_release(&((jl_ptls_t)ptls)->gc_state, JL_GC_STATE_WAITING);
     if (!jl_safepoint_start_gc()) {
@@ -409,7 +412,7 @@ void mmtk_jl_run_finalizers(void* ptls) {
     // Only disable finalizers on current thread
     // Doing this on all threads is racy (it's impossible to check
     // or wait for finalizers on other threads without dead lock).
-    if (!((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
+    if (!((jl_ptls_t)ptls)->in_finalizer && !((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
         jl_task_t *ct = jl_current_task;
         int8_t was_in_finalizer = ((jl_ptls_t)ptls)->in_finalizer;
         ((jl_ptls_t)ptls)->in_finalizer = 1;
