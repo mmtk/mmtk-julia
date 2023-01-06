@@ -31,7 +31,7 @@ Currently MMTk supports a fixed heap limit or variable heap within an interval. 
 ### Quick Building Guide
 
 (1) Clone this repo: https://github.com/mmtk/mmtk-julia 
-  (run `git clone https://github.com/mmtk/mmtk-julia`)
+  (run `git clone https://github.com/mmtk/mmtk-julia -b v1.8.2-RAI`)
 
 (2) Enter the mmtk-julia directory and clone https://github.com/mmtk/julia/tree/v1.8.2-RAI 
   (run `git clone https://github.com/mmtk/julia.git vm/julia -b v1.8.2-RAI`)
