@@ -237,9 +237,9 @@ void mmtk_exit_from_safepoint(int8_t old_state) {
 int8_t set_gc_initial_state(void* ptls) 
 {
     if(jl_atomic_load_relaxed(&jl_gc_disable_counter)) {
-        printf("GC RUNNING WHEN IT SHOULD BE DISABLED!!!!\n");
-        fflush(stdout);
-        runtime_panic();
+        // printf("GC RUNNING WHEN IT SHOULD BE DISABLED!!!!\n");
+        // fflush(stdout);
+        // runtime_panic();
     }
     int8_t old_state = jl_atomic_load_relaxed(&((jl_ptls_t)ptls)->gc_state);
     jl_atomic_store_release(&((jl_ptls_t)ptls)->gc_state, JL_GC_STATE_WAITING);
