@@ -713,6 +713,7 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
                         jl_value_t **slot = &((jl_value_t**)obj)[*obj16_begin];
                         process_edge(closure, slot);
                     }
+                    obj16_begin = (uint16_t*)jl_dt_layout_ptrs(layout);
                 }
             } else {
                 assert(0 && "unimplemented");
