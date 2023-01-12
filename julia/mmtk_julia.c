@@ -710,7 +710,7 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
                 obj16_end = obj16_begin + npointers;
                 for (; begin < end; begin += elsize) {
                     for (; obj16_begin < obj16_end; obj16_begin++) {
-                        jl_value_t **slot = &((jl_value_t**)obj)[*obj16_begin];
+                        jl_value_t **slot = &begin[*obj16_begin];
                         process_edge(closure, slot);
                     }
                     obj16_begin = (uint16_t*)jl_dt_layout_ptrs(layout);
