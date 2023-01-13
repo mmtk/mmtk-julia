@@ -412,7 +412,7 @@ void mmtk_jl_run_finalizers(void* ptls) {
     // Only disable finalizers on current thread
     // Doing this on all threads is racy (it's impossible to check
     // or wait for finalizers on other threads without dead lock).
-    if (!((jl_ptls_t)ptls)->in_finalizer && !((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
+    if (!((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
         jl_task_t *ct = jl_current_task;
         int8_t was_in_finalizer = ((jl_ptls_t)ptls)->in_finalizer;
         ((jl_ptls_t)ptls)->in_finalizer = 1;
