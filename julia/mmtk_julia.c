@@ -402,10 +402,22 @@ void run_finalizer_function(void *o, void *ff, bool is_ptr)
 
 
 static inline void mmtk_jl_run_finalizers_in_list(bool at_exit) {
-    jl_task_t *ct = jl_current_task;
-    uint8_t sticky = ct->sticky;
     mmtk_run_finalizers(at_exit);
-    ct->sticky = sticky;
+}
+
+void mmtk_jl_run_pending_finalizers(void* ptls) {
+    if (!((jl_ptls_t)ptls)->in_finalizer && !((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
+        jl_task_t *ct = jl_current_task;
+        int8_t was_in_finalizer = ((jl_ptls_t)ptls)->in_finalizer;
+        ((jl_ptls_t)ptls)->in_finalizer = 1;
+        uint64_t save_rngState[4];
+        memcpy(&save_rngState[0], &ct->rngState[0], sizeof(save_rngState));
+        jl_rng_split(ct->rngState, finalizer_rngState);
+        jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 0);
+        mmtk_jl_run_finalizers_in_list(false);
+        memcpy(&ct->rngState[0], &save_rngState[0], sizeof(save_rngState));
+        ((jl_ptls_t)ptls)->in_finalizer = was_in_finalizer;
+    }
 }
 
 void mmtk_jl_run_finalizers(void* ptls) {
@@ -419,6 +431,7 @@ void mmtk_jl_run_finalizers(void* ptls) {
         uint64_t save_rngState[4];
         memcpy(&save_rngState[0], &ct->rngState[0], sizeof(save_rngState));
         jl_rng_split(ct->rngState, finalizer_rngState);
+        jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 0);
         mmtk_jl_run_finalizers_in_list(false);
         memcpy(&ct->rngState[0], &save_rngState[0], sizeof(save_rngState));
         ((jl_ptls_t)ptls)->in_finalizer = was_in_finalizer;
