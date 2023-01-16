@@ -7,17 +7,21 @@ on:
       - v1.8.2-RAI
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-18.04
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v2
       - name: Setup environments
         run: |
           ./.github/scripts/ci-checkout.sh
           ./.github/scripts/ci-setup.sh
-      - name: Build Julia
+      - name: Build Julia (Debug)
         run: |
-          ./.github/scripts/ci-build.sh
+          ./.github/scripts/ci-build.sh debug
+      - name: Build Julia (Release)
+        run: |
+          ./.github/scripts/ci-build.sh release
       - name: Test Julia
         run: |
           ./.github/scripts/ci-test.sh
