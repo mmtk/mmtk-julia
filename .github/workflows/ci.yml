@@ -2,6 +2,9 @@ name: Dacapo Tests
 
 on:
   pull_request:
+    branches:
+      - master
+      - v1.8.2-RAI
 
 jobs:
   build:
