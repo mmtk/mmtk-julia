@@ -8,9 +8,18 @@ if [ $# -eq 0 ]
     echo "No arguments supplied"
     exit 1
 fi
+
+# We have an ordinal and a total number of runners. For example,
+# we have ordinal=0, and a total of 2 runners. We only run tests with
+# an even number (0, 2, 4, ...), and the other runner will run the
+# odd numbered tests.
+# To simply run all the tests, you can use ordinal=0 total=1
 ordinal=$1
 total=$2
 echo "Run tests for #${ordinal} of ${total}"
+
+# Patch some tests to skip
+. $(dirname "$0")/ci-test-patching.sh
 
 # Get all the tests
 CHOOSE_TESTS_JL_PATH=$JULIA_PATH/test/choosetests.jl
@@ -37,7 +46,7 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
             echo "-> (Test #$n for $ordinal/$total)"
             if [ $(( n % total )) -eq $ordinal ]; then
                 echo "-> Run"
-                JULIA_NUM_THREADS=1 $JULIA_PATH/julia $JULIA_PATH/test/runtests.jl --exit-on-error $test
+                JULIA_CPU_THREADS=1 $JULIA_PATH/julia $JULIA_PATH/test/runtests.jl --exit-on-error $test
             else
                 echo "-> Skip"
             fi
