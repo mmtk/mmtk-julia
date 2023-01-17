@@ -334,12 +334,20 @@ size_t get_so_size(void* obj)
                     tsz += jl_array_nbytes(a);
                 }
             }
+            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
+                printf("size greater than minimum!\n");
+                runtime_panic();
+            }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
             return osize;
         } else if (a->flags.how == 1) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
             int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
+                printf("size greater than minimum!\n");
+                runtime_panic();
+            }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
 
@@ -347,6 +355,10 @@ size_t get_so_size(void* obj)
         } else if (a->flags.how == 2) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
             int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
+                printf("size greater than minimum!\n");
+                runtime_panic();
+            }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
 
@@ -354,37 +366,66 @@ size_t get_so_size(void* obj)
         } else if (a->flags.how == 3) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
             int tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
+            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
+                printf("size greater than minimum!\n");
+                runtime_panic();
+            }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
             return osize;
         }
     } else if (vt == jl_simplevector_type) {
         size_t l = jl_svec_len(obj);
+        if (l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass(l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
     } else if (vt == jl_module_type) {
         size_t dtsz = sizeof(jl_module_t);
+        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
     } else if (vt == jl_task_type) {
         size_t dtsz = sizeof(jl_task_t);
+        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
     } else if (vt == jl_string_type) {
         size_t dtsz = jl_string_len(obj) + sizeof(size_t) + 1;
+        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass_align8(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
-    } if (vt == jl_method_type) {
+    } else if (vt == jl_method_type) {
         size_t dtsz = sizeof(jl_method_t);
+        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
+        
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
     } else  {
         size_t dtsz = jl_datatype_size(vt);
+        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
