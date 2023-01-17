@@ -43,6 +43,14 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
         test=`sed 's/\"\(.*\)\"/\1/' <<< $i`
         if [[ ! -z "$test" ]]; then
             echo $test
+
+            # Should we skip some tests?
+            # Ignore stdlib tests for now.
+            if [[ $test =~ "stdlib" ]]; then
+                echo "-> Skip test"
+                continue
+            fi
+
             echo "-> (Test #$n for $ordinal/$total)"
             if [ $(( n % total )) -eq $ordinal ]; then
                 echo "-> Run"

@@ -11,7 +11,7 @@ declare -a tests_to_skip=(
     '@test occursin("jl_gc_pool_alloc", get_llvm(MutableStruct, Tuple{}))$' "$JULIA_PATH/test/compiler/codegen.jl"
     '@test occursin("jl_gc_pool_alloc", breakpoint_any_ir)$' "$JULIA_PATH/test/compiler/codegen.jl"
     # Ignore the entire libgit2.jl -- there are too many possible network related issues to run this test
-    '@test.*$' "$JULIA_PATH/usr/share/julia/stdlib/v1.8/LibGit2/test/libgit2.jl"
+    # '@test.*$' "$JULIA_PATH/usr/share/julia/stdlib/v1.8/LibGit2/test/libgit2.jl"
 )
 
 for (( i=0; i < ${#tests_to_skip[@]}; i+=2 )); do
