@@ -29,4 +29,6 @@ void mmtk_jl_gc_run_all_finalizers(void);
 
 void mmtk_jl_run_finalizers(void* tls);
 
+void mmtk_jl_run_pending_finalizers(void* tls);
+
 JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge);
