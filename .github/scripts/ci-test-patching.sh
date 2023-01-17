@@ -17,5 +17,5 @@ declare -a tests_to_skip=(
 for (( i=0; i < ${#tests_to_skip[@]}; i+=2 )); do
     pattern=${tests_to_skip[i]}
     file=${tests_to_skip[i+1]}
-    sed -i '/'"$pattern"'/s/$/ skip=true/' $file
+    sed -i '/'"$pattern"'/ s/@test/@test_skip/' $file
 done
