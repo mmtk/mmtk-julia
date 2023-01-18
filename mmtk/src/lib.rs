@@ -75,6 +75,10 @@ extern "C" {
     pub static BI_METADATA_END_ALIGNED_UP: usize;
 }
 
+#[cfg(feature = "immix")]
+#[no_mangle]
+pub static MAX_IMMIX_OBJECT_SIZE : usize = mmtk::plan::IMMIX_CONSTRAINTS.max_non_los_default_alloc_bytes;
+
 #[no_mangle]
 pub static BLOCK_FOR_GC: AtomicBool = AtomicBool::new(false);
 

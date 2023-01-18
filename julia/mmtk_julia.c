@@ -35,28 +35,28 @@ JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
     harness_end();
 }
 
-JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(int pool_offset, int osize)
+JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(int pool_offset, size_t osize)
 {
     jl_ptls_t ptls = (jl_ptls_t)jl_get_ptls_states();
 
     // safepoint
-    if (__unlikely(jl_atomic_load(&jl_gc_running))) {
-        int8_t old_state = ptls->gc_state;
-        jl_atomic_store_release(&ptls->gc_state, JL_GC_STATE_WAITING);
-        jl_safepoint_wait_gc();
-        jl_atomic_store_release(&ptls->gc_state, old_state);
-    }
+    jl_gc_safepoint_(ptls);
 
     jl_value_t *v;
-
-    ptls->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls->cursor;
+    jl_taggedvalue_t *v_tagged;
 
     // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-    jl_taggedvalue_t *v_tagged =
-        (jl_taggedvalue_t *) alloc(ptls->mmtk_mutator_ptr, osize, 16, 8, 0);
+     if (osize >= 4096) {
+         v_tagged = (jl_taggedvalue_t *) alloc(ptls->mmtk_mutator_ptr, osize, 16, 8, 0);
+     } else {
+        ptls->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls->cursor;
 
-    ptls->cursor = ptls->mmtk_mutator_ptr->allocators.immix[0].cursor;
-    ptls->limit = ptls->mmtk_mutator_ptr->allocators.immix[0].limit;
+        v_tagged =
+            (jl_taggedvalue_t *) alloc(ptls->mmtk_mutator_ptr, osize, 16, 8, 0);
+
+        ptls->cursor = ptls->mmtk_mutator_ptr->allocators.immix[0].cursor;
+        ptls->limit = ptls->mmtk_mutator_ptr->allocators.immix[0].limit;
+    }
 
     v = jl_valueof(v_tagged);
 
@@ -68,32 +68,31 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(int pool_offset, int osiz
 }
 
 STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset) {
-    int64_t delta = (-offset -(int64_t)(ptls->cursor)) & 15; // aligned to 16
-    uint64_t aligned_addr = (uint64_t)ptls->cursor + delta;
-
-    if(__unlikely(aligned_addr+size > (uint64_t)ptls->limit)) {
-        jl_ptls_t ptls2 = (jl_ptls_t)jl_get_ptls_states();
-        ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls2->cursor;
-        void* res = alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
-        ptls2->cursor = ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor;
-        ptls2->limit = ptls2->mmtk_mutator_ptr->allocators.immix[0].limit;
-        return res;
+    if (size >= 4096) {
+         void* res = alloc(ptls->mmtk_mutator_ptr, size, 16, offset, 0);
+         return res;
     } else {
-        ptls->cursor = (void*) (aligned_addr+size);
-        return (void*) aligned_addr;
+        int64_t delta = (-offset -(int64_t)(ptls->cursor)) & 15; // aligned to 16
+        uint64_t aligned_addr = (uint64_t)ptls->cursor + delta;
+
+        if(__unlikely(aligned_addr+size > (uint64_t)ptls->limit)) {
+            jl_ptls_t ptls2 = (jl_ptls_t)jl_get_ptls_states();
+            ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls2->cursor;
+            void* res = alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
+            ptls2->cursor = ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor;
+            ptls2->limit = ptls2->mmtk_mutator_ptr->allocators.immix[0].limit;
+            return res;
+        } else {
+            ptls->cursor = (void*) (aligned_addr+size);
+            return (void*) aligned_addr;
+        }
     }
 }
 
-JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offset,
-                                                    int osize, void *ty)
+JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, size_t osize, void *ty)
 {
     // safepoint
-    if (__unlikely(jl_atomic_load(&jl_gc_running))) {
-        int8_t old_state = ptls->gc_state;
-        jl_atomic_store_release(&ptls->gc_state, JL_GC_STATE_WAITING);
-        jl_safepoint_wait_gc();
-        jl_atomic_store_release(&ptls->gc_state, old_state);
-    }
+    jl_gc_safepoint_(ptls);
 
     jl_value_t *v;
     if ((uintptr_t)ty != jl_buff_tag) {
@@ -114,43 +113,6 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offse
     ptls->gc_num.poolalloc++;
 
     return v;
-}
-
-JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
-{
-    // safepoint
-    if (__unlikely(jl_atomic_load(&jl_gc_running))) {
-        int8_t old_state = ptls->gc_state;
-        jl_atomic_store_release(&ptls->gc_state, JL_GC_STATE_WAITING);
-        jl_safepoint_wait_gc();
-        jl_atomic_store_release(&ptls->gc_state, old_state);
-    }
-
-    size_t offs = offsetof(bigval_t, header);
-    assert(sz >= sizeof(jl_taggedvalue_t) && "sz must include tag");
-    static_assert(offsetof(bigval_t, header) >= sizeof(void*), "Empty bigval header?");
-    static_assert(sizeof(bigval_t) % JL_HEAP_ALIGNMENT == 0, "");
-    size_t allocsz = LLT_ALIGN(sz + offs, JL_CACHE_BYTE_ALIGNMENT);
-    if (allocsz < sz) { // overflow in adding offs, size was "negative"
-        assert(0 && "Error when allocating big object");
-        jl_throw(jl_memory_exception);
-    }
-
-    bigval_t *v = (bigval_t*)alloc_large(ptls->mmtk_mutator_ptr, allocsz, JL_CACHE_BYTE_ALIGNMENT, 0, 2);
-
-    if (v == NULL) {
-        assert(0 && "Allocation failed");
-        jl_throw(jl_memory_exception);
-    }
-    v->sz = allocsz;
-
-    ptls->gc_num.allocd += allocsz;
-    ptls->gc_num.bigalloc++;
-
-    jl_value_t *result = jl_valueof(&v->header);
-    post_alloc(ptls->mmtk_mutator_ptr, result, allocsz, 2);
-
-    return result;
 }
 
 static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
@@ -326,7 +288,7 @@ size_t get_so_size(void* obj)
         jl_array_t* a = (jl_array_t*) obj;
         if (a->flags.how == 0) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
             if (object_is_managed_by_mmtk(a->data)) {
                 size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
                 if (pre_data_bytes > 0 && pre_data_bytes <= ARRAY_INLINE_NBYTES) {
@@ -334,60 +296,38 @@ size_t get_so_size(void* obj)
                     tsz += jl_array_nbytes(a);
                 }
             }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-            return osize;
+            return tsz + sizeof(jl_taggedvalue_t);
         } else if (a->flags.how == 1) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-
-            return osize;
+            size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            return tsz + sizeof(jl_taggedvalue_t);
         } else if (a->flags.how == 2) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-
-            return osize;
+            size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            return tsz + sizeof(jl_taggedvalue_t);
         } else if (a->flags.how == 3) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-            return osize;
+            size_t tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
+            return tsz + sizeof(jl_taggedvalue_t);
         }
     } else if (vt == jl_simplevector_type) {
         size_t l = jl_svec_len(obj);
-        int pool_id = jl_gc_szclass(l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_module_type) {
         size_t dtsz = sizeof(jl_module_t);
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return dtsz + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_task_type) {
         size_t dtsz = sizeof(jl_task_t);
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return dtsz + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_string_type) {
         size_t dtsz = jl_string_len(obj) + sizeof(size_t) + 1;
-        int pool_id = jl_gc_szclass_align8(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
-    } if (vt == jl_method_type) {
+        return dtsz + sizeof(jl_taggedvalue_t);
+    } else if (vt == jl_method_type) {
         size_t dtsz = sizeof(jl_method_t);
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return dtsz + sizeof(jl_taggedvalue_t);
     } else  {
         size_t dtsz = jl_datatype_size(vt);
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return dtsz + sizeof(jl_taggedvalue_t);
     }
 }
 
@@ -403,6 +343,20 @@ void run_finalizer_function(void *o, void *ff, bool is_ptr)
 
 static inline void mmtk_jl_run_finalizers_in_list(bool at_exit) {
     mmtk_run_finalizers(at_exit);
+}
+
+void mmtk_jl_run_pending_finalizers(void* ptls) {
+    if (!((jl_ptls_t)ptls)->in_finalizer && !((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
+        jl_task_t *ct = jl_current_task;
+        ((jl_ptls_t)ptls)->in_finalizer = 1;
+        uint64_t save_rngState[4];
+        memcpy(&save_rngState[0], &ct->rngState[0], sizeof(save_rngState));
+        jl_rng_split(ct->rngState, finalizer_rngState);
+        jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 0);
+        mmtk_jl_run_finalizers_in_list(false);
+        memcpy(&ct->rngState[0], &save_rngState[0], sizeof(save_rngState));
+        ((jl_ptls_t)ptls)->in_finalizer = 0;
+    }
 }
 
 void mmtk_jl_run_finalizers(void* ptls) {

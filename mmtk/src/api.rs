@@ -26,6 +26,9 @@ use std::ffi::CStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::RwLockWriteGuard;
 
+#[cfg(feature = "immix")]
+use crate::MAX_IMMIX_OBJECT_SIZE;
+
 #[no_mangle]
 pub extern "C" fn gc_init(
     min_heap_size: usize,
@@ -136,6 +139,30 @@ pub extern "C" fn destroy_mutator(mutator: *mut Mutator<JuliaVM>) {
     memory_manager::destroy_mutator(unsafe { &mut *mutator })
 }
 
+#[cfg(feature = "immix")]
+#[no_mangle]
+pub extern "C" fn alloc(
+    mutator: *mut Mutator<JuliaVM>,
+    size: usize,
+    align: usize,
+    offset: isize,
+    semantics: AllocationSemantics,
+) -> Address {
+    if size >= MAX_IMMIX_OBJECT_SIZE {
+        // MAX_IMMIX_OBJECT_SIZE
+        memory_manager::alloc::<JuliaVM>(
+            unsafe { &mut *mutator },
+            size,
+            64,
+            offset,
+            AllocationSemantics::Los,
+        )
+    } else {
+        memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, size, align, offset, semantics)
+    }
+}
+
+#[cfg(not(feature = "immix"))]
 #[no_mangle]
 pub extern "C" fn alloc(
     mutator: *mut Mutator<JuliaVM>,
@@ -147,22 +174,7 @@ pub extern "C" fn alloc(
     memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, size, align, offset, semantics)
 }
 
-#[no_mangle]
-pub extern "C" fn alloc_large(
-    mutator: *mut Mutator<JuliaVM>,
-    size: usize,
-    align: usize,
-    offset: isize,
-) -> Address {
-    memory_manager::alloc::<JuliaVM>(
-        unsafe { &mut *mutator },
-        size,
-        align,
-        offset,
-        AllocationSemantics::Los,
-    )
-}
-
+#[cfg(feature = "immix")]
 #[no_mangle]
 pub extern "C" fn post_alloc(
     mutator: *mut Mutator<JuliaVM>,
@@ -170,15 +182,30 @@ pub extern "C" fn post_alloc(
     bytes: usize,
     semantics: AllocationSemantics,
 ) {
-    match semantics {
-        AllocationSemantics::Los => {
-            memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
-        }
-        _ => {
-            memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
-        }
+    if bytes >= MAX_IMMIX_OBJECT_SIZE {
+        // MAX_IMMIX_OBJECT_SIZE
+        memory_manager::post_alloc::<JuliaVM>(
+            unsafe { &mut *mutator },
+            refer,
+            bytes,
+            AllocationSemantics::Los,
+        )
+    } else {
+        memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
     }
 }
+
+#[cfg(not(feature = "immix"))]
+#[no_mangle]
+pub extern "C" fn post_alloc(
+    mutator: *mut Mutator<JuliaVM>,
+    refer: ObjectReference,
+    bytes: usize,
+    semantics: AllocationSemantics,
+) {
+    memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
+}
+
 
 #[no_mangle]
 pub extern "C" fn will_never_move(object: ObjectReference) -> bool {
