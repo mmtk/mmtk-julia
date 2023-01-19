@@ -10,4 +10,4 @@ set -xe
 
 cd $JULIA_PATH
 export JULIA_TEST_MAXRSS_MB=3000
-make test-2
+make testall3
