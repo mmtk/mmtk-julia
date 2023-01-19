@@ -162,12 +162,12 @@ pub extern "C" fn mmtk_run_finalizers(at_exit: bool) {
 
             match to_be_finalized {
                 Some(obj) => unsafe {
+                    ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2);
                     {
                         let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
                         let removed = fin_roots.remove(&obj);
                         assert!(removed);
                     }
-                    ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2);
                 },
                 None => break,
             }
