@@ -329,10 +329,17 @@ size_t get_so_size(void* obj)
             int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
             if (object_is_managed_by_mmtk(a->data)) {
                 size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
-                if (pre_data_bytes > 0 && pre_data_bytes <= ARRAY_INLINE_NBYTES) {
+                if (pre_data_bytes > 0) { // a->data is allocated after a
                     tsz = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
                     tsz += jl_array_nbytes(a);
                 }
+                if (tsz + sizeof(jl_taggedvalue_t) > 2032) { // if it's too large to be inlined (a->data and a are disjoint objects)
+                    tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t); // simply keep the info before data
+                }
+            }
+            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
+                printf("size greater than minimum!\n");
+                runtime_panic();
             }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
@@ -340,6 +347,10 @@ size_t get_so_size(void* obj)
         } else if (a->flags.how == 1) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
             int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
+                printf("size greater than minimum!\n");
+                runtime_panic();
+            }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
 
@@ -347,6 +358,10 @@ size_t get_so_size(void* obj)
         } else if (a->flags.how == 2) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
             int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
+                printf("size greater than minimum!\n");
+                runtime_panic();
+            }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
 
@@ -354,37 +369,66 @@ size_t get_so_size(void* obj)
         } else if (a->flags.how == 3) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
             int tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
+            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
+                printf("size greater than minimum!\n");
+                runtime_panic();
+            }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
             return osize;
         }
     } else if (vt == jl_simplevector_type) {
         size_t l = jl_svec_len(obj);
+        if (l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass(l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
     } else if (vt == jl_module_type) {
         size_t dtsz = sizeof(jl_module_t);
+        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
     } else if (vt == jl_task_type) {
         size_t dtsz = sizeof(jl_task_t);
+        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
     } else if (vt == jl_string_type) {
         size_t dtsz = jl_string_len(obj) + sizeof(size_t) + 1;
+        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass_align8(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
-    } if (vt == jl_method_type) {
+    } else if (vt == jl_method_type) {
         size_t dtsz = sizeof(jl_method_t);
+        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
+        
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
     } else  {
         size_t dtsz = jl_datatype_size(vt);
+        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
+            printf("size greater than minimum!\n");
+            runtime_panic();
+        }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
@@ -405,7 +449,6 @@ static inline void mmtk_jl_run_finalizers_in_list(bool at_exit) {
     mmtk_run_finalizers(at_exit);
 }
 
-
 void mmtk_jl_run_pending_finalizers(void* ptls) {
     if (!((jl_ptls_t)ptls)->in_finalizer && !((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
         jl_task_t *ct = jl_current_task;
@@ -419,7 +462,6 @@ void mmtk_jl_run_pending_finalizers(void* ptls) {
         ((jl_ptls_t)ptls)->in_finalizer = 0;
     }
 }
-
 
 void mmtk_jl_run_finalizers(void* ptls) {
     // Only disable finalizers on current thread
