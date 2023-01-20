@@ -1,4 +1,4 @@
-set -e
+set -xe
 
 . $(dirname "$0")/common.sh
 
@@ -47,17 +47,16 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
             echo $test
 
             # Should we skip some tests?
-            # Ignore stdlib tests for now.
-            # if [[ $test =~ "stdlib" ]]; then
-            #     echo "-> Skip test"
-            #     continue
-            # fi
+            # Ignore stdlib tests for now -- we run stdlib tests separately
+            if [[ $test =~ "stdlib" ]]; then
+                echo "-> Skip test"
+                continue
+            fi
 
             echo "-> (Test #$n for $ordinal/$total)"
             if [ $(( n % total )) -eq $ordinal ]; then
                 echo "-> Run"
-                # Run 2 workers, each with 3G (Github runner has 7GB RAM -- we try avoid getting killed by OOM)
-                JULIA_CPU_THREADS=2 JULIA_TEST_MAXRSS_MB=3000 $JULIA_PATH/julia $JULIA_TEST_ARGS $JULIA_PATH/test/runtests.jl --exit-on-error $test
+                JULIA_CPU_THREADS=1 $JULIA_PATH/julia $JULIA_TEST_ARGS $JULIA_PATH/test/runtests.jl --exit-on-error $test
             else
                 echo "-> Skip"
             fi
