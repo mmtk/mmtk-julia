@@ -313,7 +313,7 @@ size_t get_so_size(void* obj)
             size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
             if (object_is_managed_by_mmtk(a->data)) {
                 size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
-                if (pre_data_bytes > 0 && pre_data_bytes <= ARRAY_INLINE_NBYTES) {
+                if (pre_data_bytes > 0) { // a->data is allocated after a
                     tsz = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
                     tsz += jl_array_nbytes(a);
                 }
