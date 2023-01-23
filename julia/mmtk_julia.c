@@ -46,17 +46,12 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(int pool_offset, size_t o
     jl_taggedvalue_t *v_tagged;
 
     // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-     if (osize >= 4096) {
-         v_tagged = (jl_taggedvalue_t *) alloc(ptls->mmtk_mutator_ptr, osize, 16, 8, 0);
-     } else {
-        ptls->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls->cursor;
+    ptls->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls->cursor;
 
-        v_tagged =
-            (jl_taggedvalue_t *) alloc(ptls->mmtk_mutator_ptr, osize, 16, 8, 0);
+    v_tagged = (jl_taggedvalue_t *) alloc(ptls->mmtk_mutator_ptr, osize, 16, 8, 0);
 
-        ptls->cursor = ptls->mmtk_mutator_ptr->allocators.immix[0].cursor;
-        ptls->limit = ptls->mmtk_mutator_ptr->allocators.immix[0].limit;
-    }
+    ptls->cursor = ptls->mmtk_mutator_ptr->allocators.immix[0].cursor;
+    ptls->limit = ptls->mmtk_mutator_ptr->allocators.immix[0].limit;
 
     v = jl_valueof(v_tagged);
 
@@ -68,24 +63,19 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(int pool_offset, size_t o
 }
 
 STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset) {
-    if (size >= 4096) {
-         void* res = alloc(ptls->mmtk_mutator_ptr, size, 16, offset, 0);
-         return res;
-    } else {
-        int64_t delta = (-offset -(int64_t)(ptls->cursor)) & 15; // aligned to 16
-        uint64_t aligned_addr = (uint64_t)ptls->cursor + delta;
+    int64_t delta = (-offset -(int64_t)(ptls->cursor)) & 15; // aligned to 16
+    uint64_t aligned_addr = (uint64_t)ptls->cursor + delta;
 
-        if(__unlikely(aligned_addr+size > (uint64_t)ptls->limit)) {
-            jl_ptls_t ptls2 = (jl_ptls_t)jl_get_ptls_states();
-            ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls2->cursor;
-            void* res = alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
-            ptls2->cursor = ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor;
-            ptls2->limit = ptls2->mmtk_mutator_ptr->allocators.immix[0].limit;
-            return res;
-        } else {
-            ptls->cursor = (void*) (aligned_addr+size);
-            return (void*) aligned_addr;
-        }
+    if(__unlikely(aligned_addr+size > (uint64_t)ptls->limit)) {
+        jl_ptls_t ptls2 = (jl_ptls_t)jl_get_ptls_states();
+        ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls2->cursor;
+        void* res = alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
+        ptls2->cursor = ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor;
+        ptls2->limit = ptls2->mmtk_mutator_ptr->allocators.immix[0].limit;
+        return res;
+    } else {
+        ptls->cursor = (void*) (aligned_addr+size);
+        return (void*) aligned_addr;
     }
 }
 
@@ -113,6 +103,38 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, size_t osize, 
     ptls->gc_num.poolalloc++;
 
     return v;
+}
+
+JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
+{
+    // safepoint
+    jl_gc_safepoint_(ptls);
+
+    size_t offs = offsetof(bigval_t, header);
+    assert(sz >= sizeof(jl_taggedvalue_t) && "sz must include tag");
+    static_assert(offsetof(bigval_t, header) >= sizeof(void*), "Empty bigval header?");
+    static_assert(sizeof(bigval_t) % JL_HEAP_ALIGNMENT == 0, "");
+    size_t allocsz = LLT_ALIGN(sz + offs, JL_CACHE_BYTE_ALIGNMENT);
+    if (allocsz < sz) { // overflow in adding offs, size was "negative"
+        assert(0 && "Error when allocating big object");
+        jl_throw(jl_memory_exception);
+    }
+
+    bigval_t *v = (bigval_t*)alloc_large(ptls->mmtk_mutator_ptr, allocsz, JL_CACHE_BYTE_ALIGNMENT, 0, 2);
+
+    if (v == NULL) {
+        assert(0 && "Allocation failed");
+        jl_throw(jl_memory_exception);
+    }
+    v->sz = allocsz;
+
+    ptls->gc_num.allocd += allocsz;
+    ptls->gc_num.bigalloc++;
+
+    jl_value_t *result = jl_valueof(&v->header);
+    post_alloc(ptls->mmtk_mutator_ptr, result, allocsz, 2);
+
+    return result;
 }
 
 static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
@@ -296,6 +318,10 @@ size_t get_so_size(void* obj)
                     tsz += jl_array_nbytes(a);
                 }
             }
+            if (a->flags.pooled && tsz > 2032) { // a->data is actually a separate object and not inlined
+                tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            }
+
             return tsz + sizeof(jl_taggedvalue_t);
         } else if (a->flags.how == 1) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));

@@ -77,7 +77,13 @@ extern "C" {
 
 #[cfg(feature = "immix")]
 #[no_mangle]
-pub static MAX_IMMIX_OBJECT_SIZE : usize = mmtk::plan::IMMIX_CONSTRAINTS.max_non_los_default_alloc_bytes;
+pub static MAX_STANDARD_OBJECT_SIZE: usize =
+    mmtk::plan::IMMIX_CONSTRAINTS.max_non_los_default_alloc_bytes;
+
+#[cfg(not(feature = "immix"))]
+#[no_mangle]
+pub static MAX_STANDARD_OBJECT_SIZE: usize = // default to size of Julia's max size class
+    2032 - std::mem::size_of::<Address>();
 
 #[no_mangle]
 pub static BLOCK_FOR_GC: AtomicBool = AtomicBool::new(false);

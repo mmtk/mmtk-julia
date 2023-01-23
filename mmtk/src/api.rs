@@ -27,7 +27,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::RwLockWriteGuard;
 
 #[cfg(feature = "immix")]
-use crate::MAX_IMMIX_OBJECT_SIZE;
+use crate::MAX_STANDARD_OBJECT_SIZE;
 
 #[no_mangle]
 pub extern "C" fn gc_init(
@@ -148,7 +148,7 @@ pub extern "C" fn alloc(
     offset: isize,
     semantics: AllocationSemantics,
 ) -> Address {
-    if size >= MAX_IMMIX_OBJECT_SIZE {
+    if size >= MAX_STANDARD_OBJECT_SIZE {
         // MAX_IMMIX_OBJECT_SIZE
         memory_manager::alloc::<JuliaVM>(
             unsafe { &mut *mutator },
@@ -174,6 +174,22 @@ pub extern "C" fn alloc(
     memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, size, align, offset, semantics)
 }
 
+#[no_mangle]
+pub extern "C" fn alloc_large(
+    mutator: *mut Mutator<JuliaVM>,
+    size: usize,
+    align: usize,
+    offset: isize,
+) -> Address {
+    memory_manager::alloc::<JuliaVM>(
+        unsafe { &mut *mutator },
+        size,
+        align,
+        offset,
+        AllocationSemantics::Los,
+    )
+}
+
 #[cfg(feature = "immix")]
 #[no_mangle]
 pub extern "C" fn post_alloc(
@@ -182,7 +198,7 @@ pub extern "C" fn post_alloc(
     bytes: usize,
     semantics: AllocationSemantics,
 ) {
-    if bytes >= MAX_IMMIX_OBJECT_SIZE {
+    if bytes >= MAX_STANDARD_OBJECT_SIZE {
         // MAX_IMMIX_OBJECT_SIZE
         memory_manager::post_alloc::<JuliaVM>(
             unsafe { &mut *mutator },
@@ -205,7 +221,6 @@ pub extern "C" fn post_alloc(
 ) {
     memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
 }
-
 
 #[no_mangle]
 pub extern "C" fn will_never_move(object: ObjectReference) -> bool {
