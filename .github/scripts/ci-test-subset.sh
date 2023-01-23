@@ -27,8 +27,6 @@ CHOOSE_TESTS_JL_CONTENT=`cat $CHOOSE_TESTS_JL_PATH`
 
 REGEX_PATTERN='.*const TESTNAMES = \[(.*)^\].*'
 
-JULIA_TEST_ARGS='--check-bounds=yes --startup-file=no --depwarn=error'
-
 if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
     RAW_TEST_NAMES=${BASH_REMATCH[1]}
     # echo "matched: $RAW_TEST_NAMES"
@@ -56,7 +54,7 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
             echo "-> (Test #$n for $ordinal/$total)"
             if [ $(( n % total )) -eq $ordinal ]; then
                 echo "-> Run"
-                JULIA_CPU_THREADS=1 $JULIA_PATH/julia $JULIA_TEST_ARGS $JULIA_PATH/test/runtests.jl --exit-on-error $test
+                ci_run_jl_test $test
             else
                 echo "-> Skip"
             fi
