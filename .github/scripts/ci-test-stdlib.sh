@@ -54,7 +54,9 @@ declare -a stdlib_tests=(
     "SHA"
     "Serialization"
     "SharedArrays"
-    "Sockets"
+    # "Sockets" -> skip
+    # getnameinfo(ip"0.1.1.1") == "0.1.1.1"
+    # DNSError: ip"0.1.1.1", temporary failure (EAI_AGAIN)
     "SparseArrays"
     "Statistics"
     "SuiteSparse"
