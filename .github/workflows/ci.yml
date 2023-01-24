@@ -33,7 +33,7 @@ jobs:
           ./.github/scripts/ci-build.sh release
       - name: Test Julia
         run: |
-          ./.github/scripts/ci-test-subset.sh 0 1
+          ./.github/scripts/ci-test-other.sh
 
   build-test-stdlib:
     runs-on: ubuntu-18.04
