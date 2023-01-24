@@ -82,5 +82,3 @@ do
     echo "Run stdlib tests: "$test
     ci_run_jl_test $test
 done
-
-make test-stdlib
