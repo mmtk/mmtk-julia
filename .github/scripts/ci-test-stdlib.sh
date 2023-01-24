@@ -17,7 +17,7 @@ declare -a stdlib_tests=(
     # Expression: repr(t) == shown
     # Evaluated: "Time(0, 0, 0, 1)" == "Dates.Time(0, 0, 0, 1)"
     # Seems to be an issue with their tests or runtime system: https://github.com/JuliaLang/julia/pull/29466
-    "Dates"
+    # "Dates"
     "DelimitedFiles"
     "Distributed"
     "Downloads"
@@ -56,7 +56,7 @@ declare -a stdlib_tests=(
     "SharedArrays"
     # getnameinfo(ip"0.1.1.1") == "0.1.1.1"
     # DNSError: ip"0.1.1.1", temporary failure (EAI_AGAIN)
-    "Sockets"
+    # "Sockets"
     "SparseArrays"
     "Statistics"
     "SuiteSparse"
