@@ -6,14 +6,14 @@
 
 extern int64_t perm_scanned_bytes;
 extern void run_finalizer(jl_task_t *ct, jl_value_t *o, jl_value_t *ff);
-extern JL_DLLIMPORT int jl_n_threads;
-extern void *sysimg_base;
-extern void *sysimg_end;
+extern JL_DLLIMPORT _Atomic(int) jl_n_threads;
 extern JL_DLLEXPORT void *jl_get_ptls_states(void);
 extern jl_ptls_t get_next_mutator_tls(void);
 extern jl_value_t *cmpswap_names JL_GLOBALLY_ROOTED;
 extern jl_array_t *jl_global_roots_table JL_GLOBALLY_ROOTED;
 extern jl_typename_t *jl_array_typename JL_GLOBALLY_ROOTED;
+extern long BI_METADATA_START_ALIGNED_DOWN;
+extern long BI_METADATA_END_ALIGNED_UP;
 extern void jl_gc_premark(jl_ptls_t ptls2);
 extern uint64_t finalizer_rngState[4];
 extern const unsigned pool_sizes[];
@@ -22,7 +22,6 @@ extern void reset_count_tls(void);
 extern void jl_gc_free_array(jl_array_t *a);
 extern size_t get_obj_size(void* obj);
 extern void jl_rng_split(uint64_t to[4], uint64_t from[4]);
-extern _Atomic(uint32_t) jl_gc_disable_counter;
 
 JL_DLLEXPORT void (jl_mmtk_harness_begin)(void)
 {
@@ -35,10 +34,8 @@ JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
     harness_end();
 }
 
-JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(int pool_offset, int osize)
+JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(jl_ptls_t ptls, int pool_offset, int osize)
 {
-    jl_ptls_t ptls = (jl_ptls_t)jl_get_ptls_states();
-
     // safepoint
     if (__unlikely(jl_atomic_load(&jl_gc_running))) {
         int8_t old_state = ptls->gc_state;
@@ -197,11 +194,11 @@ int8_t object_has_been_scanned(void* obj)
         return 1;
     };
 
-    if (sysimg_base == NULL) {
+    if (BI_METADATA_START_ALIGNED_DOWN == NULL) {
         return 0;
     }
 
-    if ((void*)obj < sysimg_base || (void*)obj >= sysimg_end) {
+    if ((void*)obj < BI_METADATA_START_ALIGNED_DOWN || (void*)obj >= BI_METADATA_END_ALIGNED_UP) {
         return 0;
     }
 
@@ -209,11 +206,11 @@ int8_t object_has_been_scanned(void* obj)
 }
 
 void mark_object_as_scanned(void* obj) {
-    if (sysimg_base == NULL) {
+    if (BI_METADATA_START_ALIGNED_DOWN == NULL) {
         return;
     }
 
-    if ((void*)obj < sysimg_base || (void*)obj >= sysimg_end) {
+    if ((void*)obj < BI_METADATA_START_ALIGNED_DOWN || (void*)obj >= BI_METADATA_END_ALIGNED_UP) {
         return;
     }
 
@@ -236,11 +233,6 @@ void mmtk_exit_from_safepoint(int8_t old_state) {
 // when executing finalizers do not let another thread do GC (set a variable such that while that variable is true, no GC can be done)
 int8_t set_gc_initial_state(void* ptls) 
 {
-    if(jl_atomic_load_relaxed(&jl_gc_disable_counter)) {
-        // printf("GC RUNNING WHEN IT SHOULD BE DISABLED!!!!\n");
-        // fflush(stdout);
-        // runtime_panic();
-    }
     int8_t old_state = jl_atomic_load_relaxed(&((jl_ptls_t)ptls)->gc_state);
     jl_atomic_store_release(&((jl_ptls_t)ptls)->gc_state, JL_GC_STATE_WAITING);
     if (!jl_safepoint_start_gc()) {
@@ -514,6 +506,8 @@ static void queue_roots(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_t *sp)
 
     if (_jl_debug_method_invalidation != NULL)
         add_object_to_mmtk_roots(_jl_debug_method_invalidation);
+    if (jl_build_ids != NULL)
+        add_object_to_mmtk_roots(jl_build_ids);
 
     // constants
     add_object_to_mmtk_roots(jl_emptytuple_type);
@@ -562,17 +556,6 @@ static void jl_gc_queue_remset_mmtk(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_
     for (size_t i = 0; i < len; i++) {
         add_object_to_mmtk_roots(items[i]);
     }
-    len = ptls2->heap.rem_bindings.len;
-    items = ptls2->heap.rem_bindings.items;
-
-    for (size_t i = 0; i < len; i++) {
-        jl_binding_t *ptr = (jl_binding_t*)items[i];
-        // A null pointer can happen here when the binding is cleaned up
-        // as an exception is thrown after it was already queued (#10221)
-        if (!ptr->value) continue;
-        add_object_to_mmtk_roots(ptr->value);
-    }
-    ptls2->heap.rem_bindings.len = 0;
 }
 
 void calculate_roots(void* ptls)
@@ -779,15 +762,14 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
         }
     } else if (vt == jl_module_type) { // inlining label `module_binding` from mark_loop
         jl_module_t *m = (jl_module_t*)obj;
-        jl_binding_t **table = (jl_binding_t**)m->bindings.table;
-        size_t bsize = m->bindings.size;
-        uintptr_t nptr = ((bsize + m->usings.len + 1) << 2);
-        gc_mark_binding_t binding = {m, table + 1, table + bsize, nptr, 0};
-        jl_binding_t **begin = (jl_binding_t**)m->bindings.table + 1;
-        jl_binding_t **end = (jl_binding_t**)m->bindings.table + bsize;
-        for (; begin < end; begin += 2) {
+        jl_svec_t *bindings = jl_atomic_load_relaxed(&m->bindings);
+        jl_binding_t **table = (jl_binding_t**)jl_svec_data(bindings);
+        size_t bsize = jl_svec_len(bindings);
+        jl_binding_t **begin = table + 1;
+        jl_binding_t **end =  table + bsize;
+        for (; begin < end; begin++) {
             jl_binding_t *b = *begin;
-            if (b == (jl_binding_t*)HT_NOTFOUND)
+            if (b == (jl_binding_t*)jl_nothing)
                 continue;
 
             process_edge(closure, begin);
@@ -795,14 +777,11 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
             void *vb = jl_astaggedvalue(b);
             verify_parent1("module", binding->parent, &vb, "binding_buff");
             (void)vb;
-
-            process_edge(closure, &b->value);
-            process_edge(closure, &b->globalref);
-            process_edge(closure, &b->owner);
-            process_edge(closure, &b->ty);
         }
-        jl_module_t *parent = binding.parent;
-        process_edge(closure, &parent->parent);
+
+        process_edge(closure, &m->parent);
+        process_edge(closure, &m->bindingkeyset);
+        process_edge(closure, &m->bindings);
 
         size_t nusings = m->usings.len;
         if (nusings) {
