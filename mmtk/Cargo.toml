@@ -23,9 +23,7 @@ built = "*"
 [dependencies]
 libc = "0.2"
 lazy_static = "1.1"
-mmtk = { git = "https://github.com/udesou/mmtk-core.git", branch="master", version = "*" }
-# mmtk = { git = "https://github.com/mmtk/mmtk-core.git", branch="master", version = "*" }
-# mmtk = { path = "/home/eduardo/mmtk-core", version="*" }
+mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "78f0851389bb0774b5e34c56359f53e852a8bee3" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
 enum-map = "=2.1"
 atomic = "0.4.6"
