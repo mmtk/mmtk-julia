@@ -40,7 +40,7 @@ semispace = []
 gencopy = []
 pageprotect = []
 malloc_counted_size = ["mmtk/malloc_counted_size"]
-immix = ["malloc_counted_size", "mmtk/immix_no_defrag", "mmtk/immix_smaller_block", "scan_obj_c"]
+immix = ["malloc_counted_size", "mmtk/immix_no_defrag", "mmtk/immix_smaller_block"]
 marksweep = ["malloc_counted_size", "scan_obj_c"]
 # FIXME update and use rust object scanner as default for immix
 scan_obj_c = []

@@ -846,6 +846,7 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
             uintptr_t lb = stack.lb;
             uintptr_t ub = stack.ub;
             uint32_t nr = nroots >> 2;
+
             while (1) {
                 jl_value_t ***rts = (jl_value_t***)(((void**)s) + 2);
                 for (; i < nr; i++) {

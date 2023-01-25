@@ -640,7 +640,7 @@ pub struct mmtk_jl_typename_t {
     pub n_uninitialized: i32,
     pub _bitfield_align_1: [u8; 0],
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 1usize]>,
-    pub max_methods: u8,
+    pub __bindgen_padding_0: [u8; 7usize],
 }
 #[test]
 fn bindgen_test_layout_mmtk_jl_typename_t() {
@@ -774,16 +774,6 @@ fn bindgen_test_layout_mmtk_jl_typename_t() {
             stringify!(mmtk_jl_typename_t),
             "::",
             stringify!(n_uninitialized)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).max_methods) as usize - ptr as usize },
-        89usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(mmtk_jl_typename_t),
-            "::",
-            stringify!(max_methods)
         )
     );
 }
