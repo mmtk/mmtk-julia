@@ -6,6 +6,11 @@ on:
       - master
       - v1.8.2-RAI
 
+concurrency:
+  # Cancels pending runs when a PR gets updated.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build-debug:
     runs-on: ubuntu-18.04
