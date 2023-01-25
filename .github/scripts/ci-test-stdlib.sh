@@ -1,84 +1,46 @@
-set -xe
+# We run stdlib tests separately, as it takes long and some tests are failling.
+# Julia's make file also treats stdlib special. It is reasonable that we treat them differently.
+
+set -e
 
 . $(dirname "$0")/common.sh
 
-# These tests seem to fail:
-# LibGit2
-# Dates/io
-# FileWatching
-
-declare -a stdlib_tests=(
-    "ArgTools"
-    "Artifacts"
-    "Base64"
-    "CRC32c"
-    "CompilerSupportLibraries_jll"
+# These tests seem to fail. We skip them.
+declare -a tests_to_skip=(
     # Test Failed at /home/runner/work/mmtk-julia/mmtk-julia/vm/julia/usr/share/julia/stdlib/v1.8/Dates/test/io.jl:45
     # Expression: repr(t) == shown
     # Evaluated: "Time(0, 0, 0, 1)" == "Dates.Time(0, 0, 0, 1)"
     # Seems to be an issue with their tests or runtime system: https://github.com/JuliaLang/julia/pull/29466
-    # "Dates"
-    "DelimitedFiles"
-    "Distributed"
-    "Downloads"
-    "FileWatching"
-    "Future"
-    "GMP_jll"
-    "InteractiveUtils"
-    "LLVMLibUnwind_jll"
-    "LazyArtifacts"
-    "LibCURL"
-    "LibCURL_jll"
-    "LibGit2"
-    "LibGit2_jll"
-    "LibSSH2_jll"
-    "LibUV_jll"
-    "LibUnwind_jll"
-    "Libdl"
-    "LinearAlgebra"
-    "Logging"
-    "MPFR_jll"
-    "Markdown"
-    "MbedTLS_jll"
-    "Mmap"
-    "MozillaCACerts_jll"
-    "NetworkOptions"
-    "OpenBLAS_jll"
-    "OpenLibm_jll"
-    "PCRE2_jll"
-    "Pkg"
-    "Printf"
-    "Profile"
-    "REPL"
-    "Random"
-    "SHA"
-    "Serialization"
-    "SharedArrays"
+    "Dates"
     # getnameinfo(ip"0.1.1.1") == "0.1.1.1"
     # DNSError: ip"0.1.1.1", temporary failure (EAI_AGAIN)
-    # "Sockets"
-    "SparseArrays"
-    "Statistics"
-    "SuiteSparse"
-    "SuiteSparse_jll"
-    "TOML"
-    "Tar"
-    "Test"
-    "UUIDs"
-    "Unicode"
-    "Zlib_jll"
-    "dSFMT_jll"
-    "libLLVM_jll"
-    "libblastrampoline_jll"
-    "nghttp2_jll"
-    "p7zip_jll"
+    "Sockets"
 )
 
-cd $JULIA_PATH
+stdlib_path=$JULIA_PATH/usr/share/julia/stdlib
 
-for i in "${stdlib_tests[@]}"
+# They should have one directory in the path, like v1.8. The actual libraries are under that directory.
+stdlib_version_path=$(find $stdlib_path -mindepth 1 -maxdepth 1)
+# Should be exactly one directory
+if [ $(find $stdlib_path -mindepth 1 -maxdepth 1 | wc -l) -ne 1 ]; then
+  echo "Error: We expect to fine EXACTLY one directory under "$stdlib_path
+  echo "We found"
+  echo $stdlib_version_path
+  exit 1
+fi
+
+for dir in $(find $stdlib_version_path -depth -mindepth 1 -type d -o -type l)
 do
-    test="$i"
-    echo "Run stdlib tests: "$test
-    ci_run_jl_test $test
+    # if there is a runtests.jl, we run it.
+    if [ -e "$dir/test/runtests.jl" ]; then
+        # Get the basename such as Dates/Sockets/LinearAlgebra/etc
+        test=$(echo "$dir" | xargs -I {} basename {})
+        echo "Run stdlib tests: "$test
+        # Skip some tests
+        if [[ "${tests_to_skip[@]}" =~ "$test" ]]; then
+            echo "-> Skip"
+            continue
+        fi
+        ci_run_jl_test $test
+    fi
 done
