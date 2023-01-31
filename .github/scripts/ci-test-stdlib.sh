@@ -16,6 +16,10 @@ declare -a tests_to_skip=(
     # DNSError: ip"0.1.1.1", temporary failure (EAI_AGAIN)
     "Sockets"
 )
+# These tests need multiple workers.
+declare -a tests_with_multi_workers=(
+    "Pkg"
+)
 
 stdlib_path=$JULIA_PATH/usr/share/julia/stdlib
 
@@ -36,11 +40,19 @@ do
         # Get the basename such as Dates/Sockets/LinearAlgebra/etc
         test=$(echo "$dir" | xargs -I {} basename {})
         echo "Run stdlib tests: "$test
+
         # Skip some tests
         if [[ "${tests_to_skip[@]}" =~ "$test" ]]; then
             echo "-> Skip"
             continue
         fi
+
+        if [[ "${tests_with_multi_workers[@]}" =~ "$test" ]]; then
+            echo "-> Run multi-threads"
+            ci_run_jl_test $test 2
+            continue
+        fi
+
         ci_run_jl_test $test
     fi
 done

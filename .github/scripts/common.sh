@@ -13,9 +13,15 @@ export MMTK_MAX_HSIZE_G=4
 
 ci_run_jl_test() {
     test=$1
+    threads=$2
+
+    # if no argument is given, use 1 as default
+    if [ -z "$threads" ]; then
+        threads=1
+    fi
 
     cd $JULIA_PATH
-    export JULIA_CPU_THREADS=1
+    export JULIA_CPU_THREADS=$threads
 
     # Directly run runtests.jl: There could be some issues with some test suites. We better just use their build script.
     # $JULIA_PATH/julia $JULIA_TEST_ARGS $JULIA_PATH/test/runtests.jl --exit-on-error $test
