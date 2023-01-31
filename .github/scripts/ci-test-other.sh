@@ -9,7 +9,7 @@ set -xe
 CHOOSE_TESTS_JL_PATH=$JULIA_PATH/test/choosetests.jl
 CHOOSE_TESTS_JL_CONTENT=`cat $CHOOSE_TESTS_JL_PATH`
 
-REGEX_PATTERN='.*const TESTNAMES = \[(.*)^\].*'
+REGEX_PATTERN='.*const TESTNAMES = \[([^\[]*)^\].*'
 
 if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
     RAW_TEST_NAMES=${BASH_REMATCH[1]}
