@@ -2,7 +2,7 @@
 
 ### Checking out and Building Julia with MMTk
 
-Besides checking out the binding, it is also necessary to checkout a fork containing a modified version of the Julia repository onto a subfolder of the biding (eg. `vm/julia`). The correct version can be found at https://github.com/mmtk/julia/tree/v1.8.2-RAI. For step-by-step instructions, read the section "Quick Building Guide". 
+Besides checking out the binding, it is also necessary to checkout a fork containing a modified version of the Julia repository onto a subfolder of the biding (eg. `vm/julia`). The correct version can be found at https://github.com/mmtk/julia/tree/master. For step-by-step instructions, read the section "Quick Building Guide". 
 
 The directory structure should look like the diagram below:
 
