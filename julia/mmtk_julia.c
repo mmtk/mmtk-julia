@@ -14,7 +14,7 @@ extern jl_array_t *jl_global_roots_table JL_GLOBALLY_ROOTED;
 extern jl_typename_t *jl_array_typename JL_GLOBALLY_ROOTED;
 extern long BI_METADATA_START_ALIGNED_DOWN;
 extern long BI_METADATA_END_ALIGNED_UP;
-extern void jl_gc_premark(jl_ptls_t ptls2);
+extern void gc_premark(jl_ptls_t ptls2);
 extern uint64_t finalizer_rngState[4];
 extern const unsigned pool_sizes[];
 extern void store_obj_size_c(void* obj, size_t size);
@@ -468,7 +468,7 @@ void mmtk_jl_gc_run_all_finalizers(void) {
 }
 
 // add the initial root set to mmtk roots
-static void queue_roots(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_t *sp)
+static void queue_roots()
 {
     // modules
     add_object_to_mmtk_roots(jl_main_module);
@@ -505,7 +505,7 @@ static void queue_roots(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_t *sp)
 
 }
 
-static void jl_gc_queue_bt_buf_mmtk(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_t *sp, jl_ptls_t ptls2)
+static void jl_gc_queue_bt_buf_mmtk(jl_ptls_t ptls2)
 {
     jl_bt_element_t *bt_data = ptls2->bt_data;
     jl_value_t* bt_entry_value;
@@ -522,7 +522,7 @@ static void jl_gc_queue_bt_buf_mmtk(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_
     }
 }
 
-static void jl_gc_queue_thread_local_mmtk(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_t *sp, jl_ptls_t ptls2)
+static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls2)
 {
     add_object_to_mmtk_roots(ptls2->current_task);
     add_object_to_mmtk_roots(ptls2->root_task);
@@ -537,7 +537,7 @@ static void jl_gc_queue_thread_local_mmtk(jl_gc_mark_cache_t *gc_cache, jl_gc_ma
     }
 }
 
-static void jl_gc_queue_remset_mmtk(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_t *sp, jl_ptls_t ptls2)
+static void jl_gc_queue_remset_mmtk(jl_ptls_t ptls2)
 {
     size_t len = ptls2->heap.last_remset->len;
     void **items = ptls2->heap.last_remset->items;
@@ -546,26 +546,25 @@ static void jl_gc_queue_remset_mmtk(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_
     }
 }
 
-void calculate_roots(void* ptls)
+void calculate_roots(jl_ptls_t ptls)
 {
-    jl_gc_mark_cache_t *gc_cache = &((jl_ptls_t)ptls)->gc_cache;
-    jl_gc_mark_sp_t sp;
-    gc_mark_sp_init(gc_cache, &sp);
+    jl_gc_markqueue_t *mq = &ptls->mark_queue;
 
     for (int t_i = 0; t_i < gc_n_threads; t_i++)
-        jl_gc_premark(gc_all_tls_states[t_i]);
+        gc_premark(gc_all_tls_states[t_i]);
 
     for (int t_i = 0; t_i < gc_n_threads; t_i++) {
         jl_ptls_t ptls2 = gc_all_tls_states[t_i];
-        // 2.1. add every object in the `last_remsets` and `rem_binding` to mmtk roots
-        jl_gc_queue_remset_mmtk(gc_cache, &sp, ptls2);
-        // 2.2. add every thread local root to mmtk roots
-        jl_gc_queue_thread_local_mmtk(gc_cache, &sp, ptls2);
-        // 2.3. add any managed objects in the backtrace buffer to mmtk roots
-        jl_gc_queue_bt_buf_mmtk(gc_cache, &sp, ptls2);
+        // 2.1. mark every thread local root
+        jl_gc_queue_thread_local_mmtk(ptls2);
+        // 2.2. mark any managed objects in the backtrace buffer
+        jl_gc_queue_bt_buf_mmtk(ptls2);
+        // 2.3. mark any managed objects in the backtrace buffer
+        // TODO: treat these as roots for gc_heap_snapshot_record
+        jl_gc_queue_remset_mmtk(ptls2);
     }
 
-    queue_roots(gc_cache, &sp);
+    queue_roots();
 }
 
 // Handle the case where the stack is only partially copied.
@@ -802,20 +801,16 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
             offset = (uintptr_t)stkbuf - lb;
         }
 #endif
-        if (s) { // inlining label `stack` from mark_loop
+        if (s) { // gc_mark_stack()
             nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
             assert(nroots <= UINT32_MAX);
-            gc_mark_stackframe_t stack = {s, 0, (uint32_t)nroots, offset, lb, ub};
-            jl_gcframe_t *s = stack.s;
-            uint32_t i = stack.i;
-            uint32_t nroots = stack.nroots;
-            uintptr_t offset = stack.offset;
-            uintptr_t lb = stack.lb;
-            uintptr_t ub = stack.ub;
+
+            jl_value_t *new_obj;
             uint32_t nr = nroots >> 2;
+
             while (1) {
                 jl_value_t ***rts = (jl_value_t***)(((void**)s) + 2);
-                for (; i < nr; i++) {
+                for (uint32_t i = 0; i < nr; i++) {
                     if (nroots & 1) {
                         void **slot = (void**)mmtk_gc_read_stack(&rts[i], offset, lb, ub);
                         uintptr_t real_addr = mmtk_gc_get_stack_addr(slot, offset, lb, ub);
@@ -827,17 +822,16 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
                     }
                 }
 
-                s = (jl_gcframe_t*)mmtk_gc_read_stack(&s->prev, offset, lb, ub);
-                if (s != 0) {
-                    stack.s = s;
-                    i = 0;
-                    uintptr_t new_nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
-                    assert(new_nroots <= UINT32_MAX);
-                    nroots = stack.nroots = (uint32_t)new_nroots;
-                    nr = nroots >> 2;
-                    continue;
-                }
-                break;
+                jl_gcframe_t *sprev = (jl_gcframe_t*)mmtk_gc_read_stack(&s->prev, offset, lb, ub);
+                if (sprev == NULL)
+                    break;
+
+                s = sprev;
+                uintptr_t new_nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
+                assert(new_nroots <= UINT32_MAX);
+                nroots = (uint32_t)new_nroots;
+                nr = nroots >> 2;
+                continue;
             }
         }
         if (ta->excstack) { // inlining label `excstack` from mark_loop
