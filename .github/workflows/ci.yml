@@ -25,7 +25,7 @@ jobs:
           ./.github/scripts/ci-build.sh debug
       - name: Style check
         run: |
-          ./.githut/scripts/ci-style.sh
+          ./.github/scripts/ci-style.sh
 
   build-test-other:
     runs-on: ubuntu-18.04
