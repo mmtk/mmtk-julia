@@ -1,11 +1,17 @@
 set -xe
 
-. $(dirname "$0")/common.sh
+cur=$(realpath $(dirname "$0"))
 
 # Build deubg
-. $(dirname "$0")/ci-build.sh debug
+cd $cur
+./ci-build.sh debug
+
 # Build release
-. $(dirname "$0")/ci-build.sh release
+cd $cur
+./ci-build.sh release
+
 # Use release build to run tests
-. $(dirname "$0")/ci-test-other.sh
-. $(dirname "$0")/ci-test-stdlib.sh
+cd $cur
+./ci-test-other.sh
+cd $cur
+./ci-test-stdlib.sh
