@@ -2,9 +2,9 @@ set -xe
 
 cur=$(realpath $(dirname "$0"))
 
-# Build deubg
-cd $cur
-./ci-build.sh debug
+# Build debug - skip this. Otherwise it takes too long
+# cd $cur
+# ./ci-build.sh debug
 
 # Build release
 cd $cur
