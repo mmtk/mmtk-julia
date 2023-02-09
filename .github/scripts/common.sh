@@ -15,9 +15,9 @@ ci_run_jl_test() {
     test=$1
     threads=$2
 
-    # if no argument is given, use 1 as default
+    # if no argument is given, use 2 as default
     if [ -z "$threads" ]; then
-        threads=1
+        threads=2
     fi
 
     cd $JULIA_PATH
