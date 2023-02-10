@@ -134,7 +134,6 @@ impl<VM: VMBinding> GCWork<VM> for SweepMallocedArrays {
         self.swept = true;
     }
 }
-<<<<<<< HEAD
 
 #[no_mangle]
 pub extern "C" fn mark_metadata_scanned(addr: Address) {
@@ -145,5 +144,3 @@ pub extern "C" fn mark_metadata_scanned(addr: Address) {
 pub extern "C" fn check_metadata_scanned(addr: Address) -> u8 {
     BI_MARKING_METADATA_SPEC.load_atomic::<u8>(addr, Ordering::SeqCst)
 }
-=======
->>>>>>> f1a3f74 (Allow MMTk core to test Julia binding (#25))
