@@ -13,6 +13,12 @@ export MMTK_MAX_HSIZE_G=4
 
 ci_run_jl_test() {
     test=$1
+    threads=$2
+
+    # if no argument is given, use 2 as default
+    if [ -z "$threads" ]; then
+        threads=2
+    fi
 
     cd $JULIA_PATH
     export JULIA_CPU_THREADS=1

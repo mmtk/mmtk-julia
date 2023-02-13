@@ -181,10 +181,9 @@ pub extern "C" fn mmtk_run_finalizers(at_exit: bool) {
                     {
                         // if the finalizer function triggers GC you don't want the objects to be GC-ed
                         let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-            
+
                         let inserted = fin_roots.insert(obj);
                         assert!(inserted);
-                        
                     }
                     unsafe { ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2) }
                     {
@@ -192,7 +191,6 @@ pub extern "C" fn mmtk_run_finalizers(at_exit: bool) {
                         let removed = fin_roots.remove(&obj);
                         assert!(removed);
                     }
-
                 }
                 None => break,
             }
