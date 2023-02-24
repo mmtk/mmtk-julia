@@ -7,9 +7,9 @@ void calculate_roots(jl_ptls_t ptls);
 
 void run_finalizer_function(void *o, void *ff, bool is_ptr);
 
-uintptr_t get_jl_last_err(void);
+int get_jl_last_err(void);
 
-void set_jl_last_err(uintptr_t e);
+void set_jl_last_err(int e);
 
 size_t get_lo_size(bigval_t obj);
 

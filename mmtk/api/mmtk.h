@@ -38,6 +38,8 @@ extern void* alloc_large(MMTk_Mutator mutator, size_t size,
 extern void post_alloc(MMTk_Mutator mutator, void* refer,
     int bytes, int allocator);
 
+extern void add_object_to_mmtk_roots(void *obj);
+
 extern void* mmtk_counted_malloc(size_t size);
 extern void* mmtk_malloc(size_t size);
 extern void* mmtk_counted_calloc(size_t n, size_t size);
@@ -54,7 +56,7 @@ extern bool is_mapped_object(void* ref);
 extern bool is_mapped_address(void* addr);
 extern void modify_check(void* ref);
 extern int object_is_managed_by_mmtk(void* addr);
-extern void runtime_panic();
+extern void runtime_panic(void);
 
 
 
@@ -87,7 +89,7 @@ typedef struct {
     void (* calculate_roots) (void* tls);
     void (* run_finalizer_function) (void* obj, void* function, bool is_ptr);
     void (* get_jl_last_err) (void);
-    void (* set_jl_last_err) (int errno);
+    void (* set_jl_last_err) (int e);
     void (* get_lo_size) (void* obj);
     void (* get_so_size) (void* obj, size_t actual_size);
     void (* get_obj_start_ref) (void* obj);
@@ -96,12 +98,12 @@ typedef struct {
     void (* set_gc_final_state) (int old_state);
     void (* set_gc_old_state) (int old_state);
     void (* mmtk_jl_run_finalizers) (void* tls);
-    void (* jl_throw_out_of_memory_error) ();
+    void (* jl_throw_out_of_memory_error) (void);
     void (* mark_object_as_scanned) (void* obj);
     void (* object_has_been_scanned) (void* obj);
-    void (* sweep_malloced_array) ();
+    void (* sweep_malloced_array) (void);
     void (* get_malloced_bytes) (void* tls);
-    void (* wait_in_a_safepoint) ();
+    void (* wait_in_a_safepoint) (void);
     void (* exit_from_safepoint) (int old_state);
 } Julia_Upcalls;
 

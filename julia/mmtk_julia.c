@@ -85,12 +85,12 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offse
     jl_value_t *v;
     if ((uintptr_t)ty != jl_buff_tag) {
         // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-        jl_taggedvalue_t *v_tagged = alloc(ptls->mmtk_mutator_ptr, osize, 16, sizeof(jl_taggedvalue_t), 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize, sizeof(jl_taggedvalue_t));
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)alloc(ptls->mmtk_mutator_ptr, osize, 16, sizeof(jl_taggedvalue_t), 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize, sizeof(jl_taggedvalue_t));
         v = jl_valueof(v_tagged);
         post_alloc(ptls->mmtk_mutator_ptr, v, osize, 0);
     } else {
         // allocating an extra word to store the size of buffer objects
-        jl_taggedvalue_t *v_tagged = alloc(ptls->mmtk_mutator_ptr, osize + sizeof(jl_taggedvalue_t), 16, 0, 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize + sizeof(jl_taggedvalue_t), 0);
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)alloc(ptls->mmtk_mutator_ptr, osize + sizeof(jl_taggedvalue_t), 16, 0, 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize + sizeof(jl_taggedvalue_t), 0);
         jl_value_t* v_tagged_aligned = ((jl_value_t*)((char*)(v_tagged) + sizeof(jl_taggedvalue_t)));
         v = jl_valueof(v_tagged_aligned);
         store_obj_size_c(v, osize + sizeof(jl_taggedvalue_t));
@@ -176,7 +176,7 @@ int8_t object_has_been_scanned(void* obj)
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag;
 
-    if (jl_object_in_image(obj)) {
+    if (jl_object_in_image((jl_value_t *)obj)) {
         jl_taggedvalue_t *o = jl_astaggedvalue(obj);
         return o->bits.gc == GC_MARKED;
     }
@@ -189,13 +189,13 @@ int8_t object_has_been_scanned(void* obj)
 }
 
 void mark_object_as_scanned(void* obj) {
-    if (jl_object_in_image(obj)) {
+    if (jl_object_in_image((jl_value_t *)obj)) {
         jl_taggedvalue_t *o = jl_astaggedvalue(obj);
         o->bits.gc = GC_MARKED;
     }
 }
 
-int8_t mmtk_wait_in_a_safepoint(void) {
+void mmtk_wait_in_a_safepoint(void) {
     jl_ptls_t ptls = jl_current_task->ptls;
     jl_gc_safepoint_(ptls);
 }
@@ -214,7 +214,7 @@ int8_t set_gc_initial_state(void* ptls)
     int8_t old_state = jl_atomic_load_relaxed(&((jl_ptls_t)ptls)->gc_state);
     jl_atomic_store_release(&((jl_ptls_t)ptls)->gc_state, JL_GC_STATE_WAITING);
     if (!jl_safepoint_start_gc()) {
-        jl_gc_state_set(ptls, old_state, JL_GC_STATE_WAITING);
+        jl_gc_state_set((jl_ptls_t)ptls, old_state, JL_GC_STATE_WAITING);
         return -1;
     }
     return old_state;
@@ -233,7 +233,7 @@ void set_gc_old_state(int8_t old_state)
     jl_atomic_store_release(&ptls->gc_state, old_state);
 }
 
-void wait_for_the_world()
+void wait_for_the_world(void)
 {
     gc_n_threads = jl_atomic_load_acquire(&jl_n_threads);
     gc_all_tls_states = jl_atomic_load_relaxed(&jl_all_tls_states);
@@ -260,12 +260,12 @@ size_t get_lo_size(bigval_t obj)
     return obj.sz;
 }
 
-void set_jl_last_err(uintptr_t e) 
+void set_jl_last_err(int e) 
 {
     errno = e;
 }
 
-uintptr_t get_jl_last_err(void) 
+int get_jl_last_err(void) 
 {
     gc_n_threads = jl_atomic_load_acquire(&jl_n_threads);
     gc_all_tls_states = jl_atomic_load_relaxed(&jl_all_tls_states);
@@ -410,6 +410,7 @@ size_t get_so_size(void* obj)
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
     }
+    return 0;
 }
 
 void run_finalizer_function(void *o, void *ff, bool is_ptr)
@@ -468,7 +469,7 @@ void mmtk_jl_gc_run_all_finalizers(void) {
 }
 
 // add the initial root set to mmtk roots
-static void queue_roots()
+static void queue_roots(void)
 {
     // modules
     add_object_to_mmtk_roots(jl_main_module);
@@ -548,8 +549,6 @@ static void jl_gc_queue_remset_mmtk(jl_ptls_t ptls2)
 
 void calculate_roots(jl_ptls_t ptls)
 {
-    jl_gc_markqueue_t *mq = &ptls->mark_queue;
-
     for (int t_i = 0; t_i < gc_n_threads; t_i++)
         gc_premark(gc_all_tls_states[t_i]);
 
@@ -805,7 +804,6 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
             nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
             assert(nroots <= UINT32_MAX);
 
-            jl_value_t *new_obj;
             uint32_t nr = nroots >> 2;
 
             while (1) {
