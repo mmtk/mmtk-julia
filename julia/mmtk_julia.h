@@ -3,7 +3,7 @@
 
 extern Julia_Upcalls mmtk_upcalls;
 
-void calculate_roots(void* ptls);
+void calculate_roots(jl_ptls_t ptls);
 
 void run_finalizer_function(jl_value_t *o, jl_value_t *ff, bool is_ptr);
 

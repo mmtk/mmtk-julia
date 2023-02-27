@@ -98,20 +98,12 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offse
     jl_value_t *v;
     if ((uintptr_t)ty != jl_buff_tag) {
         // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-<<<<<<< HEAD
         jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *) alloc_default_object(ptls, osize, sizeof(jl_taggedvalue_t));
-=======
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)alloc(ptls->mmtk_mutator_ptr, osize, 16, sizeof(jl_taggedvalue_t), 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize, sizeof(jl_taggedvalue_t));
->>>>>>> 986f229 (Remove some warnings when compiling Julia (#29))
         v = jl_valueof(v_tagged);
         post_alloc(ptls->mmtk_mutator_ptr, v, osize, 0);
     } else {
         // allocating an extra word to store the size of buffer objects
-<<<<<<< HEAD
         jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *) alloc_default_object(ptls, osize + sizeof(jl_taggedvalue_t), 0);
-=======
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)alloc(ptls->mmtk_mutator_ptr, osize + sizeof(jl_taggedvalue_t), 16, 0, 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize + sizeof(jl_taggedvalue_t), 0);
->>>>>>> 986f229 (Remove some warnings when compiling Julia (#29))
         jl_value_t* v_tagged_aligned = ((jl_value_t*)((char*)(v_tagged) + sizeof(jl_taggedvalue_t)));
         v = jl_valueof(v_tagged_aligned);
         store_obj_size_c(v, osize + sizeof(jl_taggedvalue_t));
@@ -201,14 +193,6 @@ int8_t object_has_been_scanned(jl_value_t* obj)
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag;
 
-<<<<<<< HEAD
-=======
-    if (jl_object_in_image((jl_value_t *)obj)) {
-        jl_taggedvalue_t *o = jl_astaggedvalue(obj);
-        return o->bits.gc == GC_MARKED;
-    }
-
->>>>>>> 986f229 (Remove some warnings when compiling Julia (#29))
     if (vt == jl_symbol_type) {
         return 1;
     };
@@ -224,16 +208,9 @@ int8_t object_has_been_scanned(jl_value_t* obj)
     return check_metadata_scanned((jl_value_t*)obj);
 }
 
-<<<<<<< HEAD
-void mark_object_as_scanned(void* obj) {
+void mark_object_as_scanned(jl_value_t* obj) {
     if (sysimg_base == NULL) {
         return;
-=======
-void mark_object_as_scanned(jl_value_t* obj) {
-    if (jl_object_in_image((jl_value_t *)obj)) {
-        jl_taggedvalue_t *o = jl_astaggedvalue(obj);
-        o->bits.gc = GC_MARKED;
->>>>>>> 986f229 (Remove some warnings when compiling Julia (#29))
     }
 
     if ((void*)obj < sysimg_base || (void*)obj >= sysimg_end) {
@@ -243,13 +220,8 @@ void mark_object_as_scanned(jl_value_t* obj) {
     mark_metadata_scanned((jl_value_t*)obj);
 }
 
-<<<<<<< HEAD
-int8_t mmtk_wait_in_a_safepoint(void) {
-    jl_ptls_t ptls = (jl_ptls_t)jl_get_ptls_states();
-=======
 void mmtk_wait_in_a_safepoint(void) {
-    jl_ptls_t ptls = jl_current_task->ptls;
->>>>>>> 986f229 (Remove some warnings when compiling Julia (#29))
+    jl_ptls_t ptls = (jl_ptls_t)jl_get_ptls_states();
     jl_gc_safepoint_(ptls);
 }
 
@@ -517,11 +489,7 @@ void mmtk_jl_gc_run_all_finalizers(void) {
 }
 
 // add the initial root set to mmtk roots
-<<<<<<< HEAD
 static void queue_roots(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_t *sp)
-=======
-static void queue_roots(void)
->>>>>>> 986f229 (Remove some warnings when compiling Julia (#29))
 {
     // modules
     add_object_to_mmtk_roots(jl_main_module);
@@ -608,19 +576,14 @@ static void jl_gc_queue_remset_mmtk(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_
     ptls2->heap.rem_bindings.len = 0;
 }
 
-void calculate_roots(void* ptls)
+void calculate_roots(jl_ptls_t ptls)
 {
-<<<<<<< HEAD
     jl_gc_mark_cache_t *gc_cache = &((jl_ptls_t)ptls)->gc_cache;
     jl_gc_mark_sp_t sp;
     gc_mark_sp_init(gc_cache, &sp);
 
     for (int t_i = 0; t_i < jl_n_threads; t_i++)
         jl_gc_premark(jl_all_tls_states[t_i]);
-=======
-    for (int t_i = 0; t_i < gc_n_threads; t_i++)
-        gc_premark(gc_all_tls_states[t_i]);
->>>>>>> 986f229 (Remove some warnings when compiling Julia (#29))
 
     for (int t_i = 0; t_i < jl_n_threads; t_i++) {
         jl_ptls_t ptls2 = jl_all_tls_states[t_i];
@@ -876,7 +839,6 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
         if (s) { // inlining label `stack` from mark_loop
             nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
             assert(nroots <= UINT32_MAX);
-<<<<<<< HEAD
             gc_mark_stackframe_t stack = {s, 0, (uint32_t)nroots, offset, lb, ub};
             jl_gcframe_t *s = stack.s;
             uint32_t i = stack.i;
@@ -884,9 +846,6 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
             uintptr_t offset = stack.offset;
             uintptr_t lb = stack.lb;
             uintptr_t ub = stack.ub;
-=======
-
->>>>>>> 986f229 (Remove some warnings when compiling Julia (#29))
             uint32_t nr = nroots >> 2;
             while (1) {
                 jl_value_t ***rts = (jl_value_t***)(((void**)s) + 2);
@@ -1017,14 +976,6 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
     return;
 }
 
-<<<<<<< HEAD
-
-Julia_Upcalls mmtk_upcalls = { scan_julia_obj, scan_julia_exc_obj, get_stackbase, calculate_roots, run_finalizer_function, get_jl_last_err, set_jl_last_err, get_lo_size,
-                               get_so_size, get_obj_start_ref, wait_for_the_world, set_gc_initial_state, set_gc_final_state, set_gc_old_state, mmtk_jl_run_finalizers,
-                               jl_throw_out_of_memory_error, mark_object_as_scanned, object_has_been_scanned, mmtk_sweep_malloced_arrays,
-                               mmtk_wait_in_a_safepoint, mmtk_exit_from_safepoint
-                             };
-=======
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_obj = scan_julia_obj,
     .scan_julia_exc_obj = scan_julia_exc_obj,
@@ -1048,4 +999,3 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
 };
->>>>>>> 986f229 (Remove some warnings when compiling Julia (#29))
