@@ -84,6 +84,9 @@ extern void* trace_retain_referent(MMTk_TraceLocal trace_local, void* obj);
  * Julia-specific
  */
 
+// When we call upcalls from Rust, we assume:
+// * int is 4 bytes
+// * size_t is 8 bytes
 typedef struct {
     void (* scan_julia_obj) (jl_value_t* obj, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge);
     void (* scan_julia_exc_obj) (jl_task_t* obj, closure_pointer closure, ProcessEdgeFn process_edge);
