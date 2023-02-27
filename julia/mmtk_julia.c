@@ -188,7 +188,7 @@ static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
 extern void mark_metadata_scanned(jl_value_t* obj);
 extern int8_t check_metadata_scanned(jl_value_t* obj);
 
-int8_t object_has_been_scanned(void* obj)
+int8_t object_has_been_scanned(jl_value_t* obj)
 {
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag;
@@ -208,7 +208,7 @@ int8_t object_has_been_scanned(void* obj)
     return check_metadata_scanned((jl_value_t*)obj);
 }
 
-void mark_object_as_scanned(void* obj) {
+void mark_object_as_scanned(jl_value_t* obj) {
     if (sysimg_base == NULL) {
         return;
     }
@@ -220,7 +220,7 @@ void mark_object_as_scanned(void* obj) {
     mark_metadata_scanned((jl_value_t*)obj);
 }
 
-int8_t mmtk_wait_in_a_safepoint(void) {
+void mmtk_wait_in_a_safepoint(void) {
     jl_ptls_t ptls = (jl_ptls_t)jl_get_ptls_states();
     jl_gc_safepoint_(ptls);
 }
@@ -234,7 +234,7 @@ void mmtk_exit_from_safepoint(int8_t old_state) {
 // it will block until GC is done
 // that thread simply exits from block_for_gc without executing finalizers
 // when executing finalizers do not let another thread do GC (set a variable such that while that variable is true, no GC can be done)
-int8_t set_gc_initial_state(void* ptls) 
+int8_t set_gc_initial_state(jl_ptls_t ptls) 
 {
     if(jl_atomic_load_relaxed(&jl_gc_disable_counter)) {
         // printf("GC RUNNING WHEN IT SHOULD BE DISABLED!!!!\n");
@@ -244,7 +244,7 @@ int8_t set_gc_initial_state(void* ptls)
     int8_t old_state = jl_atomic_load_relaxed(&((jl_ptls_t)ptls)->gc_state);
     jl_atomic_store_release(&((jl_ptls_t)ptls)->gc_state, JL_GC_STATE_WAITING);
     if (!jl_safepoint_start_gc()) {
-        jl_gc_state_set(ptls, old_state, JL_GC_STATE_WAITING);
+        jl_gc_state_set((jl_ptls_t)ptls, old_state, JL_GC_STATE_WAITING);
         return -1;
     }
     return old_state;
@@ -285,12 +285,12 @@ size_t get_lo_size(bigval_t obj)
     return obj.sz;
 }
 
-void set_jl_last_err(uintptr_t e) 
+void set_jl_last_err(int e) 
 {
     errno = e;
 }
 
-uintptr_t get_jl_last_err(void) 
+int get_jl_last_err(void) 
 {
     for (int t_i = 0; t_i < jl_n_threads; t_i++) {
         jl_ptls_t ptls = jl_all_tls_states[t_i];
@@ -300,7 +300,7 @@ uintptr_t get_jl_last_err(void)
     return errno;
 }
 
-void* get_obj_start_ref(void* obj) 
+void* get_obj_start_ref(jl_value_t* obj) 
 {
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag;
@@ -315,7 +315,7 @@ void* get_obj_start_ref(void* obj)
     return obj_start_ref;
 }
 
-size_t get_so_size(void* obj) 
+size_t get_so_size(jl_value_t* obj) 
 {
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag;
@@ -433,9 +433,10 @@ size_t get_so_size(void* obj)
         int osize = jl_gc_sizeclasses[pool_id];
         return osize;
     }
+    return 0;
 }
 
-void run_finalizer_function(void *o, void *ff, bool is_ptr)
+void run_finalizer_function(jl_value_t *o, jl_value_t *ff, bool is_ptr)
 {
     if (is_ptr) {
         run_finalizer(jl_current_task, (jl_value_t *)(((uintptr_t)o) | 1), (jl_value_t *)ff);
@@ -463,7 +464,7 @@ void mmtk_jl_run_pending_finalizers(void* ptls) {
     }
 }
 
-void mmtk_jl_run_finalizers(void* ptls) {
+void mmtk_jl_run_finalizers(jl_ptls_t ptls) {
     // Only disable finalizers on current thread
     // Doing this on all threads is racy (it's impossible to check
     // or wait for finalizers on other threads without dead lock).
@@ -575,7 +576,7 @@ static void jl_gc_queue_remset_mmtk(jl_gc_mark_cache_t *gc_cache, jl_gc_mark_sp_
     ptls2->heap.rem_bindings.len = 0;
 }
 
-void calculate_roots(void* ptls)
+void calculate_roots(jl_ptls_t ptls)
 {
     jl_gc_mark_cache_t *gc_cache = &((jl_ptls_t)ptls)->gc_cache;
     jl_gc_mark_sp_t sp;
@@ -614,7 +615,7 @@ static inline uintptr_t mmtk_gc_read_stack(void *_addr, uintptr_t offset,
     return *(uintptr_t*)real_addr;
 }
 
-JL_DLLEXPORT void scan_julia_exc_obj(void* obj, closure_pointer closure, ProcessEdgeFn process_edge) {
+JL_DLLEXPORT void scan_julia_exc_obj(jl_task_t* obj, closure_pointer closure, ProcessEdgeFn process_edge) {
     jl_task_t *ta = (jl_task_t*)obj;
 
     if (ta->excstack) { // inlining label `excstack` from mark_loop
@@ -675,7 +676,7 @@ JL_DLLEXPORT void* get_stackbase(int16_t tid) {
  * directly (not an edge), specifying whether to scan the object or not; and only scan the object 
  * (necessary for boot image / non-MMTk objects)
 **/
-JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge) 
+JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge) 
 {
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag; // type of obj
@@ -975,9 +976,26 @@ JL_DLLEXPORT void scan_julia_obj(void* obj, closure_pointer closure, ProcessEdge
     return;
 }
 
-
-Julia_Upcalls mmtk_upcalls = { scan_julia_obj, scan_julia_exc_obj, get_stackbase, calculate_roots, run_finalizer_function, get_jl_last_err, set_jl_last_err, get_lo_size,
-                               get_so_size, get_obj_start_ref, wait_for_the_world, set_gc_initial_state, set_gc_final_state, set_gc_old_state, mmtk_jl_run_finalizers,
-                               jl_throw_out_of_memory_error, mark_object_as_scanned, object_has_been_scanned, mmtk_sweep_malloced_arrays,
-                               mmtk_wait_in_a_safepoint, mmtk_exit_from_safepoint
-                             };
+Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
+    .scan_julia_obj = scan_julia_obj,
+    .scan_julia_exc_obj = scan_julia_exc_obj,
+    .get_stackbase = get_stackbase,
+    .calculate_roots = calculate_roots,
+    .run_finalizer_function = run_finalizer_function,
+    .get_jl_last_err = get_jl_last_err,
+    .set_jl_last_err = set_jl_last_err,
+    .get_lo_size = get_lo_size,
+    .get_so_size = get_so_size,
+    .get_obj_start_ref = get_obj_start_ref,
+    .wait_for_the_world = wait_for_the_world,
+    .set_gc_initial_state = set_gc_initial_state,
+    .set_gc_final_state = set_gc_final_state,
+    .set_gc_old_state = set_gc_old_state,
+    .mmtk_jl_run_finalizers = mmtk_jl_run_finalizers,
+    .jl_throw_out_of_memory_error = jl_throw_out_of_memory_error,
+    .mark_object_as_scanned = mark_object_as_scanned,
+    .object_has_been_scanned = object_has_been_scanned,
+    .sweep_malloced_array = mmtk_sweep_malloced_arrays,
+    .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
+    .exit_from_safepoint = mmtk_exit_from_safepoint,
+};
