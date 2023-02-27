@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
+#include "gc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,28 +85,28 @@ extern void* trace_retain_referent(MMTk_TraceLocal trace_local, void* obj);
  */
 
 typedef struct {
-    void (* scan_julia_obj) (void* obj, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge);
-    void (* scan_julia_exc_obj) (void* obj, closure_pointer closure, ProcessEdgeFn process_edge);
-    void (* get_stackbase) (int tid);
-    void (* calculate_roots) (void* tls);
-    void (* run_finalizer_function) (void* obj, void* function, bool is_ptr);
-    void (* get_jl_last_err) (void);
+    void (* scan_julia_obj) (jl_value_t* obj, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge);
+    void (* scan_julia_exc_obj) (jl_task_t* obj, closure_pointer closure, ProcessEdgeFn process_edge);
+    void* (* get_stackbase) (int16_t tid);
+    void (* calculate_roots) (jl_ptls_t tls);
+    void (* run_finalizer_function) (jl_value_t* obj, jl_value_t* function, bool is_ptr);
+    int (* get_jl_last_err) (void);
     void (* set_jl_last_err) (int e);
-    void (* get_lo_size) (void* obj);
-    void (* get_so_size) (void* obj, size_t actual_size);
-    void (* get_obj_start_ref) (void* obj);
+    // FIXME: I don't think this is correct, as we pass an object reference to get_lo_size, in the same way as get_so_size.
+    size_t (* get_lo_size) (bigval_t obj);
+    size_t (* get_so_size) (jl_value_t* obj);
+    void* (* get_obj_start_ref) (jl_value_t* obj);
     void (* wait_for_the_world) (void);
-    void (* set_gc_initial_state) (void* tls);
-    void (* set_gc_final_state) (int old_state);
-    void (* set_gc_old_state) (int old_state);
-    void (* mmtk_jl_run_finalizers) (void* tls);
+    int8_t (* set_gc_initial_state) (jl_ptls_t tls);
+    void (* set_gc_final_state) (int8_t old_state);
+    void (* set_gc_old_state) (int8_t old_state);
+    void (* mmtk_jl_run_finalizers) (jl_ptls_t tls);
     void (* jl_throw_out_of_memory_error) (void);
-    void (* mark_object_as_scanned) (void* obj);
-    void (* object_has_been_scanned) (void* obj);
+    void (* mark_object_as_scanned) (jl_value_t* obj);
+    int8_t (* object_has_been_scanned) (jl_value_t* obj);
     void (* sweep_malloced_array) (void);
-    void (* get_malloced_bytes) (void* tls);
     void (* wait_in_a_safepoint) (void);
-    void (* exit_from_safepoint) (int old_state);
+    void (* exit_from_safepoint) (int8_t old_state);
 } Julia_Upcalls;
 
 /**
