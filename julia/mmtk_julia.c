@@ -255,9 +255,11 @@ void wait_for_the_world(void)
     }
 }
 
-size_t get_lo_size(bigval_t obj) 
+size_t get_lo_size(jl_value_t* obj) 
 {
-    return obj.sz;
+    jl_taggedvalue_t *v = jl_astaggedvalue(obj);
+    bigval_t* hdr = bigval_header(v);
+    return hdr->sz;
 }
 
 void set_jl_last_err(int e) 
