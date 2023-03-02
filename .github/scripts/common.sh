@@ -5,7 +5,7 @@ RUSTUP_TOOLCHAIN=`cat $BINDING_PATH/mmtk/rust-toolchain`
 JULIA_TEST_ARGS='--check-bounds=yes --startup-file=no --depwarn=error'
 
 # Julia binding requires these
-export MMTK_JULIA_DIR=$BINDING_PATH/mmtk
+export MMTK_JULIA_DIR=$BINDING_PATH
 
 # Make sure we have enough heap to build Julia
 export MMTK_MIN_HSIZE_G=0.5
