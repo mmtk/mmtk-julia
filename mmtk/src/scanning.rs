@@ -40,13 +40,13 @@ impl Scanning<JuliaVM> for VMScanning {
         _tls: VMWorkerThread,
         mut factory: impl RootsWorkFactory<JuliaVMEdge>,
     ) {
-        let mut roots: MutexGuard<HashSet<Address>> = ROOTS.lock().unwrap();
+        let roots: MutexGuard<HashSet<Address>> = ROOTS.lock().unwrap();
         info!("{} thread roots", roots.len());
 
         let mut roots_to_scan = vec![];
 
-        for obj in roots.drain() {
-            let obj_ref = ObjectReference::from_raw_address(obj);
+        for obj in roots.iter() {
+            let obj_ref = ObjectReference::from_raw_address(*obj);
             roots_to_scan.push(obj_ref);
         }
 
