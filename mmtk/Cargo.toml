@@ -10,7 +10,7 @@ edition = "2018"
 [package.metadata.julia]
 # Our CI matches the following line and extract mmtk/julia. If this line is updated, please check ci yaml files and make sure it works.
 julia_repo = "https://github.com/mmtk/julia.git"
-julia_version = "76c611080d7307cf5a1a19edcda39a38ed757258"
+julia_version = "bc72aa8ce1045997765efe853187716aaa19d863"
 
 [lib]
 crate-type = ["staticlib", "rlib", "dylib"]
