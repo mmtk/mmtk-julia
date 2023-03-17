@@ -20,7 +20,7 @@ if [ "$build_type" == "release" ]; then
     build_args=$build_args" --release"
 fi
 
-cd $MMTK_JULIA_DIR
+cd $MMTK_JULIA_DIR/mmtk
 cargo build --features immix $build_args
 
 cd $JULIA_PATH

@@ -19,7 +19,7 @@ To build Julia with MMTk, create a `Make.user` file in the top-level directory o
 
 ```
 export MMTK_BUILD=release # or debug depending on how you build the Rust binding
-export MMTK_JULIA_DIR=<path-to-mmtk-julia>/mmtk
+export MMTK_JULIA_DIR=<path-to-mmtk-julia>
 ```
 
 Before building Julia, build the Rust binding in `mmtk-julia/mmtk`. Note that we currently support either immix or marksweep implementations in mmtk-core (build it with `cargo build --features immix # or marksweep`). To build Julia, navigate to `/vm/julia` and run `make` (or `make debug`). Please also make sure to install any dependency considering any particular requirement from both [Julia](https://github.com/JuliaLang/julia/blob/master/doc/src/devdocs/build/build.md#required-build-tools-and-external-libraries) and [MMTk](https://github.com/mmtk/mmtk-core#requirements). 

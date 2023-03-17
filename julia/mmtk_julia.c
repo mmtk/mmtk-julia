@@ -5,7 +5,7 @@
 #include "gc.h"
 
 extern int64_t perm_scanned_bytes;
-extern void run_finalizer(jl_task_t *ct, jl_value_t *o, jl_value_t *ff);
+extern void run_finalizer(jl_task_t *ct, void *o, void *ff);
 extern int gc_n_threads;
 extern jl_ptls_t* gc_all_tls_states;
 extern jl_ptls_t get_next_mutator_tls(void);
@@ -32,31 +32,6 @@ JL_DLLEXPORT void (jl_mmtk_harness_begin)(void)
 JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
 {
     harness_end();
-}
-
-JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(jl_ptls_t ptls, int pool_offset, int osize)
-{
-    // safepoint
-    jl_gc_safepoint();
-
-    jl_value_t *v;
-
-    // ptls->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls->cursor;
-
-    // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-    jl_taggedvalue_t *v_tagged =
-        (jl_taggedvalue_t *) alloc(ptls->mmtk_mutator_ptr, osize, 16, 8, 0);
-
-    // ptls->cursor = ptls->mmtk_mutator_ptr->allocators.immix[0].cursor;
-    // ptls->limit = ptls->mmtk_mutator_ptr->allocators.immix[0].limit;
-
-    v = jl_valueof(v_tagged);
-
-    post_alloc(ptls->mmtk_mutator_ptr, v, osize, 0);
-    ptls->gc_num.allocd += osize;
-    ptls->gc_num.poolalloc++;
-
-    return v;
 }
 
 STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset) {
@@ -137,7 +112,6 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
 
 static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
 {
-    gc_time_mallocd_array_start();
     reset_count_tls();
     jl_ptls_t ptls2 = (jl_ptls_t) get_next_mutator_tls();
     while(ptls2 != NULL) {
@@ -164,7 +138,6 @@ static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
         }
         ptls2 = get_next_mutator_tls();
     }
-    gc_time_mallocd_array_end();
     gc_sweep_sysimg();
 }
 
@@ -759,10 +732,6 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
                 continue;
 
             process_edge(closure, begin);
-            
-            void *vb = jl_astaggedvalue(b);
-            verify_parent1("module", binding->parent, &vb, "binding_buff");
-            (void)vb;
         }
 
         process_edge(closure, &m->parent);
