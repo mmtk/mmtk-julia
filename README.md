@@ -27,6 +27,8 @@ Before building Julia, build the Rust binding in `mmtk-julia/mmtk`. Note that we
 ### Heap Size
 
 Currently MMTk supports a fixed heap limit or variable heap within an interval. The default is a variable heap with the minimum heap size set to Julia's [`default_collection_interval`](https://github.com/mmtk/julia/blob/847cddeb7b9ddb5d6b66bec4c19d3a711748a45b/src/gc.c#L651) and the maximum size set to 70% of the free memory available. To change these values set the environment variables `MMTK_MIN_HSIZE` and `MMTK_MAX_HSIZE` to set the mininum and maximum size in megabytes, or `MMTK_MIN_HSIZE_G` and `MMTK_MAX_HSIZE_G` to set the size in gigabytes. If both environment variables are set, MMTk will use the size in megabytes. To set a fixed heap size, simply set only the variables `MMTK_MAX_HSIZE` or `MMTK_MAX_HSIZE_G`, or set `MMTK_MIN_HSIZE` or `MMTK_MIN_HSIZE_G` to 0. Note that these values can be decimal numbers, e.g. `MMTK_MAX_HSIZE_G=1.5`.
+
+These environment variables are set during julia initialization time, so they can be set per-julia process.
  
 ### Quick Building Guide
 
