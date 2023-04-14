@@ -4,7 +4,7 @@ use crate::julia_scanning::process_edge;
 #[cfg(feature = "scan_obj_c")]
 use crate::julia_scanning::process_offset_edge;
 use crate::FINALIZER_ROOTS;
-use crate::{ROOTS, SINGLETON, UPCALLS};
+use crate::{ROOT_NODES, ROOT_EDGES, SINGLETON, UPCALLS};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::opaque_pointer::*;
@@ -16,11 +16,10 @@ use mmtk::vm::Scanning;
 use mmtk::vm::VMBinding;
 use mmtk::Mutator;
 use mmtk::MMTK;
+use mmtk::vm::edge_shape::SimpleEdge;
 
 use crate::JuliaVM;
 use log::info;
-use std::collections::HashSet;
-use std::sync::MutexGuard;
 
 pub struct VMScanning {}
 
@@ -40,29 +39,28 @@ impl Scanning<JuliaVM> for VMScanning {
         _tls: VMWorkerThread,
         mut factory: impl RootsWorkFactory<JuliaVMEdge>,
     ) {
-        let mut roots: MutexGuard<HashSet<Address>> = ROOTS.lock().unwrap();
-        info!("{} thread roots", roots.len());
+        let root_nodes: Vec<ObjectReference> = ROOT_NODES.lock().unwrap().iter().map(|o| *o).collect();
+        let root_edges: Vec<JuliaVMEdge> = ROOT_EDGES.lock().unwrap().iter().map(|e| JuliaVMEdge::Simple(SimpleEdge::from_address(*e))).collect();
+        info!("{} root nodes, {} root edges", root_nodes.len(), root_edges.len());
 
-        let mut roots_to_scan = vec![];
-
-        for obj in roots.drain() {
-            let obj_ref = ObjectReference::from_raw_address(obj);
-            roots_to_scan.push(obj_ref);
-        }
+        factory.create_process_node_roots_work(root_nodes);
+        factory.create_process_edge_roots_work(root_edges);
 
         let fin_roots = FINALIZER_ROOTS.read().unwrap();
+        let mut finalizer_nodes = vec![];
 
         // processing finalizer roots
         for obj in fin_roots.iter() {
             if !obj.2 {
                 // not a void pointer
                 let obj_ref = ObjectReference::from_raw_address((*obj).1);
-                roots_to_scan.push(obj_ref);
+                finalizer_nodes.push(obj_ref);
             }
-            roots_to_scan.push((*obj).0);
+            finalizer_nodes.push((*obj).0);
         }
 
-        factory.create_process_node_roots_work(roots_to_scan);
+        info!("{} objects in finalizers", finalizer_nodes.len());
+        factory.create_process_node_roots_work(finalizer_nodes);
     }
 
     fn scan_object<EV: EdgeVisitor<JuliaVMEdge>>(

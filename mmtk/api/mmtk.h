@@ -38,9 +38,10 @@ extern void* alloc_large(MMTk_Mutator mutator, size_t size,
     size_t align, size_t offset, int allocator);    
 
 extern void post_alloc(MMTk_Mutator mutator, void* refer,
-    int bytes, int allocator);
+    size_t bytes, int allocator);
 
 extern void add_object_to_mmtk_roots(void *obj);
+extern void process_root_edges(void* addr, closure_pointer c, ProcessEdgeFn f);
 
 extern void* mmtk_counted_malloc(size_t size);
 extern void* mmtk_malloc(size_t size);
@@ -59,8 +60,16 @@ extern bool is_mapped_address(void* addr);
 extern void modify_check(void* ref);
 extern int object_is_managed_by_mmtk(void* addr);
 extern void runtime_panic(void);
+extern void unreachable(void);
 
+// Write barriers
+extern void mmtk_object_reference_write_post(MMTk_Mutator mutator, void* src, void* target);
+extern void mmtk_memory_region_copy(MMTk_Mutator mutator, void* src_obj, void* src_addr, void* dst_obj, void* dst_addr, size_t size);
 
+// Post alloc on an immortal region
+extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
+// Set the given address range as an MMTk VM space
+extern void mmtk_set_vm_space(void* addr, size_t size);
 
 /**
  * Tracing

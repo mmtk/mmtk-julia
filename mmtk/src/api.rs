@@ -43,18 +43,12 @@ pub extern "C" fn gc_init(
         use mmtk::util::options::PlanSelector;
         let force_plan = if cfg!(feature = "nogc") {
             Some(PlanSelector::NoGC)
-        } else if cfg!(feature = "semispace") {
-            Some(PlanSelector::SemiSpace)
-        } else if cfg!(feature = "gencopy") {
-            Some(PlanSelector::GenCopy)
         } else if cfg!(feature = "marksweep") {
             Some(PlanSelector::MarkSweep)
-        } else if cfg!(feature = "markcompact") {
-            Some(PlanSelector::MarkCompact)
-        } else if cfg!(feature = "pageprotect") {
-            Some(PlanSelector::PageProtect)
         } else if cfg!(feature = "immix") {
             Some(PlanSelector::Immix)
+        } else if cfg!(feature = "stickyimmix") { 
+            Some(PlanSelector::StickyImmix)
         } else {
             None
         };
@@ -443,7 +437,61 @@ pub extern "C" fn mmtk_gc_poll(tls: VMMutatorThread) {
 }
 
 #[no_mangle]
-
 pub extern "C" fn runtime_panic() {
     panic!("Panicking at runtime!")
+}
+
+#[no_mangle]
+pub extern "C" fn unreachable() {
+    unreachable!()
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_object_reference_write_post(mutator: *mut Mutator<JuliaVM>, src: ObjectReference, target: ObjectReference) {
+    let mutator = unsafe { &mut *mutator };
+    memory_manager::object_reference_write_post(mutator, src, crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(Address::ZERO)), target)
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_memory_region_copy(mutator: *mut Mutator<JuliaVM>, src_obj: ObjectReference, src_addr: Address, dst_obj: ObjectReference, dst_addr: Address, count: usize) {
+    use crate::edges::JuliaMemorySlice;
+    let src = JuliaMemorySlice {
+        owner: src_obj,
+        start: src_addr,
+        count,
+    };
+    let dst = JuliaMemorySlice {
+        owner: dst_obj,
+        start: dst_addr,
+        count,
+    };
+    let mutator = unsafe { &mut *mutator };
+    memory_manager::memory_region_copy(mutator, src, dst);
+}
+
+#[no_mangle]
+#[allow(unused_variables)] // Args are only used for sticky immix.
+pub extern "C" fn mmtk_immortal_region_post_alloc(start: Address, size: usize) {
+    #[cfg(feature = "stickyimmix")]
+    set_side_log_bit_for_region(start, size);
+}
+
+#[no_mangle]
+#[allow(mutable_transmutes)]
+pub extern "C" fn mmtk_set_vm_space(start: Address, size: usize) {
+    let mmtk: &mmtk::MMTK<JuliaVM> = &SINGLETON;
+    memory_manager::lazy_init_vm_space::<JuliaVM>(unsafe { std::mem::transmute(mmtk) }, start, size);
+
+    #[cfg(feature = "stickyimmix")]
+    set_side_log_bit_for_region(start, size);
+}
+
+#[cfg(feature = "stickyimmix")]
+fn set_side_log_bit_for_region(start: Address, size: usize) {
+    info!("Bulk set {} to {} ({} bytes)", start, start + size, size);
+    use crate::mmtk::vm::ObjectModel;
+    match <JuliaVM as mmtk::vm::VMBinding>::VMObjectModel::GLOBAL_LOG_BIT_SPEC.as_spec() {
+        mmtk::util::metadata::MetadataSpec::OnSide(side) => side.bset_metadata(start, size),
+        _ => unimplemented!()
+    }
 }
