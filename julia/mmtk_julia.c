@@ -496,18 +496,171 @@ static void jl_gc_queue_bt_buf_mmtk(jl_ptls_t ptls2)
     }
 }
 
-static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls2)
+// Handle the case where the stack is only partially copied.
+static inline uintptr_t mmtk_gc_get_stack_addr(void *_addr, uintptr_t offset,
+                                          uintptr_t lb, uintptr_t ub)
 {
-    add_object_to_mmtk_roots(ptls2->current_task);
-    add_object_to_mmtk_roots(ptls2->root_task);
-    if (ptls2->next_task) {
-        add_object_to_mmtk_roots(ptls2->next_task);
+    uintptr_t addr = (uintptr_t)_addr;
+    if (addr >= lb && addr < ub)
+        return addr + offset;
+    return addr;
+}
+
+static inline uintptr_t mmtk_gc_read_stack(void *_addr, uintptr_t offset,
+                                      uintptr_t lb, uintptr_t ub)
+{
+    uintptr_t real_addr = mmtk_gc_get_stack_addr(_addr, offset, lb, ub);
+    return *(uintptr_t*)real_addr;
+}
+
+void scan_gcstack(jl_task_t *ta, closure_pointer closure, ProcessEdgeFn process_edge)
+{
+    void *stkbuf = ta->stkbuf;
+#ifdef COPY_STACKS
+    if (stkbuf && ta->copy_stack && object_is_managed_by_mmtk(ta->stkbuf)) {
+        // printf("-copystack: %p\n", &ta->stkbuf);fflush(stdout);
+        process_edge(closure, &ta->stkbuf);
     }
-    if (ptls2->previous_task) {
-        add_object_to_mmtk_roots(ptls2->previous_task);
+#endif
+    jl_gcframe_t *s = ta->gcstack;
+    size_t nroots;
+    uintptr_t offset = 0;
+    uintptr_t lb = 0;
+    uintptr_t ub = (uintptr_t)-1;
+#ifdef COPY_STACKS
+    if (stkbuf && ta->copy_stack && ta->ptls == NULL) {
+        assert(ta->tid >= 0);
+        jl_ptls_t ptls2 = jl_all_tls_states[ta->tid];
+        ub = (uintptr_t)ptls2->stackbase;
+        lb = ub - ta->copy_stack;
+        offset = (uintptr_t)stkbuf - lb;
     }
-    if (ptls2->previous_exception) {
-        add_object_to_mmtk_roots(ptls2->previous_exception);
+#endif
+    if (s) { // gc_mark_stack()
+        nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
+        assert(nroots <= UINT32_MAX);
+
+        uint32_t nr = nroots >> 2;
+
+        while (1) {
+            jl_value_t ***rts = (jl_value_t***)(((void**)s) + 2);
+            for (uint32_t i = 0; i < nr; i++) {
+                if (nroots & 1) {
+                    void **slot = (void**)mmtk_gc_read_stack(&rts[i], offset, lb, ub);
+                    uintptr_t real_addr = mmtk_gc_get_stack_addr(slot, offset, lb, ub);
+                    // printf("-nroots&1 i = %d/%d: %p\n", i, nr, real_addr);fflush(stdout);
+                    process_edge(closure, (void*)real_addr);
+                }
+                else {
+                    uintptr_t real_addr = mmtk_gc_get_stack_addr(&rts[i], offset, lb, ub);
+                    // printf("-nroots i = %d/%d: %p\n", i, nr, real_addr);fflush(stdout);
+                    process_edge(closure, (void*)real_addr);
+                }
+            }
+
+            jl_gcframe_t *sprev = (jl_gcframe_t*)mmtk_gc_read_stack(&s->prev, offset, lb, ub);
+            if (sprev == NULL)
+                break;
+
+            s = sprev;
+            uintptr_t new_nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
+            assert(new_nroots <= UINT32_MAX);
+            nroots = (uint32_t)new_nroots;
+            nr = nroots >> 2;
+            continue;
+        }
+    }
+    if (ta->excstack) { // inlining label `excstack` from mark_loop
+        // if it is not managed by MMTk, nothing needs to be done because the object does not need to be scanned
+        if (object_is_managed_by_mmtk(ta->excstack)) {
+            // printf("-excstack: %p\n", &ta->excstack);fflush(stdout);
+            process_edge(closure, &ta->excstack);
+        }
+        jl_excstack_t *excstack = ta->excstack;
+        size_t itr = ta->excstack->top;
+        size_t bt_index = 0;
+        size_t jlval_index = 0;
+        while (itr > 0) {
+            size_t bt_size = jl_excstack_bt_size(excstack, itr);
+            jl_bt_element_t *bt_data = jl_excstack_bt_data(excstack, itr);
+            for (; bt_index < bt_size; bt_index += jl_bt_entry_size(bt_data + bt_index)) {
+                jl_bt_element_t *bt_entry = bt_data + bt_index;
+                if (jl_bt_is_native(bt_entry))
+                    continue;
+                // Found an extended backtrace entry: iterate over any
+                // GC-managed values inside.
+                size_t njlvals = jl_bt_num_jlvals(bt_entry);
+                while (jlval_index < njlvals) {
+                    jl_value_t** new_obj_edge = &bt_entry[2 + jlval_index].jlvalue;
+                    jlval_index += 1;
+                    process_edge(closure, new_obj_edge);
+                }
+                jlval_index = 0;
+            }
+
+            jl_bt_element_t *stack_raw = (jl_bt_element_t *)(excstack+1);
+            jl_value_t** stack_obj_edge = &stack_raw[itr-1].jlvalue;
+
+            itr = jl_excstack_next(excstack, itr);
+            bt_index = 0;
+            jlval_index = 0;
+            process_edge(closure, stack_obj_edge);
+        }
+    }
+}
+
+void root_scan_task(jl_ptls_t ptls, jl_task_t* task)
+{
+    // This is never accessed so just leave it uninitialized.
+    closure_pointer c;
+
+    // Scan the stack
+    scan_gcstack(task, c, process_root_edges);
+    // And add the task itself
+    add_object_to_mmtk_roots(task);
+}
+
+static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls)
+{
+    root_scan_task(ptls, ptls->root_task);
+
+    // if (ptls2->next_task) {
+    //     root_scan_task(ptls2->next_task);
+    // }
+    // if (ptls2->previous_task) {
+    //     root_scan_task(ptls2->previous_task);
+    // }
+    arraylist_t *live_tasks = &ptls->heap.live_tasks;
+    void **lst = live_tasks->items;
+    for (size_t i = 0; i < live_tasks->len; i++) {
+        jl_task_t *t = (jl_task_t *)lst[i];
+        root_scan_task(ptls, t);
+    }
+
+    if (ptls->previous_exception) {
+        add_object_to_mmtk_roots(ptls->previous_exception);
+    }
+}
+
+void scan_julia_task_obj(jl_value_t* obj, closure_pointer closure, ProcessEdgeFn process_edge)
+{
+    jl_task_t *ta = (jl_task_t*)obj;
+
+    // FIXME: Do we need this?
+    // We have scan_gcstack to scan root task objects. If there is no task object that is only reachable from other heap object, we do not need this.
+    scan_gcstack(ta, closure, process_edge);
+
+    const jl_datatype_layout_t *layout = jl_task_type->layout; // inlining label `obj8_loaded` from mark_loop 
+    assert(layout->fielddesc_type == 0);
+    assert(layout->nfields > 0);
+    uint32_t npointers = layout->npointers;
+    uint8_t *obj8_begin = (uint8_t*)jl_dt_layout_ptrs(layout);
+    uint8_t *obj8_end = obj8_begin + npointers;
+    (void)jl_assume(obj8_begin < obj8_end);
+    for (; obj8_begin < obj8_end; obj8_begin++) {
+        jl_value_t **slot = &((jl_value_t**)obj)[*obj8_begin];
+        // printf("-slot: %p\n", slot);fflush(stdout);
+        process_edge(closure, slot);
     }
 }
 
@@ -537,23 +690,6 @@ void calculate_roots(jl_ptls_t ptls)
     }
 
     queue_roots();
-}
-
-// Handle the case where the stack is only partially copied.
-static inline uintptr_t mmtk_gc_get_stack_addr(void *_addr, uintptr_t offset,
-                                          uintptr_t lb, uintptr_t ub)
-{
-    uintptr_t addr = (uintptr_t)_addr;
-    if (addr >= lb && addr < ub)
-        return addr + offset;
-    return addr;
-}
-
-static inline uintptr_t mmtk_gc_read_stack(void *_addr, uintptr_t offset,
-                                      uintptr_t lb, uintptr_t ub)
-{
-    uintptr_t real_addr = mmtk_gc_get_stack_addr(_addr, offset, lb, ub);
-    return *(uintptr_t*)real_addr;
 }
 
 JL_DLLEXPORT void scan_julia_exc_obj(jl_task_t* obj, closure_pointer closure, ProcessEdgeFn process_edge) {
@@ -749,105 +885,7 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
             }
         }
     } else if (vt == jl_task_type) { // scanning a jl_task_type object
-        jl_task_t *ta = (jl_task_t*)obj;
-        void *stkbuf = ta->stkbuf;
-#ifdef COPY_STACKS
-        if (stkbuf && ta->copy_stack && object_is_managed_by_mmtk(ta->stkbuf))
-            process_edge(closure, &ta->stkbuf);
-#endif
-        jl_gcframe_t *s = ta->gcstack;
-        size_t nroots;
-        uintptr_t offset = 0;
-        uintptr_t lb = 0;
-        uintptr_t ub = (uintptr_t)-1;
-#ifdef COPY_STACKS
-        if (stkbuf && ta->copy_stack && ta->ptls == NULL) {
-            assert(ta->tid >= 0);
-            jl_ptls_t ptls2 = jl_all_tls_states[ta->tid];
-            ub = (uintptr_t)ptls2->stackbase;
-            lb = ub - ta->copy_stack;
-            offset = (uintptr_t)stkbuf - lb;
-        }
-#endif
-        if (s) { // gc_mark_stack()
-            nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
-            assert(nroots <= UINT32_MAX);
-
-            uint32_t nr = nroots >> 2;
-
-            while (1) {
-                jl_value_t ***rts = (jl_value_t***)(((void**)s) + 2);
-                for (uint32_t i = 0; i < nr; i++) {
-                    if (nroots & 1) {
-                        void **slot = (void**)mmtk_gc_read_stack(&rts[i], offset, lb, ub);
-                        uintptr_t real_addr = mmtk_gc_get_stack_addr(slot, offset, lb, ub);
-                        process_edge(closure, (void*)real_addr);
-                    }
-                    else {
-                        uintptr_t real_addr = mmtk_gc_get_stack_addr(&rts[i], offset, lb, ub);
-                        process_edge(closure, (void*)real_addr);
-                    }
-                }
-
-                jl_gcframe_t *sprev = (jl_gcframe_t*)mmtk_gc_read_stack(&s->prev, offset, lb, ub);
-                if (sprev == NULL)
-                    break;
-
-                s = sprev;
-                uintptr_t new_nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
-                assert(new_nroots <= UINT32_MAX);
-                nroots = (uint32_t)new_nroots;
-                nr = nroots >> 2;
-                continue;
-            }
-        }
-        if (ta->excstack) { // inlining label `excstack` from mark_loop
-            // if it is not managed by MMTk, nothing needs to be done because the object does not need to be scanned
-            if (object_is_managed_by_mmtk(ta->excstack)) {
-                process_edge(closure, &ta->excstack);
-            }
-            jl_excstack_t *excstack = ta->excstack;
-            size_t itr = ta->excstack->top;
-            size_t bt_index = 0;
-            size_t jlval_index = 0;
-            while (itr > 0) {
-                size_t bt_size = jl_excstack_bt_size(excstack, itr);
-                jl_bt_element_t *bt_data = jl_excstack_bt_data(excstack, itr);
-                for (; bt_index < bt_size; bt_index += jl_bt_entry_size(bt_data + bt_index)) {
-                    jl_bt_element_t *bt_entry = bt_data + bt_index;
-                    if (jl_bt_is_native(bt_entry))
-                        continue;
-                    // Found an extended backtrace entry: iterate over any
-                    // GC-managed values inside.
-                    size_t njlvals = jl_bt_num_jlvals(bt_entry);
-                    while (jlval_index < njlvals) {
-                        jl_value_t** new_obj_edge = &bt_entry[2 + jlval_index].jlvalue;
-                        jlval_index += 1;
-                        process_edge(closure, new_obj_edge);
-                    }
-                    jlval_index = 0;
-                }
-
-                jl_bt_element_t *stack_raw = (jl_bt_element_t *)(excstack+1);
-                jl_value_t** stack_obj_edge = &stack_raw[itr-1].jlvalue;
-
-                itr = jl_excstack_next(excstack, itr);
-                bt_index = 0;
-                jlval_index = 0;
-                process_edge(closure, stack_obj_edge);
-            }
-        }
-        const jl_datatype_layout_t *layout = jl_task_type->layout; // inlining label `obj8_loaded` from mark_loop 
-        assert(layout->fielddesc_type == 0);
-        assert(layout->nfields > 0);
-        uint32_t npointers = layout->npointers;
-        uint8_t *obj8_begin = (uint8_t*)jl_dt_layout_ptrs(layout);
-        uint8_t *obj8_end = obj8_begin + npointers;
-        (void)jl_assume(obj8_begin < obj8_end);
-        for (; obj8_begin < obj8_end; obj8_begin++) {
-            jl_value_t **slot = &((jl_value_t**)obj)[*obj8_begin];
-            process_edge(closure, slot);
-        }
+        scan_julia_task_obj(obj, closure, process_edge);
     } else if (vt == jl_string_type) { // scanning a jl_string_type object
         return;
     } else {  // scanning a jl_datatype object
