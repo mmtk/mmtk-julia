@@ -66,7 +66,7 @@ use mmtk::vm::EdgeVisitor;
 
 // Pass this as 'process_edge' so we can reuse scan_julia_task_obj.
 #[no_mangle]
-#[allow(improper_ctypes_definitions)] // closure is a fast pointer, we propelry define its type in C header.
+#[allow(improper_ctypes_definitions)] // closure is a fat pointer, we propelry define its type in C header.
 pub extern "C" fn process_root_edges(_closure: &mut dyn EdgeVisitor<JuliaVMEdge>, addr: Address) {
     ROOT_EDGES.lock().unwrap().insert(addr);
 }

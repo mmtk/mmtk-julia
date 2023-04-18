@@ -741,6 +741,8 @@ JL_DLLEXPORT void* get_stackbase(int16_t tid) {
     return ptls2->stackbase;
 }
 
+const bool PRINT_OBJ_TYPE = false;
+
 /** 
  * Corresponds to the function mark_loop in the original Julia GC. It
  * dispatches MMTk work for scanning internal pointers for the object obj.
@@ -765,6 +767,7 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
     };
 
     if (vt == jl_simplevector_type) { // scanning a jl_simplevector_type object (inlining label `objarray_loaded` from mark_loop)
+        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: simple vector\n", obj); fflush(stdout); }
         size_t l = jl_svec_len(obj);
         jl_value_t **data = jl_svec_data(obj);
         jl_value_t **objary_begin = data;
@@ -773,6 +776,7 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
             process_edge(closure, objary_begin);
         }
     } else if (vt->name == jl_array_typename) { // scanning a jl_array_typename object
+        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: array\n", obj); fflush(stdout); }
         jl_array_t *a = (jl_array_t*)obj;
         jl_array_flags_t flags = a->flags;
 
@@ -856,22 +860,27 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
             return;
         }
     } else if (vt == jl_module_type) { // inlining label `module_binding` from mark_loop
+        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: module\n", obj); fflush(stdout); }
         jl_module_t *m = (jl_module_t*)obj;
-        jl_svec_t *bindings = jl_atomic_load_relaxed(&m->bindings);
-        jl_binding_t **table = (jl_binding_t**)jl_svec_data(bindings);
-        size_t bsize = jl_svec_len(bindings);
-        jl_binding_t **begin = table + 1;
-        jl_binding_t **end =  table + bsize;
-        for (; begin < end; begin++) {
-            jl_binding_t *b = *begin;
-            if (b == (jl_binding_t*)jl_nothing)
-                continue;
+        // jl_svec_t *bindings = jl_atomic_load_relaxed(&m->bindings);
+        // jl_binding_t **table = (jl_binding_t**)jl_svec_data(bindings);
+        // size_t bsize = jl_svec_len(bindings);
+        // jl_binding_t **begin = table + 1;
+        // jl_binding_t **end =  table + bsize;
+        // for (; begin < end; begin++) {
+        //     jl_binding_t *b = *begin;
+        //     if (b == (jl_binding_t*)jl_nothing)
+        //         continue;
 
-            process_edge(closure, begin);
-        }
+        //     if (PRINT_OBJ_TYPE) { printf(" - scan table: %p\n", begin); fflush(stdout); }
+        //     process_edge(closure, begin);
+        // }
 
+        if (PRINT_OBJ_TYPE) { printf(" - scan parent: %p\n", &m->parent); fflush(stdout); }
         process_edge(closure, &m->parent);
+        if (PRINT_OBJ_TYPE) { printf(" - scan bindingkeyset: %p\n", &m->bindingkeyset); fflush(stdout); }
         process_edge(closure, &m->bindingkeyset);
+        if (PRINT_OBJ_TYPE) { printf(" - scan bindings: %p\n", &m->bindings); fflush(stdout); }
         process_edge(closure, &m->bindings);
 
         size_t nusings = m->usings.len;
@@ -881,14 +890,18 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
 
             for (; objary_begin < objary_end; objary_begin += 1) {
                 jl_value_t *pnew_obj = *objary_begin;
-                process_edge(closure, pnew_obj);
+                if (PRINT_OBJ_TYPE) { printf(" - scan usings: %p\n", objary_begin); fflush(stdout); }
+                process_edge(closure, objary_begin);
             }
         }
     } else if (vt == jl_task_type) { // scanning a jl_task_type object
+        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: task\n", obj); fflush(stdout); }
         scan_julia_task_obj(obj, closure, process_edge);
     } else if (vt == jl_string_type) { // scanning a jl_string_type object
+        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: string\n", obj); fflush(stdout); }
         return;
     } else {  // scanning a jl_datatype object
+        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: datatype\n", obj); fflush(stdout); }
         if (vt == jl_weakref_type) {
             return;
         }
