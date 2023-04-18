@@ -1,6 +1,6 @@
 use crate::api::{start_control_collector, start_worker};
 use crate::JuliaVM;
-use crate::{JULIA_HEADER_SIZE, ROOT_NODES, ROOT_EDGES};
+use crate::{JULIA_HEADER_SIZE, ROOT_EDGES, ROOT_NODES};
 use enum_map::Enum;
 use mmtk::scheduler::{GCController, GCWorker};
 use mmtk::util::opaque_pointer::*;

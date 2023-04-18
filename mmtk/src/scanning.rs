@@ -4,19 +4,19 @@ use crate::julia_scanning::process_edge;
 #[cfg(feature = "scan_obj_c")]
 use crate::julia_scanning::process_offset_edge;
 use crate::FINALIZER_ROOTS;
-use crate::{ROOT_NODES, ROOT_EDGES, SINGLETON, UPCALLS};
+use crate::{ROOT_EDGES, ROOT_NODES, SINGLETON, UPCALLS};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::opaque_pointer::*;
 use mmtk::util::Address;
 use mmtk::util::ObjectReference;
+use mmtk::vm::edge_shape::SimpleEdge;
 use mmtk::vm::EdgeVisitor;
 use mmtk::vm::RootsWorkFactory;
 use mmtk::vm::Scanning;
 use mmtk::vm::VMBinding;
 use mmtk::Mutator;
 use mmtk::MMTK;
-use mmtk::vm::edge_shape::SimpleEdge;
 
 use crate::JuliaVM;
 use log::info;
@@ -39,9 +39,19 @@ impl Scanning<JuliaVM> for VMScanning {
         _tls: VMWorkerThread,
         mut factory: impl RootsWorkFactory<JuliaVMEdge>,
     ) {
-        let root_nodes: Vec<ObjectReference> = ROOT_NODES.lock().unwrap().iter().map(|o| *o).collect();
-        let root_edges: Vec<JuliaVMEdge> = ROOT_EDGES.lock().unwrap().iter().map(|e| JuliaVMEdge::Simple(SimpleEdge::from_address(*e))).collect();
-        info!("{} root nodes, {} root edges", root_nodes.len(), root_edges.len());
+        let root_nodes: Vec<ObjectReference> =
+            ROOT_NODES.lock().unwrap().iter().map(|o| *o).collect();
+        let root_edges: Vec<JuliaVMEdge> = ROOT_EDGES
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|e| JuliaVMEdge::Simple(SimpleEdge::from_address(*e)))
+            .collect();
+        info!(
+            "{} root nodes, {} root edges",
+            root_nodes.len(),
+            root_edges.len()
+        );
 
         factory.create_process_node_roots_work(root_nodes);
         factory.create_process_edge_roots_work(root_edges);

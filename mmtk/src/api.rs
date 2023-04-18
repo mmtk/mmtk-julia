@@ -47,7 +47,7 @@ pub extern "C" fn gc_init(
             Some(PlanSelector::MarkSweep)
         } else if cfg!(feature = "immix") {
             Some(PlanSelector::Immix)
-        } else if cfg!(feature = "stickyimmix") { 
+        } else if cfg!(feature = "stickyimmix") {
             Some(PlanSelector::StickyImmix)
         } else {
             None
@@ -447,13 +447,31 @@ pub extern "C" fn unreachable() {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_object_reference_write_post(mutator: *mut Mutator<JuliaVM>, src: ObjectReference, target: ObjectReference) {
+pub extern "C" fn mmtk_object_reference_write_post(
+    mutator: *mut Mutator<JuliaVM>,
+    src: ObjectReference,
+    target: ObjectReference,
+) {
     let mutator = unsafe { &mut *mutator };
-    memory_manager::object_reference_write_post(mutator, src, crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(Address::ZERO)), target)
+    memory_manager::object_reference_write_post(
+        mutator,
+        src,
+        crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(
+            Address::ZERO,
+        )),
+        target,
+    )
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_memory_region_copy(mutator: *mut Mutator<JuliaVM>, src_obj: ObjectReference, src_addr: Address, dst_obj: ObjectReference, dst_addr: Address, count: usize) {
+pub extern "C" fn mmtk_memory_region_copy(
+    mutator: *mut Mutator<JuliaVM>,
+    src_obj: ObjectReference,
+    src_addr: Address,
+    dst_obj: ObjectReference,
+    dst_addr: Address,
+    count: usize,
+) {
     use crate::edges::JuliaMemorySlice;
     let src = JuliaMemorySlice {
         owner: src_obj,
@@ -480,7 +498,11 @@ pub extern "C" fn mmtk_immortal_region_post_alloc(start: Address, size: usize) {
 #[allow(mutable_transmutes)]
 pub extern "C" fn mmtk_set_vm_space(start: Address, size: usize) {
     let mmtk: &mmtk::MMTK<JuliaVM> = &SINGLETON;
-    memory_manager::lazy_init_vm_space::<JuliaVM>(unsafe { std::mem::transmute(mmtk) }, start, size);
+    memory_manager::lazy_init_vm_space::<JuliaVM>(
+        unsafe { std::mem::transmute(mmtk) },
+        start,
+        size,
+    );
 
     #[cfg(feature = "stickyimmix")]
     set_side_log_bit_for_region(start, size);
@@ -492,6 +514,6 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
     use crate::mmtk::vm::ObjectModel;
     match <JuliaVM as mmtk::vm::VMBinding>::VMObjectModel::GLOBAL_LOG_BIT_SPEC.as_spec() {
         mmtk::util::metadata::MetadataSpec::OnSide(side) => side.bset_metadata(start, size),
-        _ => unimplemented!()
+        _ => unimplemented!(),
     }
 }

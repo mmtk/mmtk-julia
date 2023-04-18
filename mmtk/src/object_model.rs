@@ -111,5 +111,6 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
 
 pub fn is_object_in_los(object: &ObjectReference) -> bool {
     // FIXME: get the range from MMTk. Or at least assert at boot time to make sure those constants are correct.
-    (*object).to_raw_address().as_usize() >= 0x600_0000_0000 && (*object).to_raw_address().as_usize() < 0x800_0000_0000
+    (*object).to_raw_address().as_usize() >= 0x600_0000_0000
+        && (*object).to_raw_address().as_usize() < 0x800_0000_0000
 }
