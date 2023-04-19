@@ -13,7 +13,7 @@ use crate::{
     FINALIZERS_RUNNING, MUTATORS, MUTATOR_TLS, USER_TRIGGERED_GC,
 };
 use libc::c_char;
-use log::info;
+use log::*;
 use mmtk::memory_manager;
 use mmtk::scheduler::GCController;
 use mmtk::scheduler::GCWorker;
@@ -285,10 +285,9 @@ pub extern "C" fn register_finalizer(
     finalizer_fn: Address,
     is_obj_ptr: bool,
 ) {
-    memory_manager::add_finalizer(
-        &SINGLETON,
-        JuliaFinalizableObject(obj, finalizer_fn, is_obj_ptr),
-    );
+    let finalizable = JuliaFinalizableObject(obj, finalizer_fn, is_obj_ptr);
+    debug!("Register finalizable {:?}", finalizable);
+    memory_manager::add_finalizer(&SINGLETON, finalizable);
 }
 
 #[no_mangle]

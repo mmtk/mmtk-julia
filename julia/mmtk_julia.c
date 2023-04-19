@@ -622,7 +622,26 @@ void root_scan_task(jl_ptls_t ptls, jl_task_t* task)
 
 static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls)
 {
-    root_scan_task(ptls, ptls->root_task);
+    jl_task_t * task;
+    task = ptls->root_task;
+    if (task != NULL) {
+        root_scan_task(ptls, task);
+    }
+
+    task = jl_atomic_load_relaxed(&ptls->current_task);
+    if (task != NULL) {
+        root_scan_task(ptls, task);
+    }
+
+    task = ptls->next_task;
+    if (task != NULL) {
+        root_scan_task(ptls, task);
+    }
+
+    task = ptls->previous_task;
+    if (task != NULL) {
+        root_scan_task(ptls, task);
+    }
 
     // if (ptls2->next_task) {
     //     root_scan_task(ptls2->next_task);
@@ -630,12 +649,12 @@ static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls)
     // if (ptls2->previous_task) {
     //     root_scan_task(ptls2->previous_task);
     // }
-    arraylist_t *live_tasks = &ptls->heap.live_tasks;
-    void **lst = live_tasks->items;
-    for (size_t i = 0; i < live_tasks->len; i++) {
-        jl_task_t *t = (jl_task_t *)lst[i];
-        root_scan_task(ptls, t);
-    }
+    // arraylist_t *live_tasks = &ptls->heap.live_tasks;
+    // void **lst = live_tasks->items;
+    // for (size_t i = 0; i < live_tasks->len; i++) {
+    //     jl_task_t *t = (jl_task_t *)lst[i];
+    //     root_scan_task(ptls, t);
+    // }
 
     if (ptls->previous_exception) {
         add_object_to_mmtk_roots(ptls->previous_exception);
