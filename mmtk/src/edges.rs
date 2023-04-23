@@ -106,12 +106,32 @@ impl mmtk::vm::edge_shape::MemorySlice for JuliaMemorySlice {
     }
 
     fn copy(src: &Self, tgt: &Self) {
+        use std::sync::atomic::*;
         // Raw memory copy -- we should be consistent with jl_array_ptr_copy in array.c
         unsafe {
             let words = tgt.bytes() >> mmtk::util::constants::LOG_BYTES_IN_ADDRESS;
-            let src = src.start().to_ptr::<usize>();
-            let tgt = tgt.start().to_mut_ptr::<usize>();
-            std::ptr::copy(src, tgt, words)
+            // let src = src.start().to_ptr::<usize>();
+            // let tgt = tgt.start().to_mut_ptr::<usize>();
+            // std::ptr::copy(src, tgt, words)
+
+            let src_addr = src.start();
+            let tgt_addr = tgt.start();
+
+            let n: isize = words as isize;
+
+            if tgt_addr < src_addr || tgt_addr > src_addr + tgt.bytes() {
+                // non overlaping
+                for i in 0..n {
+                    let val: usize = src_addr.shift::<usize>(i).atomic_load::<AtomicUsize>(Ordering::Relaxed);
+                    tgt_addr.shift::<usize>(i).atomic_store::<AtomicUsize>(val, Ordering::Release);
+                }
+            } else {
+                for i in 0..n {
+                    let val = src_addr.shift::<usize>(n - i - 1).atomic_load::<AtomicUsize>(Ordering::Relaxed);
+                    tgt_addr.shift::<usize>(n - i - 1).atomic_store::<AtomicUsize>(val, Ordering::Release);
+                }
+            }
+
         }
     }
 }

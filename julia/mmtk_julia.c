@@ -643,12 +643,8 @@ static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls)
         root_scan_task(ptls, task);
     }
 
-    // if (ptls2->next_task) {
-    //     root_scan_task(ptls2->next_task);
-    // }
-    // if (ptls2->previous_task) {
-    //     root_scan_task(ptls2->previous_task);
-    // }
+    // This will incorrectly keep all the tasks alive. We should transitively find tasks,
+    // and remove dead tasks from the list.
     // arraylist_t *live_tasks = &ptls->heap.live_tasks;
     // void **lst = live_tasks->items;
     // for (size_t i = 0; i < live_tasks->len; i++) {
