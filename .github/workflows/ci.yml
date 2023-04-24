@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   build-debug:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
       - name: Setup environments
@@ -28,7 +28,7 @@ jobs:
           ./.github/scripts/ci-style.sh
 
   build-test-other:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v2
@@ -44,7 +44,7 @@ jobs:
           ./.github/scripts/ci-test-other.sh
 
   build-test-stdlib:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v2
