@@ -122,16 +122,23 @@ impl mmtk::vm::edge_shape::MemorySlice for JuliaMemorySlice {
             if tgt_addr < src_addr || tgt_addr > src_addr + tgt.bytes() {
                 // non overlaping
                 for i in 0..n {
-                    let val: usize = src_addr.shift::<usize>(i).atomic_load::<AtomicUsize>(Ordering::Relaxed);
-                    tgt_addr.shift::<usize>(i).atomic_store::<AtomicUsize>(val, Ordering::Release);
+                    let val: usize = src_addr
+                        .shift::<usize>(i)
+                        .atomic_load::<AtomicUsize>(Ordering::Relaxed);
+                    tgt_addr
+                        .shift::<usize>(i)
+                        .atomic_store::<AtomicUsize>(val, Ordering::Release);
                 }
             } else {
                 for i in 0..n {
-                    let val = src_addr.shift::<usize>(n - i - 1).atomic_load::<AtomicUsize>(Ordering::Relaxed);
-                    tgt_addr.shift::<usize>(n - i - 1).atomic_store::<AtomicUsize>(val, Ordering::Release);
+                    let val = src_addr
+                        .shift::<usize>(n - i - 1)
+                        .atomic_load::<AtomicUsize>(Ordering::Relaxed);
+                    tgt_addr
+                        .shift::<usize>(n - i - 1)
+                        .atomic_store::<AtomicUsize>(val, Ordering::Release);
                 }
             }
-
         }
     }
 }
