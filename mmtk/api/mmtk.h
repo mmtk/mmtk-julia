@@ -57,7 +57,7 @@ extern void modify_check(void* ref);
 extern int object_is_managed_by_mmtk(void* addr);
 extern void runtime_panic(void);
 
-
+extern void mmtk_object_reference_write_post(MMTk_Mutator mutator, const void* src, const void* target);
 
 /**
  * Tracing
