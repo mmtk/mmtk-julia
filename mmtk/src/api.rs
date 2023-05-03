@@ -449,7 +449,18 @@ pub extern "C" fn runtime_panic() {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_object_reference_write_post(mutator: *mut Mutator<JuliaVM>, src: ObjectReference, target: ObjectReference) {
+pub extern "C" fn mmtk_object_reference_write_post(
+    mutator: *mut Mutator<JuliaVM>,
+    src: ObjectReference,
+    target: ObjectReference,
+) {
     let mutator = unsafe { &mut *mutator };
-    memory_manager::object_reference_write_post(mutator, src, crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(Address::ZERO)), target)
+    memory_manager::object_reference_write_post(
+        mutator,
+        src,
+        crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(
+            Address::ZERO,
+        )),
+        target,
+    )
 }
