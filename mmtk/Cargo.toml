@@ -29,7 +29,7 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI.
-mmtk = { git = "https://github.com/qinsoon/mmtk-core.git", rev = "52d79b568b3b2868ff08bfa951f1539d339a56ab" }
+mmtk = { git = "https://github.com/qinsoon/mmtk-core.git", rev = "21a0c9705a33086f85a133f95db5d82ff4f05d54" }
 # Uncomment the following to build locally
 # mmtk = { path = "../repos/mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
@@ -46,7 +46,7 @@ semispace = []
 gencopy = []
 pageprotect = []
 malloc_counted_size = ["mmtk/malloc_counted_size"]
-immix = ["malloc_counted_size", "mmtk/immix_non_moving", "mmtk/immix_smaller_block", "scan_obj_c"]
+immix = ["malloc_counted_size", "mmtk/immix_non_moving", "mmtk/immix_smaller_block", "scan_obj_c", "mmtk/vm_space"]
 marksweep = ["malloc_counted_size", "scan_obj_c"]
 # FIXME update and use rust object scanner as default for immix
 scan_obj_c = []
