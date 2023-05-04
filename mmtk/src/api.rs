@@ -464,3 +464,12 @@ pub extern "C" fn mmtk_object_reference_write_post(
         target,
     )
 }
+
+#[no_mangle]
+pub extern "C" fn mmtk_needs_write_barrier() -> u8 {
+    use mmtk::plan::BarrierSelector;
+    match SINGLETON.get_plan().constraints().barrier {
+        BarrierSelector::NoBarrier => 0,
+        BarrierSelector::ObjectBarrier => 1,
+    }
+}
