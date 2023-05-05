@@ -443,7 +443,6 @@ pub extern "C" fn mmtk_gc_poll(tls: VMMutatorThread) {
 }
 
 #[no_mangle]
-
 pub extern "C" fn runtime_panic() {
     panic!("Panicking at runtime!")
 }
@@ -472,6 +471,7 @@ pub extern "C" fn mmtk_memory_region_copy(
     memory_manager::memory_region_copy(mutator, src, dst);
 }
 
+#[no_mangle]
 pub extern "C" fn mmtk_object_reference_write_post(
     mutator: *mut Mutator<JuliaVM>,
     src: ObjectReference,
