@@ -455,6 +455,7 @@ pub extern "C" fn mmtk_set_vm_space(start: Address, size: usize) {
     memory_manager::lazy_init_vm_space(mmtk_mut, start, size);
 }
 
+#[no_mangle]
 pub extern "C" fn mmtk_memory_region_copy(
     mutator: *mut Mutator<JuliaVM>,
     src_obj: ObjectReference,
