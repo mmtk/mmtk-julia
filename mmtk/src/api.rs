@@ -454,3 +454,52 @@ pub extern "C" fn mmtk_set_vm_space(start: Address, size: usize) {
     let mmtk_mut: &mut mmtk::MMTK<JuliaVM> = unsafe { std::mem::transmute(mmtk) };
     memory_manager::lazy_init_vm_space(mmtk_mut, start, size);
 }
+
+pub extern "C" fn mmtk_memory_region_copy(
+    mutator: *mut Mutator<JuliaVM>,
+    src_obj: ObjectReference,
+    src_addr: Address,
+    dst_obj: ObjectReference,
+    dst_addr: Address,
+    count: usize,
+) {
+    use crate::edges::JuliaMemorySlice;
+    let src = JuliaMemorySlice {
+        owner: src_obj,
+        start: src_addr,
+        count,
+    };
+    let dst = JuliaMemorySlice {
+        owner: dst_obj,
+        start: dst_addr,
+        count,
+    };
+    let mutator = unsafe { &mut *mutator };
+    memory_manager::memory_region_copy(mutator, src, dst);
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_object_reference_write_post(
+    mutator: *mut Mutator<JuliaVM>,
+    src: ObjectReference,
+    target: ObjectReference,
+) {
+    let mutator = unsafe { &mut *mutator };
+    memory_manager::object_reference_write_post(
+        mutator,
+        src,
+        crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(
+            Address::ZERO,
+        )),
+        target,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_needs_write_barrier() -> u8 {
+    use mmtk::plan::BarrierSelector;
+    match SINGLETON.get_plan().constraints().barrier {
+        BarrierSelector::NoBarrier => 0,
+        BarrierSelector::ObjectBarrier => 1,
+    }
+}
