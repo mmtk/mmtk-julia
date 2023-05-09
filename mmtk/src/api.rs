@@ -498,6 +498,7 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
     }
 }
 
+#[no_mangle]
 pub extern "C" fn mmtk_object_reference_write_post(
     mutator: *mut Mutator<JuliaVM>,
     src: ObjectReference,
