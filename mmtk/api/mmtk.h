@@ -17,10 +17,6 @@ typedef struct {
 } closure_pointer;
 typedef void* MMTk_Mutator;
 typedef void* MMTk_TraceLocal;
-// typedef void* (*TraceSlotFn)(void* slot, long offset);
-// typedef void* (*TraceObjFn)(void* obj, bool scan_obj);
-// typedef void* (*ScanObjFn)(void* obj);
-// typedef void* (*DispatchScnObjFn)(void** vec, int len, int cap, int final, closure_pointer closure);
 typedef void (*ProcessEdgeFn)(closure_pointer closure, void* slot);
 typedef void (*ProcessOffsetEdgeFn)(closure_pointer closure, void* slot, int offset);
 
@@ -62,14 +58,13 @@ extern int object_is_managed_by_mmtk(void* addr);
 extern void runtime_panic(void);
 extern void unreachable(void);
 
-// Write barriers
-extern void mmtk_object_reference_write_post(MMTk_Mutator mutator, void* src, void* target);
-extern void mmtk_memory_region_copy(MMTk_Mutator mutator, void* src_obj, void* src_addr, void* dst_obj, void* dst_addr, size_t size);
-
-// Post alloc on an immortal region
-extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
-// Set the given address range as an MMTk VM space
 extern void mmtk_set_vm_space(void* addr, size_t size);
+extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
+
+// Write barriers
+extern void mmtk_memory_region_copy(MMTk_Mutator mutator, void* src_obj, void* src_addr, void* dst_obj, void* dst_addr, size_t size);
+extern void mmtk_object_reference_write_post(MMTk_Mutator mutator, const void* src, const void* target);
+extern uint8_t mmtk_needs_write_barrier(void);
 
 /**
  * Tracing

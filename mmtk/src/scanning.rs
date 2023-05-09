@@ -10,7 +10,6 @@ use mmtk::scheduler::*;
 use mmtk::util::opaque_pointer::*;
 use mmtk::util::Address;
 use mmtk::util::ObjectReference;
-use mmtk::vm::edge_shape::SimpleEdge;
 use mmtk::vm::EdgeVisitor;
 use mmtk::vm::RootsWorkFactory;
 use mmtk::vm::Scanning;
@@ -20,6 +19,8 @@ use mmtk::MMTK;
 
 use crate::JuliaVM;
 use log::info;
+use std::sync::MutexGuard;
+use std::collections::HashSet;
 
 pub struct VMScanning {}
 
@@ -39,22 +40,14 @@ impl Scanning<JuliaVM> for VMScanning {
         _tls: VMWorkerThread,
         mut factory: impl RootsWorkFactory<JuliaVMEdge>,
     ) {
-        let root_nodes: Vec<ObjectReference> =
-            ROOT_NODES.lock().unwrap().iter().map(|o| *o).collect();
-        let root_edges: Vec<JuliaVMEdge> = ROOT_EDGES
-            .lock()
-            .unwrap()
-            .iter()
-            .map(|e| JuliaVMEdge::Simple(SimpleEdge::from_address(*e)))
-            .collect();
-        info!(
-            "{} root nodes, {} root edges",
-            root_nodes.len(),
-            root_edges.len()
-        );
+        let mut roots: MutexGuard<HashSet<ObjectReference>> = ROOT_NODES.lock().unwrap();
+        info!("{} thread root nodes", roots.len());
 
-        factory.create_process_node_roots_work(root_nodes);
-        factory.create_process_edge_roots_work(root_edges);
+        let mut roots_to_scan = vec![];
+
+        for obj in roots.drain() {
+            roots_to_scan.push(obj);
+        }
 
         let fin_roots = FINALIZER_ROOTS.read().unwrap();
         let mut finalizer_nodes = vec![];
@@ -69,8 +62,16 @@ impl Scanning<JuliaVM> for VMScanning {
             finalizer_nodes.push((*obj).0);
         }
 
-        info!("{} objects in finalizers", finalizer_nodes.len());
-        factory.create_process_node_roots_work(finalizer_nodes);
+        factory.create_process_node_roots_work(roots_to_scan);
+
+        let roots: Vec<JuliaVMEdge> = ROOT_EDGES
+            .lock()
+            .unwrap()
+            .drain()
+            .map(|e| JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(e)))
+            .collect();
+        info!("{} thread root edges", roots.len());
+        factory.create_process_edge_roots_work(roots);
     }
 
     fn scan_object<EV: EdgeVisitor<JuliaVMEdge>>(

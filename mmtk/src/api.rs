@@ -446,20 +446,14 @@ pub extern "C" fn unreachable() {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_object_reference_write_post(
-    mutator: *mut Mutator<JuliaVM>,
-    src: ObjectReference,
-    target: ObjectReference,
-) {
-    let mutator = unsafe { &mut *mutator };
-    memory_manager::object_reference_write_post(
-        mutator,
-        src,
-        crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(
-            Address::ZERO,
-        )),
-        target,
-    )
+#[allow(mutable_transmutes)]
+pub extern "C" fn mmtk_set_vm_space(start: Address, size: usize) {
+    let mmtk: &mmtk::MMTK<JuliaVM> = &SINGLETON;
+    let mmtk_mut: &mut mmtk::MMTK<JuliaVM> = unsafe { std::mem::transmute(mmtk) };
+    memory_manager::lazy_init_vm_space(mmtk_mut, start, size);
+
+    #[cfg(feature = "stickyimmix")]
+    set_side_log_bit_for_region(start, size);
 }
 
 #[no_mangle]
@@ -493,20 +487,6 @@ pub extern "C" fn mmtk_immortal_region_post_alloc(start: Address, size: usize) {
     set_side_log_bit_for_region(start, size);
 }
 
-#[no_mangle]
-#[allow(mutable_transmutes)]
-pub extern "C" fn mmtk_set_vm_space(start: Address, size: usize) {
-    let mmtk: &mmtk::MMTK<JuliaVM> = &SINGLETON;
-    memory_manager::lazy_init_vm_space::<JuliaVM>(
-        unsafe { std::mem::transmute(mmtk) },
-        start,
-        size,
-    );
-
-    #[cfg(feature = "stickyimmix")]
-    set_side_log_bit_for_region(start, size);
-}
-
 #[cfg(feature = "stickyimmix")]
 fn set_side_log_bit_for_region(start: Address, size: usize) {
     info!("Bulk set {} to {} ({} bytes)", start, start + size, size);
@@ -514,5 +494,30 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
     match <JuliaVM as mmtk::vm::VMBinding>::VMObjectModel::GLOBAL_LOG_BIT_SPEC.as_spec() {
         mmtk::util::metadata::MetadataSpec::OnSide(side) => side.bset_metadata(start, size),
         _ => unimplemented!(),
+    }
+}
+
+pub extern "C" fn mmtk_object_reference_write_post(
+    mutator: *mut Mutator<JuliaVM>,
+    src: ObjectReference,
+    target: ObjectReference,
+) {
+    let mutator = unsafe { &mut *mutator };
+    memory_manager::object_reference_write_post(
+        mutator,
+        src,
+        crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(
+            Address::ZERO,
+        )),
+        target,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_needs_write_barrier() -> u8 {
+    use mmtk::plan::BarrierSelector;
+    match SINGLETON.get_plan().constraints().barrier {
+        BarrierSelector::NoBarrier => 0,
+        BarrierSelector::ObjectBarrier => 1,
     }
 }
