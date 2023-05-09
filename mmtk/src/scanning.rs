@@ -19,8 +19,8 @@ use mmtk::MMTK;
 
 use crate::JuliaVM;
 use log::info;
-use std::sync::MutexGuard;
 use std::collections::HashSet;
+use std::sync::MutexGuard;
 
 pub struct VMScanning {}
 
@@ -50,16 +50,15 @@ impl Scanning<JuliaVM> for VMScanning {
         }
 
         let fin_roots = FINALIZER_ROOTS.read().unwrap();
-        let mut finalizer_nodes = vec![];
 
         // processing finalizer roots
         for obj in fin_roots.iter() {
             if !obj.2 {
                 // not a void pointer
                 let obj_ref = ObjectReference::from_raw_address((*obj).1);
-                finalizer_nodes.push(obj_ref);
+                roots_to_scan.push(obj_ref);
             }
-            finalizer_nodes.push((*obj).0);
+            roots_to_scan.push((*obj).0);
         }
 
         factory.create_process_node_roots_work(roots_to_scan);

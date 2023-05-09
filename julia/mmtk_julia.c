@@ -620,9 +620,7 @@ static void jl_gc_queue_bt_buf_mmtk(jl_ptls_t ptls2)
     }
 }
 
-// Handle the case where the stack is only partially copied.
-static inline uintptr_t mmtk_gc_get_stack_addr(void *_addr, uintptr_t offset,
-                                          uintptr_t lb, uintptr_t ub)
+static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls2)
 {
     jl_task_t * task;
     task = ptls2->root_task;
@@ -848,19 +846,19 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
     } else if (vt == jl_module_type) { // inlining label `module_binding` from mark_loop
         if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: module\n", obj); fflush(stdout); }
         jl_module_t *m = (jl_module_t*)obj;
-        // jl_svec_t *bindings = jl_atomic_load_relaxed(&m->bindings);
-        // jl_binding_t **table = (jl_binding_t**)jl_svec_data(bindings);
-        // size_t bsize = jl_svec_len(bindings);
-        // jl_binding_t **begin = table + 1;
-        // jl_binding_t **end =  table + bsize;
-        // for (; begin < end; begin++) {
-        //     jl_binding_t *b = *begin;
-        //     if (b == (jl_binding_t*)jl_nothing)
-        //         continue;
+        jl_svec_t *bindings = jl_atomic_load_relaxed(&m->bindings);
+        jl_binding_t **table = (jl_binding_t**)jl_svec_data(bindings);
+        size_t bsize = jl_svec_len(bindings);
+        jl_binding_t **begin = table + 1;
+        jl_binding_t **end =  table + bsize;
+        for (; begin < end; begin++) {
+            jl_binding_t *b = *begin;
+            if (b == (jl_binding_t*)jl_nothing)
+                continue;
 
-        //     if (PRINT_OBJ_TYPE) { printf(" - scan table: %p\n", begin); fflush(stdout); }
-        //     process_edge(closure, begin);
-        // }
+            if (PRINT_OBJ_TYPE) { printf(" - scan table: %p\n", begin); fflush(stdout); }
+            process_edge(closure, begin);
+        }
 
         if (PRINT_OBJ_TYPE) { printf(" - scan parent: %p\n", &m->parent); fflush(stdout); }
         process_edge(closure, &m->parent);
@@ -877,7 +875,7 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
             for (; objary_begin < objary_end; objary_begin += 1) {
                 jl_value_t *pnew_obj = *objary_begin;
                 if (PRINT_OBJ_TYPE) { printf(" - scan usings: %p\n", objary_begin); fflush(stdout); }
-                process_edge(closure, objary_begin);
+                process_edge(closure, pnew_obj);
             }
         }
     } else if (vt == jl_task_type) { // scanning a jl_task_type object

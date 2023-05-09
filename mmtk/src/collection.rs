@@ -85,10 +85,6 @@ impl Collection<JuliaVM> for VMCollection {
         }
 
         info!("GC Done!");
-
-        crate::ROOT_NODES.lock().unwrap().clear();
-        crate::ROOT_EDGES.lock().unwrap().clear();
-
         if AtomicBool::load(&USER_TRIGGERED_GC, Ordering::SeqCst) {
             AtomicBool::store(&USER_TRIGGERED_GC, false, Ordering::SeqCst);
         }

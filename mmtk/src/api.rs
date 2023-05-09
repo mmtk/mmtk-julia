@@ -285,9 +285,10 @@ pub extern "C" fn register_finalizer(
     finalizer_fn: Address,
     is_obj_ptr: bool,
 ) {
-    let finalizable = JuliaFinalizableObject(obj, finalizer_fn, is_obj_ptr);
-    debug!("Register finalizable {:?}", finalizable);
-    memory_manager::add_finalizer(&SINGLETON, finalizable);
+    memory_manager::add_finalizer(
+        &SINGLETON,
+        JuliaFinalizableObject(obj, finalizer_fn, is_obj_ptr),
+    );
 }
 
 #[no_mangle]
