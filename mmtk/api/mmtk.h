@@ -123,7 +123,7 @@ extern void gc_init(long long min_heap_size, long long max_heap_size, Julia_Upca
 extern bool will_never_move(void* object);
 extern bool process(char* name, char* value);
 extern void scan_region(void);
-extern void handle_user_collection_request(void *tls);
+extern void handle_user_collection_request(void *tls, uint8_t collection);
 extern void initialize_collection(void* tls);
 extern void enable_collection(void);
 extern void disable_collection(void);

@@ -245,13 +245,22 @@ pub extern "C" fn modify_check(object: ObjectReference) {
 }
 
 #[no_mangle]
-pub extern "C" fn handle_user_collection_request(tls: VMMutatorThread) {
+pub extern "C" fn handle_user_collection_request(tls: VMMutatorThread, collection: u8) {
     AtomicBool::store(&USER_TRIGGERED_GC, true, Ordering::SeqCst);
     if AtomicBool::load(&DISABLED_GC, Ordering::SeqCst) {
         AtomicBool::store(&USER_TRIGGERED_GC, false, Ordering::SeqCst);
         return;
     }
-    memory_manager::handle_user_collection_request::<JuliaVM>(&SINGLETON, tls);
+    match collection {
+        0 => memory_manager::handle_user_collection_request::<JuliaVM>(&SINGLETON, tls),
+        1 => SINGLETON
+            .get_plan()
+            .handle_user_collection_request(tls, true, true),
+        2 => SINGLETON
+            .get_plan()
+            .handle_user_collection_request(tls, true, false),
+        _ => unreachable!(),
+    }
 }
 
 #[no_mangle]
