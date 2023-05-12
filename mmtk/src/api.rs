@@ -525,10 +525,35 @@ pub extern "C" fn mmtk_object_reference_write_post(
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_needs_write_barrier() -> u8 {
-    use mmtk::plan::BarrierSelector;
-    match SINGLETON.get_plan().constraints().barrier {
-        BarrierSelector::NoBarrier => 0,
-        BarrierSelector::ObjectBarrier => 1,
-    }
+pub extern "C" fn mmtk_object_reference_write_slow(
+    mutator: &'static mut Mutator<JuliaVM>,
+    src: ObjectReference,
+    target: ObjectReference,
+) {
+    use mmtk::MutatorContext;
+    mutator.barrier().object_reference_write_slow(
+        src,
+        crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(
+            Address::ZERO,
+        )),
+        target,
+    );
 }
+
+/// Side log bit is the first side metadata spec starting.
+#[no_mangle]
+pub static MMTK_SIDE_LOG_BIT_BASE_ADDRESS: Address =
+    mmtk::util::metadata::side_metadata::GLOBAL_SIDE_METADATA_VM_BASE_ADDRESS;
+
+#[no_mangle]
+pub static NO_BARRIER: u8 = 0;
+#[no_mangle]
+pub static OBJECT_BARRIER: u8 = 1;
+
+#[no_mangle]
+#[cfg(feature = "immix")]
+pub static MMTK_NEEDS_WRITE_BARRIER: u8 = 0;
+
+#[no_mangle]
+#[cfg(feature = "stickyimmix")]
+pub static MMTK_NEEDS_WRITE_BARRIER: u8 = 1;
