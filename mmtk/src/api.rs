@@ -251,11 +251,15 @@ pub extern "C" fn handle_user_collection_request(tls: VMMutatorThread, collectio
         AtomicBool::store(&USER_TRIGGERED_GC, false, Ordering::SeqCst);
         return;
     }
+    // See jl_gc_collection_t
     match collection {
+        // auto
         0 => memory_manager::handle_user_collection_request::<JuliaVM>(&SINGLETON, tls),
+        // full
         1 => SINGLETON
             .get_plan()
             .handle_user_collection_request(tls, true, true),
+        // incremental
         2 => SINGLETON
             .get_plan()
             .handle_user_collection_request(tls, true, false),
@@ -356,7 +360,6 @@ pub extern "C" fn last_heap_address() -> Address {
 }
 
 #[no_mangle]
-#[cfg(feature = "malloc_counted_size")]
 pub extern "C" fn mmtk_counted_malloc(size: usize) -> Address {
     memory_manager::counted_malloc::<JuliaVM>(&SINGLETON, size)
 }
@@ -367,7 +370,6 @@ pub extern "C" fn mmtk_malloc(size: usize) -> Address {
 }
 
 #[no_mangle]
-#[cfg(feature = "malloc_counted_size")]
 pub extern "C" fn mmtk_malloc_aligned(size: usize, align: usize) -> Address {
     // allocate extra bytes to account for original memory that needs to be allocated and its size
     let ptr_size = std::mem::size_of::<Address>();
@@ -388,7 +390,6 @@ pub extern "C" fn mmtk_malloc_aligned(size: usize, align: usize) -> Address {
 }
 
 #[no_mangle]
-#[cfg(feature = "malloc_counted_size")]
 pub extern "C" fn mmtk_counted_calloc(num: usize, size: usize) -> Address {
     memory_manager::counted_calloc::<JuliaVM>(&SINGLETON, num, size)
 }
@@ -399,7 +400,6 @@ pub extern "C" fn mmtk_calloc(num: usize, size: usize) -> Address {
 }
 
 #[no_mangle]
-#[cfg(feature = "malloc_counted_size")]
 pub extern "C" fn mmtk_realloc_with_old_size(
     addr: Address,
     size: usize,
@@ -414,7 +414,6 @@ pub extern "C" fn mmtk_realloc(addr: Address, size: usize) -> Address {
 }
 
 #[no_mangle]
-#[cfg(feature = "malloc_counted_size")]
 pub extern "C" fn mmtk_free_with_size(addr: Address, old_size: usize) {
     memory_manager::free_with_size::<JuliaVM>(&SINGLETON, addr, old_size)
 }
@@ -425,7 +424,6 @@ pub extern "C" fn mmtk_free(addr: Address) {
 }
 
 #[no_mangle]
-#[cfg(feature = "malloc_counted_size")]
 pub extern "C" fn mmtk_free_aligned(addr: Address) {
     let ptr_size = std::mem::size_of::<Address>();
     let size_size = std::mem::size_of::<usize>();
