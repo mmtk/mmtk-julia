@@ -8,7 +8,6 @@ extern int64_t perm_scanned_bytes;
 extern void run_finalizer(jl_task_t *ct, void *o, void *ff);
 extern int gc_n_threads;
 extern jl_ptls_t* gc_all_tls_states;
-extern jl_ptls_t get_next_mutator_tls(void);
 extern jl_value_t *cmpswap_names JL_GLOBALLY_ROOTED;
 extern jl_array_t *jl_global_roots_table JL_GLOBALLY_ROOTED;
 extern jl_typename_t *jl_array_typename JL_GLOBALLY_ROOTED;
@@ -18,10 +17,13 @@ extern void gc_premark(jl_ptls_t ptls2);
 extern uint64_t finalizer_rngState[4];
 extern const unsigned pool_sizes[];
 extern void store_obj_size_c(void* obj, size_t size);
-extern void reset_count_tls(void);
 extern void jl_gc_free_array(jl_array_t *a);
 extern size_t get_obj_size(void* obj);
 extern void jl_rng_split(uint64_t to[4], uint64_t from[4]);
+
+extern void* new_mutator_iterator(void);
+extern jl_ptls_t get_next_mutator_tls(void*);
+extern void* close_mutator_iterator(void*);
 
 JL_DLLEXPORT void (jl_mmtk_harness_begin)(void)
 {
@@ -112,8 +114,8 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
 
 static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
 {
-    reset_count_tls();
-    jl_ptls_t ptls2 = (jl_ptls_t) get_next_mutator_tls();
+    void* iter = new_mutator_iterator();
+    jl_ptls_t ptls2 = get_next_mutator_tls(iter);
     while(ptls2 != NULL) {
         mallocarray_t *ma = ptls2->heap.mallocarrays;
         mallocarray_t **pma = &ptls2->heap.mallocarrays;
@@ -136,9 +138,10 @@ static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
             }
             ma = nxt;
         }
-        ptls2 = get_next_mutator_tls();
+        ptls2 = get_next_mutator_tls(iter);
     }
     gc_sweep_sysimg();
+    close_mutator_iterator(iter);
 }
 
 extern void mark_metadata_scanned(jl_value_t* obj);
