@@ -15,13 +15,13 @@ extern jl_typename_t *jl_array_typename JL_GLOBALLY_ROOTED;
 extern long BI_METADATA_START_ALIGNED_DOWN;
 extern long BI_METADATA_END_ALIGNED_UP;
 extern void gc_premark(jl_ptls_t ptls2);
-extern uint64_t finalizer_rngState[4];
+extern uint64_t finalizer_rngState[JL_RNG_SIZE];
 extern const unsigned pool_sizes[];
 extern void store_obj_size_c(void* obj, size_t size);
 extern void reset_count_tls(void);
 extern void jl_gc_free_array(jl_array_t *a);
 extern size_t get_obj_size(void* obj);
-extern void jl_rng_split(uint64_t to[4], uint64_t from[4]);
+extern void jl_rng_split(uint64_t to[JL_RNG_SIZE], uint64_t from[JL_RNG_SIZE]);
 
 JL_DLLEXPORT void (jl_mmtk_harness_begin)(void)
 {
@@ -407,7 +407,7 @@ void mmtk_jl_run_pending_finalizers(void* ptls) {
     if (!((jl_ptls_t)ptls)->in_finalizer && !((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
         jl_task_t *ct = jl_current_task;
         ((jl_ptls_t)ptls)->in_finalizer = 1;
-        uint64_t save_rngState[4];
+        uint64_t save_rngState[JL_RNG_SIZE];
         memcpy(&save_rngState[0], &ct->rngState[0], sizeof(save_rngState));
         jl_rng_split(ct->rngState, finalizer_rngState);
         jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 0);
@@ -425,7 +425,7 @@ void mmtk_jl_run_finalizers(jl_ptls_t ptls) {
         jl_task_t *ct = jl_current_task;
         int8_t was_in_finalizer = ((jl_ptls_t)ptls)->in_finalizer;
         ((jl_ptls_t)ptls)->in_finalizer = 1;
-        uint64_t save_rngState[4];
+        uint64_t save_rngState[JL_RNG_SIZE];
         memcpy(&save_rngState[0], &ct->rngState[0], sizeof(save_rngState));
         jl_rng_split(ct->rngState, finalizer_rngState);
         jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 0);
@@ -468,8 +468,8 @@ static void queue_roots(void)
 
     if (_jl_debug_method_invalidation != NULL)
         add_object_to_mmtk_roots(_jl_debug_method_invalidation);
-    if (jl_build_ids != NULL)
-        add_object_to_mmtk_roots(jl_build_ids);
+    // if (jl_build_ids != NULL)
+    //     add_object_to_mmtk_roots(jl_build_ids);
 
     // constants
     add_object_to_mmtk_roots(jl_emptytuple_type);
