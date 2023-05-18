@@ -17,21 +17,21 @@ extern long BI_METADATA_END_ALIGNED_UP;
 extern void gc_premark(jl_ptls_t ptls2);
 extern uint64_t finalizer_rngState[JL_RNG_SIZE];
 extern const unsigned pool_sizes[];
-extern void store_obj_size_c(void* obj, size_t size);
+extern void mmtk_store_obj_size_c(void* obj, size_t size);
 extern void reset_count_tls(void);
 extern void jl_gc_free_array(jl_array_t *a);
-extern size_t get_obj_size(void* obj);
+extern size_t mmtk_get_obj_size(void* obj);
 extern void jl_rng_split(uint64_t to[JL_RNG_SIZE], uint64_t from[JL_RNG_SIZE]);
 
 JL_DLLEXPORT void (jl_mmtk_harness_begin)(void)
 {
     jl_ptls_t ptls = jl_current_task->ptls;
-    harness_begin(ptls);
+    mmtk_harness_begin(ptls);
 }
 
 JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
 {
-    harness_end();
+    mmtk_harness_end();
 }
 
 STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset) {
@@ -41,7 +41,7 @@ STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset
     if(__unlikely(aligned_addr+size > (uint64_t)ptls->limit)) {
         jl_ptls_t ptls2 = jl_current_task->ptls;
         ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls2->cursor;
-        void* res = alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
+        void* res = mmtk_alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
         ptls2->cursor = ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor;
         ptls2->limit = ptls2->mmtk_mutator_ptr->allocators.immix[0].limit;
         return res;
@@ -60,16 +60,16 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offse
     jl_value_t *v;
     if ((uintptr_t)ty != jl_buff_tag) {
         // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)alloc(ptls->mmtk_mutator_ptr, osize, 16, sizeof(jl_taggedvalue_t), 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize, sizeof(jl_taggedvalue_t));
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_alloc(ptls->mmtk_mutator_ptr, osize, 16, sizeof(jl_taggedvalue_t), 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize, sizeof(jl_taggedvalue_t));
         v = jl_valueof(v_tagged);
-        post_alloc(ptls->mmtk_mutator_ptr, v, osize, 0);
+        mmtk_post_alloc(ptls->mmtk_mutator_ptr, v, osize, 0);
     } else {
         // allocating an extra word to store the size of buffer objects
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)alloc(ptls->mmtk_mutator_ptr, osize + sizeof(jl_taggedvalue_t), 16, 0, 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize + sizeof(jl_taggedvalue_t), 0);
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_alloc(ptls->mmtk_mutator_ptr, osize + sizeof(jl_taggedvalue_t), 16, 0, 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize + sizeof(jl_taggedvalue_t), 0);
         jl_value_t* v_tagged_aligned = ((jl_value_t*)((char*)(v_tagged) + sizeof(jl_taggedvalue_t)));
         v = jl_valueof(v_tagged_aligned);
-        store_obj_size_c(v, osize + sizeof(jl_taggedvalue_t));
-        post_alloc(ptls->mmtk_mutator_ptr, v, osize + sizeof(jl_taggedvalue_t), 0);
+        mmtk_store_obj_size_c(v, osize + sizeof(jl_taggedvalue_t));
+        mmtk_post_alloc(ptls->mmtk_mutator_ptr, v, osize + sizeof(jl_taggedvalue_t), 0);
     }
     
     ptls->gc_num.allocd += osize;
@@ -93,7 +93,7 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
         jl_throw(jl_memory_exception);
     }
 
-    bigval_t *v = (bigval_t*)alloc_large(ptls->mmtk_mutator_ptr, allocsz, JL_CACHE_BYTE_ALIGNMENT, 0, 2);
+    bigval_t *v = (bigval_t*)mmtk_alloc_large(ptls->mmtk_mutator_ptr, allocsz, JL_CACHE_BYTE_ALIGNMENT, 0, 2);
 
     if (v == NULL) {
         assert(0 && "Allocation failed");
@@ -105,7 +105,7 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
     ptls->gc_num.bigalloc++;
 
     jl_value_t *result = jl_valueof(&v->header);
-    post_alloc(ptls->mmtk_mutator_ptr, result, allocsz, 2);
+    mmtk_post_alloc(ptls->mmtk_mutator_ptr, result, allocsz, 2);
 
     return result;
 }
@@ -119,12 +119,12 @@ static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
         mallocarray_t **pma = &ptls2->heap.mallocarrays;
         while (ma != NULL) {
             mallocarray_t *nxt = ma->next;
-            if (!object_is_managed_by_mmtk(ma->a)) {
+            if (!mmtk_object_is_managed_by_mmtk(ma->a)) {
                 pma = &ma->next;
                 ma = nxt;
                 continue;
             }
-            if (is_live_object(ma->a)) {
+            if (mmtk_is_live_object(ma->a)) {
                 pma = &ma->next;
             }
             else {
@@ -271,13 +271,13 @@ size_t get_so_size(jl_value_t* obj)
     jl_datatype_t *vt = (jl_datatype_t*)tag;
 
     if ((uintptr_t)vt == jl_buff_tag) {
-        return get_obj_size(obj);
+        return mmtk_get_obj_size(obj);
     } else if (vt->name == jl_array_typename) {
         jl_array_t* a = (jl_array_t*) obj;
         if (a->flags.how == 0) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
             int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-            if (object_is_managed_by_mmtk(a->data)) {
+            if (mmtk_object_is_managed_by_mmtk(a->data)) {
                 size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
                 if (pre_data_bytes > 0) { // a->data is allocated after a
                     tsz = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
@@ -289,7 +289,7 @@ size_t get_so_size(jl_value_t* obj)
             }
             if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
                 printf("size greater than minimum!\n");
-                runtime_panic();
+                mmtk_runtime_panic();
             }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
@@ -299,7 +299,7 @@ size_t get_so_size(jl_value_t* obj)
             int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
             if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
                 printf("size greater than minimum!\n");
-                runtime_panic();
+                mmtk_runtime_panic();
             }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
@@ -310,7 +310,7 @@ size_t get_so_size(jl_value_t* obj)
             int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
             if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
                 printf("size greater than minimum!\n");
-                runtime_panic();
+                mmtk_runtime_panic();
             }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
@@ -321,7 +321,7 @@ size_t get_so_size(jl_value_t* obj)
             int tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
             if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
                 printf("size greater than minimum!\n");
-                runtime_panic();
+                mmtk_runtime_panic();
             }
             int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
             int osize = jl_gc_sizeclasses[pool_id];
@@ -331,7 +331,7 @@ size_t get_so_size(jl_value_t* obj)
         size_t l = jl_svec_len(obj);
         if (l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t) > 2032) {
             printf("size greater than minimum!\n");
-            runtime_panic();
+            mmtk_runtime_panic();
         }
         int pool_id = jl_gc_szclass(l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
@@ -340,7 +340,7 @@ size_t get_so_size(jl_value_t* obj)
         size_t dtsz = sizeof(jl_module_t);
         if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
             printf("size greater than minimum!\n");
-            runtime_panic();
+            mmtk_runtime_panic();
         }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
@@ -349,7 +349,7 @@ size_t get_so_size(jl_value_t* obj)
         size_t dtsz = sizeof(jl_task_t);
         if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
             printf("size greater than minimum!\n");
-            runtime_panic();
+            mmtk_runtime_panic();
         }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
@@ -358,7 +358,7 @@ size_t get_so_size(jl_value_t* obj)
         size_t dtsz = jl_string_len(obj) + sizeof(size_t) + 1;
         if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
             printf("size greater than minimum!\n");
-            runtime_panic();
+            mmtk_runtime_panic();
         }
         int pool_id = jl_gc_szclass_align8(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
@@ -367,7 +367,7 @@ size_t get_so_size(jl_value_t* obj)
         size_t dtsz = sizeof(jl_method_t);
         if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
             printf("size greater than minimum!\n");
-            runtime_panic();
+            mmtk_runtime_panic();
         }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
         
@@ -377,7 +377,7 @@ size_t get_so_size(jl_value_t* obj)
         size_t dtsz = jl_datatype_size(vt);
         if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
             printf("size greater than minimum!\n");
-            runtime_panic();
+            mmtk_runtime_panic();
         }
         int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
         int osize = jl_gc_sizeclasses[pool_id];
@@ -445,37 +445,37 @@ void mmtk_jl_gc_run_all_finalizers(void) {
 static void queue_roots(void)
 {
     // modules
-    add_object_to_mmtk_roots(jl_main_module);
+    mmtk_add_object_to_mmtk_roots(jl_main_module);
 
     // invisible builtin values
     if (jl_an_empty_vec_any != NULL)
-        add_object_to_mmtk_roots(jl_an_empty_vec_any);
+        mmtk_add_object_to_mmtk_roots(jl_an_empty_vec_any);
     if (jl_module_init_order != NULL)
-        add_object_to_mmtk_roots(jl_module_init_order);
+        mmtk_add_object_to_mmtk_roots(jl_module_init_order);
     for (size_t i = 0; i < jl_current_modules.size; i += 2) {
         if (jl_current_modules.table[i + 1] != HT_NOTFOUND) {
-            add_object_to_mmtk_roots(jl_current_modules.table[i]);
+            mmtk_add_object_to_mmtk_roots(jl_current_modules.table[i]);
         }
     }
-    add_object_to_mmtk_roots(jl_anytuple_type_type);
+    mmtk_add_object_to_mmtk_roots(jl_anytuple_type_type);
     for (size_t i = 0; i < N_CALL_CACHE; i++) {
          jl_typemap_entry_t *v = jl_atomic_load_relaxed(&call_cache[i]);
          if (v != NULL)
-             add_object_to_mmtk_roots(v);
+             mmtk_add_object_to_mmtk_roots(v);
     }
     if (jl_all_methods != NULL)
-        add_object_to_mmtk_roots(jl_all_methods);
+        mmtk_add_object_to_mmtk_roots(jl_all_methods);
 
     if (_jl_debug_method_invalidation != NULL)
-        add_object_to_mmtk_roots(_jl_debug_method_invalidation);
+        mmtk_add_object_to_mmtk_roots(_jl_debug_method_invalidation);
     // if (jl_build_ids != NULL)
     //     add_object_to_mmtk_roots(jl_build_ids);
 
     // constants
-    add_object_to_mmtk_roots(jl_emptytuple_type);
+    mmtk_add_object_to_mmtk_roots(jl_emptytuple_type);
     if (cmpswap_names != NULL)
-        add_object_to_mmtk_roots(cmpswap_names);
-    add_object_to_mmtk_roots(jl_global_roots_table);
+        mmtk_add_object_to_mmtk_roots(cmpswap_names);
+    mmtk_add_object_to_mmtk_roots(jl_global_roots_table);
 
 }
 
@@ -500,7 +500,7 @@ void scan_gcstack(jl_task_t *ta, closure_pointer closure, ProcessEdgeFn process_
 {
     void *stkbuf = ta->stkbuf;
 #ifdef COPY_STACKS
-    if (stkbuf && ta->copy_stack && object_is_managed_by_mmtk(ta->stkbuf)) {
+    if (stkbuf && ta->copy_stack && mmtk_object_is_managed_by_mmtk(ta->stkbuf)) {
         // printf("-copystack: %p\n", &ta->stkbuf);fflush(stdout);
         process_edge(closure, &ta->stkbuf);
     }
@@ -555,7 +555,7 @@ void scan_gcstack(jl_task_t *ta, closure_pointer closure, ProcessEdgeFn process_
     }
     if (ta->excstack) { // inlining label `excstack` from mark_loop
         // if it is not managed by MMTk, nothing needs to be done because the object does not need to be scanned
-        if (object_is_managed_by_mmtk(ta->excstack)) {
+        if (mmtk_object_is_managed_by_mmtk(ta->excstack)) {
             // printf("-excstack: %p\n", &ta->excstack);fflush(stdout);
             process_edge(closure, &ta->excstack);
         }
@@ -598,9 +598,9 @@ void root_scan_task(jl_ptls_t ptls, jl_task_t* task)
     closure_pointer c;
 
     // Scan the stack
-    scan_gcstack(task, c, process_root_edges);
+    scan_gcstack(task, c, mmtk_process_root_edges);
     // And add the task itself
-    add_object_to_mmtk_roots(task);
+    mmtk_add_object_to_mmtk_roots(task);
 }
 
 static void jl_gc_queue_bt_buf_mmtk(jl_ptls_t ptls2)
@@ -615,7 +615,7 @@ static void jl_gc_queue_bt_buf_mmtk(jl_ptls_t ptls2)
         size_t njlvals = jl_bt_num_jlvals(bt_entry);
         for (size_t j = 0; j < njlvals; j++) {
             bt_entry_value = jl_bt_entry_jlvalue(bt_entry, j);
-            add_object_to_mmtk_roots(bt_entry_value);
+            mmtk_add_object_to_mmtk_roots(bt_entry_value);
         }
     }
 }
@@ -644,7 +644,7 @@ static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls2)
     }
 
     if (ptls2->previous_exception) {
-        add_object_to_mmtk_roots(ptls2->previous_exception);
+        mmtk_add_object_to_mmtk_roots(ptls2->previous_exception);
     }
 }
 
@@ -653,7 +653,7 @@ static void jl_gc_queue_remset_mmtk(jl_ptls_t ptls2)
     size_t len = ptls2->heap.last_remset->len;
     void **items = ptls2->heap.last_remset->items;
     for (size_t i = 0; i < len; i++) {
-        add_object_to_mmtk_roots(items[i]);
+        mmtk_add_object_to_mmtk_roots(items[i]);
     }
 }
 
@@ -681,7 +681,7 @@ JL_DLLEXPORT void scan_julia_exc_obj(jl_task_t* obj, closure_pointer closure, Pr
 
     if (ta->excstack) { // inlining label `excstack` from mark_loop
         // if it is not managed by MMTk, nothing needs to be done because the object does not need to be scanned
-        if (object_is_managed_by_mmtk(ta->excstack)) {
+        if (mmtk_object_is_managed_by_mmtk(ta->excstack)) {
             process_edge(closure, &ta->excstack);
         }
         jl_excstack_t *excstack = ta->excstack;
@@ -944,7 +944,7 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
             else {
                 // simply dispatch the work at the end of the function
                 assert(layout->fielddesc_type == 3);
-                runtime_panic();
+                mmtk_runtime_panic();
             }
         }
     }
