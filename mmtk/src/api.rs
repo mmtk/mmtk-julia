@@ -33,6 +33,7 @@ use std::sync::RwLockWriteGuard;
 pub extern "C" fn mmtk_gc_init(
     min_heap_size: usize,
     max_heap_size: usize,
+    n_gcthreads: usize,
     calls: *const Julia_Upcalls,
     header_size: usize,
 ) {
@@ -43,6 +44,8 @@ pub extern "C" fn mmtk_gc_init(
 
     {
         let mut builder = BUILDER.lock().unwrap();
+
+        // Set plan
         use mmtk::util::options::PlanSelector;
         let force_plan = if cfg!(feature = "nogc") {
             Some(PlanSelector::NoGC)
@@ -58,6 +61,8 @@ pub extern "C" fn mmtk_gc_init(
         if let Some(plan) = force_plan {
             builder.options.plan.set(plan);
         }
+
+        // Set heap size
         let success;
         if min_heap_size != 0 {
             info!(
@@ -84,8 +89,16 @@ pub extern "C" fn mmtk_gc_init(
             "Failed to set heap size to {}-{}",
             min_heap_size, max_heap_size
         );
+
+        // Set using weak references
         let success = builder.options.no_reference_types.set(false);
         assert!(success, "Failed to set no_reference_types to false");
+
+        // Set GC threads
+        if n_gcthreads > 0 {
+            let success = builder.options.threads.set(n_gcthreads);
+            assert!(success, "Failed to set GC threads to {}", n_gcthreads);
+        }
     }
 
     // Make sure that we haven't initialized MMTk (by accident) yet
