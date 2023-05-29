@@ -955,6 +955,10 @@ JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, Proce
     return;
 }
 
+void update_gc_time(uint64_t inc) {
+    gc_num.total_time += inc;
+}
+
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_obj = scan_julia_obj,
     .scan_julia_exc_obj = scan_julia_exc_obj,
@@ -977,4 +981,6 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .sweep_malloced_array = mmtk_sweep_malloced_arrays,
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
+    .jl_hrtime = jl_hrtime,
+    .update_gc_time = update_gc_time,
 };
