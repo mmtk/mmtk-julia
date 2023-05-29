@@ -32,23 +32,17 @@ impl Collection<JuliaVM> for VMCollection {
         trace!("Stopped the world!");
 
         // Record the start time of the GC
-        let now = unsafe {
-            ((*UPCALLS).jl_hrtime)()
-        };
+        let now = unsafe { ((*UPCALLS).jl_hrtime)() };
         trace!("gc_start = {}", now);
         GC_START.store(now, Ordering::Relaxed);
     }
 
     fn resume_mutators(_tls: VMWorkerThread) {
         // Get the end time of the GC
-        let end = unsafe {
-            ((*UPCALLS).jl_hrtime)()
-        };
+        let end = unsafe { ((*UPCALLS).jl_hrtime)() };
         trace!("gc_end = {}", end);
         let gc_time = end - GC_START.load(Ordering::Relaxed);
-        unsafe {
-            ((*UPCALLS).update_gc_time)(gc_time)
-        }
+        unsafe { ((*UPCALLS).update_gc_time)(gc_time) }
 
         AtomicBool::store(&BLOCK_FOR_GC, false, Ordering::SeqCst);
         AtomicBool::store(&WORLD_HAS_STOPPED, false, Ordering::SeqCst);
