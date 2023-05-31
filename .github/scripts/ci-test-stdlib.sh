@@ -20,6 +20,11 @@ declare -a tests_to_skip=(
 declare -a tests_with_multi_workers=(
     "Pkg"
 )
+# These tests run with a single worker
+declare -a tests_with_single_worker=(
+    "SparseArrays",
+    "LinearAlgebra"
+)
 
 stdlib_path=$JULIA_PATH/usr/share/julia/stdlib
 
@@ -48,8 +53,14 @@ do
         fi
 
         if [[ "${tests_with_multi_workers[@]}" =~ "$test" ]]; then
-            echo "-> Run multi-threads"
+            echo "-> Run multi threaded"
             ci_run_jl_test $test 2
+            continue
+        fi
+
+        if [[ "${tests_with_single_worker[@]}" =~ "$test" ]]; then
+            echo "-> Run single threaded"
+            ci_run_jl_test $test 1
             continue
         fi
 

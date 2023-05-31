@@ -1,18 +1,19 @@
-use crate::{spawn_collector_thread, FINALIZER_ROOTS, SINGLETON, UPCALLS};
+use crate::{spawn_collector_thread, UPCALLS};
 use crate::{JuliaVM, USER_TRIGGERED_GC};
 use log::{info, trace};
-use mmtk::memory_manager;
 use mmtk::util::alloc::AllocationError;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::Mutator;
 use mmtk::MutatorContext;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use crate::{BLOCK_FOR_GC, FINALIZERS_RUNNING, STW_COND, WORLD_HAS_STOPPED};
+use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
 
 const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
 const GC_THREAD_KIND_WORKER: libc::c_int = 1;
+
+static GC_START: AtomicU64 = AtomicU64::new(0);
 
 pub struct VMCollection {}
 
@@ -27,10 +28,21 @@ impl Collection<JuliaVM> for VMCollection {
             // FIXME add wait var
         }
 
-        trace!("Stopped the world!")
+        trace!("Stopped the world!");
+
+        // Record the start time of the GC
+        let now = unsafe { ((*UPCALLS).jl_hrtime)() };
+        trace!("gc_start = {}", now);
+        GC_START.store(now, Ordering::Relaxed);
     }
 
     fn resume_mutators(_tls: VMWorkerThread) {
+        // Get the end time of the GC
+        let end = unsafe { ((*UPCALLS).jl_hrtime)() };
+        trace!("gc_end = {}", end);
+        let gc_time = end - GC_START.load(Ordering::Relaxed);
+        unsafe { ((*UPCALLS).update_gc_time)(gc_time) }
+
         AtomicBool::store(&BLOCK_FOR_GC, false, Ordering::SeqCst);
         AtomicBool::store(&WORLD_HAS_STOPPED, false, Ordering::SeqCst);
 
@@ -39,8 +51,8 @@ impl Collection<JuliaVM> for VMCollection {
 
         info!(
             "Live bytes = {}, total bytes = {}",
-            crate::api::used_bytes(),
-            crate::api::total_bytes()
+            crate::api::mmtk_used_bytes(),
+            crate::api::mmtk_total_bytes()
         );
         trace!("Resuming mutators.");
     }
@@ -127,64 +139,4 @@ impl Collection<JuliaVM> for VMCollection {
         _mutator: &T,
     ) {
     }
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_run_finalizers(at_exit: bool) {
-    AtomicBool::store(&FINALIZERS_RUNNING, true, Ordering::SeqCst);
-
-    if at_exit {
-        let mut all_finalizable = memory_manager::get_all_finalizers(&SINGLETON);
-
-        {
-            // if the finalizer function triggers GC you don't want the objects to be GC-ed
-            let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-
-            for obj in all_finalizable.iter() {
-                let inserted = fin_roots.insert(*obj);
-                assert!(inserted);
-            }
-        }
-
-        loop {
-            let to_be_finalized = all_finalizable.pop();
-
-            match to_be_finalized {
-                Some(obj) => unsafe {
-                    ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2);
-                    {
-                        let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-                        let removed = fin_roots.remove(&obj);
-                        assert!(removed);
-                    }
-                },
-                None => break,
-            }
-        }
-    } else {
-        loop {
-            let to_be_finalized = memory_manager::get_finalized_object(&SINGLETON);
-
-            match to_be_finalized {
-                Some(obj) => {
-                    {
-                        // if the finalizer function triggers GC you don't want the objects to be GC-ed
-                        let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-
-                        let inserted = fin_roots.insert(obj);
-                        assert!(inserted);
-                    }
-                    unsafe { ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2) }
-                    {
-                        let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-                        let removed = fin_roots.remove(&obj);
-                        assert!(removed);
-                    }
-                }
-                None => break,
-            }
-        }
-    }
-
-    AtomicBool::store(&FINALIZERS_RUNNING, false, Ordering::SeqCst);
 }

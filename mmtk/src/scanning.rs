@@ -4,11 +4,10 @@ use crate::julia_scanning::process_edge;
 #[cfg(feature = "scan_obj_c")]
 use crate::julia_scanning::process_offset_edge;
 use crate::FINALIZER_ROOTS;
-use crate::{ROOTS, SINGLETON, UPCALLS};
+use crate::{ROOT_EDGES, ROOT_NODES, SINGLETON, UPCALLS};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::opaque_pointer::*;
-use mmtk::util::Address;
 use mmtk::util::ObjectReference;
 use mmtk::vm::EdgeVisitor;
 use mmtk::vm::RootsWorkFactory;
@@ -40,14 +39,13 @@ impl Scanning<JuliaVM> for VMScanning {
         _tls: VMWorkerThread,
         mut factory: impl RootsWorkFactory<JuliaVMEdge>,
     ) {
-        let mut roots: MutexGuard<HashSet<Address>> = ROOTS.lock().unwrap();
-        info!("{} thread roots", roots.len());
+        let mut roots: MutexGuard<HashSet<ObjectReference>> = ROOT_NODES.lock().unwrap();
+        info!("{} thread root nodes", roots.len());
 
         let mut roots_to_scan = vec![];
 
         for obj in roots.drain() {
-            let obj_ref = ObjectReference::from_raw_address(obj);
-            roots_to_scan.push(obj_ref);
+            roots_to_scan.push(obj);
         }
 
         let fin_roots = FINALIZER_ROOTS.read().unwrap();
@@ -63,6 +61,15 @@ impl Scanning<JuliaVM> for VMScanning {
         }
 
         factory.create_process_node_roots_work(roots_to_scan);
+
+        let roots: Vec<JuliaVMEdge> = ROOT_EDGES
+            .lock()
+            .unwrap()
+            .drain()
+            .map(|e| JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(e)))
+            .collect();
+        info!("{} thread root edges", roots.len());
+        factory.create_process_edge_roots_work(roots);
     }
 
     fn scan_object<EV: EdgeVisitor<JuliaVMEdge>>(
@@ -104,11 +111,6 @@ pub fn process_object(object: ObjectReference, closure: &mut dyn EdgeVisitor<Jul
     unsafe {
         crate::julia_scanning::scan_julia_object(addr, closure);
     }
-}
-
-#[no_mangle]
-pub extern "C" fn object_is_managed_by_mmtk(addr: usize) -> bool {
-    crate::api::is_mapped_address(unsafe { Address::from_usize(addr) })
 }
 
 // Sweep malloced arrays work

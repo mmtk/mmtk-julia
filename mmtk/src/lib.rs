@@ -8,7 +8,6 @@ use mmtk::scheduler::*;
 use mmtk::util::opaque_pointer::*;
 use mmtk::util::Address;
 use mmtk::util::ObjectReference;
-use mmtk::vm::edge_shape;
 use mmtk::vm::EdgeVisitor;
 use mmtk::vm::VMBinding;
 use mmtk::MMTKBuilder;
@@ -50,7 +49,7 @@ impl VMBinding for JuliaVM {
     type VMCollection = collection::VMCollection;
     type VMActivePlan = active_plan::VMActivePlan;
     type VMReferenceGlue = reference_glue::VMReferenceGlue;
-    type VMMemorySlice = edge_shape::UnimplementedMemorySlice<JuliaVMEdge>;
+    type VMMemorySlice = edges::JuliaMemorySlice;
     type VMEdge = JuliaVMEdge;
 }
 
@@ -98,7 +97,8 @@ lazy_static! {
         Arc::new((Mutex::new(0), Condvar::new()));
     pub static ref STOP_MUTATORS: Arc<(Mutex<usize>, Condvar)> =
         Arc::new((Mutex::new(0), Condvar::new()));
-    pub static ref ROOTS: Mutex<HashSet<Address>> = Mutex::new(HashSet::new());
+    pub static ref ROOT_NODES: Mutex<HashSet<ObjectReference>> = Mutex::new(HashSet::new());
+    pub static ref ROOT_EDGES: Mutex<HashSet<Address>> = Mutex::new(HashSet::new());
     pub static ref FINALIZER_ROOTS: RwLock<HashSet<JuliaFinalizableObject>> =
         RwLock::new(HashSet::new());
     pub static ref MUTATOR_TLS: RwLock<HashSet<String>> = RwLock::new(HashSet::new());
@@ -155,6 +155,8 @@ pub struct Julia_Upcalls {
     pub mmtk_sweep_malloced_array: extern "C" fn(),
     pub wait_in_a_safepoint: extern "C" fn(),
     pub exit_from_safepoint: extern "C" fn(old_state: i8),
+    pub jl_hrtime: extern "C" fn() -> u64,
+    pub update_gc_time: extern "C" fn(u64),
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();

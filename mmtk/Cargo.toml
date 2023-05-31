@@ -10,7 +10,7 @@ edition = "2018"
 [package.metadata.julia]
 # Our CI matches the following line and extract mmtk/julia. If this line is updated, please check ci yaml files and make sure it works.
 julia_repo = "https://github.com/mmtk/julia.git"
-julia_version = "54ca78ad9ca9e2795c6356588ed50039f2d1b23b"
+julia_version = "0eeb64b0191b08b0ce7b59a66dea6139db60dbd2"
 
 [lib]
 crate-type = ["staticlib", "rlib", "dylib"]
@@ -28,8 +28,8 @@ lazy_static = "1.1"
 # These changes are safe:
 # - change branch
 # - change repo name
-# But other changes including adding/removing whitespaces in commented lines may break the CI.
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "08fd8ab0cfaa240a6e9a401afaec963ec0de8be5" }
+# But other changes including adding/removing whitespaces in commented lines may break the CI
+mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "2ec37bde7955304f3e4bc5f7bed3fbfba3833cc0" }
 # Uncomment the following to build locally
 # mmtk = { path = "../repos/mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
@@ -40,14 +40,16 @@ chrono = "*"
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 
 [features]
-default = []
+default = ["mmtk/malloc_counted_size", "scan_obj_c", "mmtk/vm_space"]
+
+# Plans
 nogc = []
-semispace = []
-gencopy = []
-pageprotect = []
-malloc_counted_size = ["mmtk/malloc_counted_size"]
-# We have to supply both immix_no_defrag and immix_no_nursery_copy to make sure immix does not assume moving.
-immix = ["malloc_counted_size", "mmtk/immix_no_defrag", "mmtk/immix_no_nursery_copy", "mmtk/immix_smaller_block", "scan_obj_c"]
-marksweep = ["malloc_counted_size", "scan_obj_c"]
+immix = ["non_moving_immix"]
+stickyimmix = ["non_moving_immix"]
+marksweep = []
+
+# TODO remove this when we properly support moving
+non_moving_immix = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
+
 # FIXME update and use rust object scanner as default for immix
 scan_obj_c = []

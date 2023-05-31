@@ -12,49 +12,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-debug:
-    runs-on: ubuntu-18.04
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup environments
-        run: |
-          ./.github/scripts/ci-checkout.sh
-          ./.github/scripts/ci-setup.sh
-      - name: Build Julia (Debug)
-        run: |
-          ./.github/scripts/ci-build.sh debug
-      - name: Style check
-        run: |
-          ./.github/scripts/ci-style.sh
-
-  build-test-other:
-    runs-on: ubuntu-18.04
-    timeout-minutes: 360
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup environments
-        run: |
-          ./.github/scripts/ci-checkout.sh
-          ./.github/scripts/ci-setup.sh
-      - name: Build Julia (Release)
-        run: |
-          ./.github/scripts/ci-build.sh release
-      - name: Test Julia
-        run: |
-          ./.github/scripts/ci-test-other.sh
-
-  build-test-stdlib:
-    runs-on: ubuntu-18.04
-    timeout-minutes: 360
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup environments
-        run: |
-          ./.github/scripts/ci-checkout.sh
-          ./.github/scripts/ci-setup.sh
-      - name: Build Julia (Release)
-        run: |
-          ./.github/scripts/ci-build.sh release
-      - name: Test Julia
-        run: |
-          ./.github/scripts/ci-test-stdlib.sh
+  binding-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        gc_plan: [immix, stickyimmix]
+    uses: ./.github/workflows/binding-tests.yml
+    with:
+      gc_plan: ${{ matrix.gc_plan }}
