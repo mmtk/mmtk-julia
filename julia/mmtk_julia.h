@@ -11,7 +11,7 @@ int get_jl_last_err(void);
 
 void set_jl_last_err(int e);
 
-size_t get_lo_size(bigval_t obj);
+size_t get_lo_size(jl_value_t* obj);
 
 int8_t set_gc_initial_state(jl_ptls_t ptls);
 

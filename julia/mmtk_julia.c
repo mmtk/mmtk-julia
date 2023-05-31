@@ -231,9 +231,12 @@ void wait_for_the_world(void)
     }
 }
 
-size_t get_lo_size(bigval_t obj) 
+size_t get_lo_size(jl_value_t* obj) 
 {
-    return obj.sz;
+    jl_taggedvalue_t *v = jl_astaggedvalue(obj);
+    // bigval_header: but we cannot access the function here. So use container_of instead.
+    bigval_t* hdr = container_of(v, bigval_t, header);
+    return hdr->sz;
 }
 
 void set_jl_last_err(int e) 
