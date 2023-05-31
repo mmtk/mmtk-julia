@@ -234,7 +234,8 @@ void wait_for_the_world(void)
 size_t get_lo_size(jl_value_t* obj) 
 {
     jl_taggedvalue_t *v = jl_astaggedvalue(obj);
-    bigval_t* hdr = bigval_header(v);
+    // bigval_header: but we cannot access the function here. So use container_of instead.
+    bigval_t* hdr = container_of(v, bigval_t, header);
     return hdr->sz;
 }
 
