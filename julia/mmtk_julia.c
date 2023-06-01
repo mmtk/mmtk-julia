@@ -1,5 +1,6 @@
 #include "mmtk_julia.h"
 #include "mmtk.h"
+#include "mmtkMutator.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include "gc.h"
@@ -36,22 +37,22 @@ JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
     mmtk_harness_end();
 }
 
-STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset) {
-    int64_t delta = (-offset -(int64_t)(ptls->cursor)) & 15; // aligned to 16
-    uint64_t aligned_addr = (uint64_t)ptls->cursor + delta;
+// STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset) {
+//     int64_t delta = (-offset -(int64_t)(ptls->cursor)) & 15; // aligned to 16
+//     uint64_t aligned_addr = (uint64_t)ptls->cursor + delta;
 
-    if(__unlikely(aligned_addr+size > (uint64_t)ptls->limit)) {
-        jl_ptls_t ptls2 = jl_current_task->ptls;
-        ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls2->cursor;
-        void* res = mmtk_alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
-        ptls2->cursor = ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor;
-        ptls2->limit = ptls2->mmtk_mutator_ptr->allocators.immix[0].limit;
-        return res;
-    } else {
-        ptls->cursor = (void*) (aligned_addr+size);
-        return (void*) aligned_addr;
-    }
-}
+//     if(__unlikely(aligned_addr+size > (uint64_t)ptls->limit)) {
+//         jl_ptls_t ptls2 = jl_current_task->ptls;
+//         ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls2->cursor;
+//         void* res = mmtk_alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
+//         ptls2->cursor = ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor;
+//         ptls2->limit = ptls2->mmtk_mutator_ptr->allocators.immix[0].limit;
+//         return res;
+//     } else {
+//         ptls->cursor = (void*) (aligned_addr+size);
+//         return (void*) aligned_addr;
+//     }
+// }
 
 JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offset,
                                                     int osize, void *ty)
@@ -62,16 +63,16 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offse
     jl_value_t *v;
     if ((uintptr_t)ty != jl_buff_tag) {
         // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_alloc(ptls->mmtk_mutator_ptr, osize, 16, sizeof(jl_taggedvalue_t), 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize, sizeof(jl_taggedvalue_t));
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_alloc(&ptls->mmtk_mutator, osize, 16, sizeof(jl_taggedvalue_t), 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize, sizeof(jl_taggedvalue_t));
         v = jl_valueof(v_tagged);
-        mmtk_post_alloc(ptls->mmtk_mutator_ptr, v, osize, 0);
+        mmtk_post_alloc(&ptls->mmtk_mutator, v, osize, 0);
     } else {
         // allocating an extra word to store the size of buffer objects
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_alloc(ptls->mmtk_mutator_ptr, osize + sizeof(jl_taggedvalue_t), 16, 0, 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize + sizeof(jl_taggedvalue_t), 0);
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_alloc(&ptls->mmtk_mutator, osize + sizeof(jl_taggedvalue_t), 16, 0, 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize + sizeof(jl_taggedvalue_t), 0);
         jl_value_t* v_tagged_aligned = ((jl_value_t*)((char*)(v_tagged) + sizeof(jl_taggedvalue_t)));
         v = jl_valueof(v_tagged_aligned);
         mmtk_store_obj_size_c(v, osize + sizeof(jl_taggedvalue_t));
-        mmtk_post_alloc(ptls->mmtk_mutator_ptr, v, osize + sizeof(jl_taggedvalue_t), 0);
+        mmtk_post_alloc(&ptls->mmtk_mutator, v, osize + sizeof(jl_taggedvalue_t), 0);
     }
     
     ptls->gc_num.allocd += osize;
@@ -95,7 +96,7 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
         jl_throw(jl_memory_exception);
     }
 
-    bigval_t *v = (bigval_t*)mmtk_alloc_large(ptls->mmtk_mutator_ptr, allocsz, JL_CACHE_BYTE_ALIGNMENT, 0, 2);
+    bigval_t *v = (bigval_t*)mmtk_alloc_large(&ptls->mmtk_mutator, allocsz, JL_CACHE_BYTE_ALIGNMENT, 0, 2);
 
     if (v == NULL) {
         assert(0 && "Allocation failed");
@@ -107,7 +108,7 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
     ptls->gc_num.bigalloc++;
 
     jl_value_t *result = jl_valueof(&v->header);
-    mmtk_post_alloc(ptls->mmtk_mutator_ptr, result, allocsz, 2);
+    mmtk_post_alloc(&ptls->mmtk_mutator, result, allocsz, 2);
 
     return result;
 }
@@ -243,13 +244,23 @@ void set_jl_last_err(int e)
 
 int get_jl_last_err(void) 
 {
+    // gc_n_threads = jl_atomic_load_acquire(&jl_n_threads);
+    // gc_all_tls_states = jl_atomic_load_relaxed(&jl_all_tls_states);
+    // for (int t_i = 0; t_i < gc_n_threads; t_i++) {
+    //     jl_ptls_t ptls = gc_all_tls_states[t_i];
+    //     ptls->cursor = 0;
+    //     ptls->limit = 0;
+    // }
+
     gc_n_threads = jl_atomic_load_acquire(&jl_n_threads);
     gc_all_tls_states = jl_atomic_load_relaxed(&jl_all_tls_states);
     for (int t_i = 0; t_i < gc_n_threads; t_i++) {
         jl_ptls_t ptls = gc_all_tls_states[t_i];
-        ptls->cursor = 0;
-        ptls->limit = 0;
+        printf("Check thread local cursor/limit for ptls: %p\n", ptls); fflush(stdout);
+        assert(ptls->mmtk_mutator.allocators.immix[0].cursor == 0);
+        assert(ptls->mmtk_mutator.allocators.immix[0].limit == 0);
     }
+
     return errno;
 }
 
@@ -959,6 +970,11 @@ void update_gc_time(uint64_t inc) {
     gc_num.total_time += inc;
 }
 
+uintptr_t get_abi_structs_checksum_c(void) {
+    printf("hi");
+    return sizeof(MMTkMutatorContext);
+}
+
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_obj = scan_julia_obj,
     .scan_julia_exc_obj = scan_julia_exc_obj,
@@ -983,4 +999,5 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .exit_from_safepoint = mmtk_exit_from_safepoint,
     .jl_hrtime = jl_hrtime,
     .update_gc_time = update_gc_time,
+    .get_abi_structs_checksum_c = get_abi_structs_checksum_c,
 };

@@ -42,6 +42,9 @@ pub extern "C" fn mmtk_gc_init(
         set_julia_obj_header_size(header_size);
     };
 
+    // Assert to make sure our ABI is correct
+    assert_eq!(unsafe { ((*UPCALLS).get_abi_structs_checksum_c)() }, crate::util::get_abi_structs_checksum_rust());
+
     {
         let mut builder = BUILDER.lock().unwrap();
 

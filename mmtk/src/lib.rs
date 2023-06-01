@@ -157,6 +157,7 @@ pub struct Julia_Upcalls {
     pub exit_from_safepoint: extern "C" fn(old_state: i8),
     pub jl_hrtime: extern "C" fn() -> u64,
     pub update_gc_time: extern "C" fn(u64),
+    pub get_abi_structs_checksum_c: extern "C" fn() -> usize,
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();
