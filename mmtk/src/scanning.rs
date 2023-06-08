@@ -26,7 +26,7 @@ pub struct VMScanning {}
 impl Scanning<JuliaVM> for VMScanning {
     fn scan_roots_in_all_mutator_threads(
         _tls: VMWorkerThread,
-        _factory: impl RootsWorkFactory<JuliaVMEdge>
+        _factory: impl RootsWorkFactory<JuliaVMEdge>,
     ) {
         // Thread roots are collected by Julia before stopping the world
     }
