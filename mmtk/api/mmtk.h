@@ -23,7 +23,7 @@ typedef void (*ProcessOffsetEdgeFn)(closure_pointer closure, void* slot, int off
  * Allocation
  */
 extern MMTk_Mutator mmtk_bind_mutator(void *tls, int tid);
-extern void mmtk_add_mutator_ref(void* mutator_ref);
+extern void mmtk_post_bind_mutator(MMTk_Mutator mutator, MMTk_Mutator original_mutator);
 extern void mmtk_destroy_mutator(MMTk_Mutator mutator);
 
 extern void* mmtk_alloc(MMTk_Mutator mutator, size_t size,

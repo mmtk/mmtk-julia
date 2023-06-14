@@ -10,8 +10,8 @@ use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
 use crate::UPCALLS;
 use crate::{
-    get_mutator_ref, set_julia_obj_header_size, ARE_MUTATORS_BLOCKED, BUILDER, DISABLED_GC,
-    FINALIZERS_RUNNING, MUTATORS, MUTATOR_TLS, USER_TRIGGERED_GC,
+    set_julia_obj_header_size, BUILDER, DISABLED_GC,
+    FINALIZERS_RUNNING, MUTATORS, USER_TRIGGERED_GC,
 };
 use crate::{ROOT_EDGES, ROOT_NODES};
 
@@ -121,32 +121,25 @@ pub extern "C" fn mmtk_start_control_collector(
 
 #[no_mangle]
 pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread, tid: usize) -> *mut Mutator<JuliaVM> {
-    let mut are_mutators_blocked: RwLockWriteGuard<HashMap<usize, AtomicBool>> =
-        ARE_MUTATORS_BLOCKED.write().unwrap();
-    are_mutators_blocked.insert(tid, AtomicBool::new(false));
     let mutator_box = memory_manager::bind_mutator(&SINGLETON, tls);
 
     let res = Box::into_raw(mutator_box);
 
-    let mutator_ref = unsafe { get_mutator_ref(res) };
-
     info!("Binding mutator {:?} to thread id = {}", res, tid);
-
-    MUTATORS.write().unwrap().push(mutator_ref);
-
-    let tls_str = format!("{:?}", tls.0);
-    MUTATOR_TLS.write().unwrap().insert(tls_str);
     res
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_add_mutator_ref(mutator_ref: ObjectReference) {
-    MUTATORS.write().unwrap().push(mutator_ref);
+pub extern "C" fn mmtk_post_bind_mutator(mutator: *mut Mutator<JuliaVM>, original_box_mutator: *mut Mutator<JuliaVM>) {
+    MUTATORS.write().unwrap().insert(Address::from_mut_ptr(mutator));
+    // remove the boxed mutator
+    let _ = unsafe { Box::from_raw(original_box_mutator) };
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<JuliaVM>) {
-    memory_manager::destroy_mutator(unsafe { &mut *mutator })
+    memory_manager::destroy_mutator(unsafe { &mut *mutator });
+    MUTATORS.write().unwrap().remove(&Address::from_mut_ptr(mutator));
 }
 
 #[no_mangle]
@@ -397,6 +390,8 @@ pub extern "C" fn mmtk_malloc_aligned(size: usize, align: usize) -> Address {
 
     let extra = (align - 1) + ptr_size + size_size;
     let mem = memory_manager::counted_malloc(&SINGLETON, size + extra);
+    assert!(!mem.is_zero());
+
     let result = (mem + extra) & !(align - 1);
     let result = unsafe { Address::from_usize(result) };
 
@@ -697,4 +692,17 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
         let addr_size = obj.to_raw_address() - 2 * JULIA_HEADER_SIZE;
         addr_size.load::<u64>() as usize
     }
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_fast_path_alloc_debug(cursor: Address, limit: Address, size: usize, result: Address, new_cursor: Address) {
+    trace!("Fastpath alloc: cursor {}, limit {}, size {}, result {}, new_cursor {}", cursor, limit, size, result, new_cursor);
+    const align: usize = 16usize;
+    const offset: usize = 8usize;
+
+    let expected_result = mmtk::util::alloc::allocator::align_allocation_no_fill::<JuliaVM>(cursor, align, offset);
+    assert_eq!(expected_result, result);
+
+    let expected_new_cursor = expected_result + size;
+    assert_eq!(expected_new_cursor, new_cursor);
 }

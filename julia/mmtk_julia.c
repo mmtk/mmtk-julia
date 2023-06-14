@@ -259,6 +259,8 @@ int get_jl_last_err(void)
         printf("Check thread local cursor/limit for ptls: %p\n", ptls); fflush(stdout);
         assert(ptls->mmtk_mutator.allocators.immix[0].cursor == 0);
         assert(ptls->mmtk_mutator.allocators.immix[0].limit == 0);
+        assert(ptls->mmtk_mutator.allocators.immix[0].large_cursor == 0);
+        assert(ptls->mmtk_mutator.allocators.immix[0].large_limit == 0);
     }
 
     return errno;
@@ -971,7 +973,7 @@ void update_gc_time(uint64_t inc) {
 }
 
 uintptr_t get_abi_structs_checksum_c(void) {
-    printf("hi");
+    // printf("hi");
     return sizeof(MMTkMutatorContext);
 }
 

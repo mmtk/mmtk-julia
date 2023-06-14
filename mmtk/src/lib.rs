@@ -91,8 +91,6 @@ pub static DISABLED_GC: AtomicBool = AtomicBool::new(false);
 pub static USER_TRIGGERED_GC: AtomicBool = AtomicBool::new(false);
 
 lazy_static! {
-    pub static ref ARE_MUTATORS_BLOCKED: RwLock<HashMap<usize, AtomicBool>> =
-        RwLock::new(HashMap::new());
     pub static ref STW_COND: Arc<(Mutex<usize>, Condvar)> =
         Arc::new((Mutex::new(0), Condvar::new()));
     pub static ref STOP_MUTATORS: Arc<(Mutex<usize>, Condvar)> =
@@ -101,8 +99,9 @@ lazy_static! {
     pub static ref ROOT_EDGES: Mutex<HashSet<Address>> = Mutex::new(HashSet::new());
     pub static ref FINALIZER_ROOTS: RwLock<HashSet<JuliaFinalizableObject>> =
         RwLock::new(HashSet::new());
-    pub static ref MUTATOR_TLS: RwLock<HashSet<String>> = RwLock::new(HashSet::new());
-    pub static ref MUTATORS: RwLock<Vec<ObjectReference>> = RwLock::new(vec![]);
+
+    // This stores all the &'static Mutators. Use Address as &Mutator cannot be shared.
+    pub static ref MUTATORS: RwLock<HashSet<Address>> = RwLock::new(HashSet::new());
 }
 
 #[link(name = "runtime_gc_c")]
