@@ -15,6 +15,7 @@ use mmtk::Mutator;
 use mmtk::MMTK;
 use reference_glue::JuliaFinalizableObject;
 
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -100,8 +101,11 @@ lazy_static! {
     pub static ref FINALIZER_ROOTS: RwLock<HashSet<JuliaFinalizableObject>> =
         RwLock::new(HashSet::new());
 
-    // This stores *mut Mutator for all the mutators. Use Address as pointers cannot be shared across threads.
-    pub static ref MUTATORS: RwLock<HashSet<Address>> = RwLock::new(HashSet::new());
+    // We create a boxed mutator with MMTk core, and we mem copy its content to jl_tls_state_t (shallow copy).
+    // This map stores the pair of the mutator address in jl_tls_state_t and the original boxed mutator.
+    // As we only do a shallow copy, we should not free the original boxed mutator, until the thread is getting destroyed.
+    // Otherwise, we will have dangling pointers.
+    pub static ref MUTATORS: RwLock<HashMap<Address, Address>> = RwLock::new(HashMap::new());
 }
 
 #[link(name = "runtime_gc_c")]

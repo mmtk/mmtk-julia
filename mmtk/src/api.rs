@@ -135,21 +135,27 @@ pub extern "C" fn mmtk_post_bind_mutator(
     mutator: *mut Mutator<JuliaVM>,
     original_box_mutator: *mut Mutator<JuliaVM>,
 ) {
-    MUTATORS
-        .write()
-        .unwrap()
-        .insert(Address::from_mut_ptr(mutator));
-    // remove the boxed mutator
-    let _ = unsafe { Box::from_raw(original_box_mutator) };
+    // We have to store the original boxed mutator. Otherwise, we may have dangling pointers in mutator.
+    MUTATORS.write().unwrap().insert(
+        Address::from_mut_ptr(mutator),
+        Address::from_mut_ptr(original_box_mutator),
+    );
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<JuliaVM>) {
+    // destroy the mutator with MMTk.
     memory_manager::destroy_mutator(unsafe { &mut *mutator });
-    MUTATORS
-        .write()
-        .unwrap()
-        .remove(&Address::from_mut_ptr(mutator));
+
+    let mut mutators = MUTATORS.write().unwrap();
+    let key = Address::from_mut_ptr(mutator);
+
+    // Clear the original boxed mutator
+    let orig_mutator = mutators.get(&key).unwrap();
+    let _ = unsafe { Box::from_raw(orig_mutator.to_mut_ptr::<Mutator<JuliaVM>>()) };
+
+    // Remove from our hashmap
+    mutators.remove(&key);
 }
 
 #[no_mangle]

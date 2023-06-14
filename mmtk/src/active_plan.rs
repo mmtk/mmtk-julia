@@ -7,19 +7,19 @@ use mmtk::Mutator;
 use mmtk::Plan;
 use mmtk::{plan::ObjectQueue, scheduler::GCWorker, util::ObjectReference};
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::RwLockReadGuard;
 
 pub struct JuliaMutatorIterator<'a> {
     // We do not use this field, but this lock guard makes sure that no concurrent access to MUTATORS.
-    _guard: RwLockReadGuard<'a, HashSet<Address>>,
+    _guard: RwLockReadGuard<'a, HashMap<Address, Address>>,
     vec: Vec<Address>,
     cursor: usize,
 }
 
 impl<'a> JuliaMutatorIterator<'a> {
-    fn new(guard: RwLockReadGuard<'a, HashSet<Address>>) -> Self {
-        let vec = guard.iter().map(|addr| *addr).collect();
+    fn new(guard: RwLockReadGuard<'a, HashMap<Address, Address>>) -> Self {
+        let vec = guard.keys().map(|addr| *addr).collect();
         Self {
             _guard: guard,
             vec,
@@ -54,7 +54,7 @@ impl ActivePlan<JuliaVM> for VMActivePlan {
 
     fn is_mutator(tls: VMThread) -> bool {
         // FIXME have a tls field to check whether it is a mutator tls
-        MUTATORS.read().unwrap().iter().find(|mutator_addr| unsafe { &*mutator_addr.to_mut_ptr::<Mutator<JuliaVM>>() }.mutator_tls.0 == tls).is_some()
+        MUTATORS.read().unwrap().keys().find(|mutator_addr| unsafe { &*mutator_addr.to_mut_ptr::<Mutator<JuliaVM>>() }.mutator_tls.0 == tls).is_some()
     }
 
     fn mutator(_tls: VMMutatorThread) -> &'static mut Mutator<JuliaVM> {
