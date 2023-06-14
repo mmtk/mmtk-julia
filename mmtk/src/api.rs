@@ -10,8 +10,8 @@ use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
 use crate::UPCALLS;
 use crate::{
-    set_julia_obj_header_size, BUILDER, DISABLED_GC,
-    FINALIZERS_RUNNING, MUTATORS, USER_TRIGGERED_GC,
+    set_julia_obj_header_size, BUILDER, DISABLED_GC, FINALIZERS_RUNNING, MUTATORS,
+    USER_TRIGGERED_GC,
 };
 use crate::{ROOT_EDGES, ROOT_NODES};
 
@@ -41,7 +41,10 @@ pub extern "C" fn mmtk_gc_init(
     };
 
     // Assert to make sure our ABI is correct
-    assert_eq!(unsafe { ((*UPCALLS).get_abi_structs_checksum_c)() }, crate::util::get_abi_structs_checksum_rust());
+    assert_eq!(
+        unsafe { ((*UPCALLS).get_abi_structs_checksum_c)() },
+        crate::util::get_abi_structs_checksum_rust()
+    );
 
     {
         let mut builder = BUILDER.lock().unwrap();
@@ -128,8 +131,14 @@ pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread, tid: usize) -> *mut Mu
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_post_bind_mutator(mutator: *mut Mutator<JuliaVM>, original_box_mutator: *mut Mutator<JuliaVM>) {
-    MUTATORS.write().unwrap().insert(Address::from_mut_ptr(mutator));
+pub extern "C" fn mmtk_post_bind_mutator(
+    mutator: *mut Mutator<JuliaVM>,
+    original_box_mutator: *mut Mutator<JuliaVM>,
+) {
+    MUTATORS
+        .write()
+        .unwrap()
+        .insert(Address::from_mut_ptr(mutator));
     // remove the boxed mutator
     let _ = unsafe { Box::from_raw(original_box_mutator) };
 }
@@ -137,7 +146,10 @@ pub extern "C" fn mmtk_post_bind_mutator(mutator: *mut Mutator<JuliaVM>, origina
 #[no_mangle]
 pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<JuliaVM>) {
     memory_manager::destroy_mutator(unsafe { &mut *mutator });
-    MUTATORS.write().unwrap().remove(&Address::from_mut_ptr(mutator));
+    MUTATORS
+        .write()
+        .unwrap()
+        .remove(&Address::from_mut_ptr(mutator));
 }
 
 #[no_mangle]

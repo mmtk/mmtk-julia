@@ -7,8 +7,8 @@ use mmtk::Mutator;
 use mmtk::Plan;
 use mmtk::{plan::ObjectQueue, scheduler::GCWorker, util::ObjectReference};
 
-use std::sync::RwLockReadGuard;
 use std::collections::HashSet;
+use std::sync::RwLockReadGuard;
 
 pub struct JuliaMutatorIterator<'a> {
     // We do not use this field, but this lock guard makes sure that no concurrent access to MUTATORS.
@@ -34,8 +34,10 @@ impl<'a> Iterator for JuliaMutatorIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let mutator_idx = self.cursor;
         self.cursor += 1;
-        
-        self.vec.get(mutator_idx).map(|addr| unsafe { &mut *(addr.to_mut_ptr::<Mutator<JuliaVM>>()) })
+
+        self.vec
+            .get(mutator_idx)
+            .map(|addr| unsafe { &mut *(addr.to_mut_ptr::<Mutator<JuliaVM>>()) })
     }
 }
 
