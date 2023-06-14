@@ -9,10 +9,10 @@ use mmtk::{plan::ObjectQueue, scheduler::GCWorker, util::ObjectReference};
 
 use std::sync::RwLockReadGuard;
 use std::collections::HashSet;
-use std::collections::hash_set::Iter;
 
 pub struct JuliaMutatorIterator<'a> {
-    guard: RwLockReadGuard<'a, HashSet<Address>>,
+    // We do not use this field, but this lock guard makes sure that no concurrent access to MUTATORS.
+    _guard: RwLockReadGuard<'a, HashSet<Address>>,
     vec: Vec<Address>,
     cursor: usize,
 }
@@ -21,7 +21,7 @@ impl<'a> JuliaMutatorIterator<'a> {
     fn new(guard: RwLockReadGuard<'a, HashSet<Address>>) -> Self {
         let vec = guard.iter().map(|addr| *addr).collect();
         Self {
-            guard,
+            _guard: guard,
             vec,
             cursor: 0,
         }

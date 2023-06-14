@@ -24,10 +24,8 @@ use mmtk::util::opaque_pointer::*;
 use mmtk::util::{Address, ObjectReference, OpaquePointer};
 use mmtk::AllocationSemantics;
 use mmtk::Mutator;
-use std::collections::HashMap;
 use std::ffi::CStr;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::RwLockWriteGuard;
 
 #[no_mangle]
 pub extern "C" fn mmtk_gc_init(
@@ -390,7 +388,6 @@ pub extern "C" fn mmtk_malloc_aligned(size: usize, align: usize) -> Address {
 
     let extra = (align - 1) + ptr_size + size_size;
     let mem = memory_manager::counted_malloc(&SINGLETON, size + extra);
-    assert!(!mem.is_zero());
 
     let result = (mem + extra) & !(align - 1);
     let result = unsafe { Address::from_usize(result) };
@@ -692,17 +689,4 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
         let addr_size = obj.to_raw_address() - 2 * JULIA_HEADER_SIZE;
         addr_size.load::<u64>() as usize
     }
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_fast_path_alloc_debug(cursor: Address, limit: Address, size: usize, result: Address, new_cursor: Address) {
-    trace!("Fastpath alloc: cursor {}, limit {}, size {}, result {}, new_cursor {}", cursor, limit, size, result, new_cursor);
-    const align: usize = 16usize;
-    const offset: usize = 8usize;
-
-    let expected_result = mmtk::util::alloc::allocator::align_allocation_no_fill::<JuliaVM>(cursor, align, offset);
-    assert_eq!(expected_result, result);
-
-    let expected_new_cursor = expected_result + size;
-    assert_eq!(expected_new_cursor, new_cursor);
 }

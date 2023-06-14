@@ -37,23 +37,6 @@ JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
     mmtk_harness_end();
 }
 
-// STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset) {
-//     int64_t delta = (-offset -(int64_t)(ptls->cursor)) & 15; // aligned to 16
-//     uint64_t aligned_addr = (uint64_t)ptls->cursor + delta;
-
-//     if(__unlikely(aligned_addr+size > (uint64_t)ptls->limit)) {
-//         jl_ptls_t ptls2 = jl_current_task->ptls;
-//         ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls2->cursor;
-//         void* res = mmtk_alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
-//         ptls2->cursor = ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor;
-//         ptls2->limit = ptls2->mmtk_mutator_ptr->allocators.immix[0].limit;
-//         return res;
-//     } else {
-//         ptls->cursor = (void*) (aligned_addr+size);
-//         return (void*) aligned_addr;
-//     }
-// }
-
 JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offset,
                                                     int osize, void *ty)
 {
@@ -63,12 +46,12 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offse
     jl_value_t *v;
     if ((uintptr_t)ty != jl_buff_tag) {
         // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_alloc(&ptls->mmtk_mutator, osize, 16, sizeof(jl_taggedvalue_t), 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize, sizeof(jl_taggedvalue_t));
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_alloc(&ptls->mmtk_mutator, osize, 16, sizeof(jl_taggedvalue_t), 0);
         v = jl_valueof(v_tagged);
         mmtk_post_alloc(&ptls->mmtk_mutator, v, osize, 0);
     } else {
         // allocating an extra word to store the size of buffer objects
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_alloc(&ptls->mmtk_mutator, osize + sizeof(jl_taggedvalue_t), 16, 0, 0); // (jl_taggedvalue_t *) alloc_default_object(ptls, osize + sizeof(jl_taggedvalue_t), 0);
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_alloc(&ptls->mmtk_mutator, osize + sizeof(jl_taggedvalue_t), 16, 0, 0);
         jl_value_t* v_tagged_aligned = ((jl_value_t*)((char*)(v_tagged) + sizeof(jl_taggedvalue_t)));
         v = jl_valueof(v_tagged_aligned);
         mmtk_store_obj_size_c(v, osize + sizeof(jl_taggedvalue_t));
@@ -148,7 +131,7 @@ static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
 extern void mark_metadata_scanned(jl_value_t* obj);
 extern int8_t check_metadata_scanned(jl_value_t* obj);
 
-int8_t object_has_been_scanned(jl_value_t* obj)
+int8_t object_has_been_scanned(void* obj)
 {
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag;
@@ -165,7 +148,7 @@ int8_t object_has_been_scanned(jl_value_t* obj)
     return 0;
 }
 
-void mark_object_as_scanned(jl_value_t* obj) {
+void mark_object_as_scanned(void* obj) {
     if (jl_object_in_image((jl_value_t *)obj)) {
         jl_taggedvalue_t *o = jl_astaggedvalue(obj);
         o->bits.gc = GC_MARKED;
@@ -186,8 +169,9 @@ void mmtk_exit_from_safepoint(int8_t old_state) {
 // it will block until GC is done
 // that thread simply exits from block_for_gc without executing finalizers
 // when executing finalizers do not let another thread do GC (set a variable such that while that variable is true, no GC can be done)
-int8_t set_gc_initial_state(jl_ptls_t ptls) 
+int8_t set_gc_initial_state(void* ptls_raw) 
 {
+    jl_ptls_t ptls = (jl_ptls_t) ptls_raw;
     int8_t old_state = jl_atomic_load_relaxed(&((jl_ptls_t)ptls)->gc_state);
     jl_atomic_store_release(&((jl_ptls_t)ptls)->gc_state, JL_GC_STATE_WAITING);
     if (!jl_safepoint_start_gc()) {
@@ -232,9 +216,13 @@ void wait_for_the_world(void)
     }
 }
 
-size_t get_lo_size(bigval_t obj) 
+size_t get_lo_size(void* obj_raw) 
 {
-    return obj.sz;
+    jl_value_t* obj = (jl_value_t*) obj_raw;
+    jl_taggedvalue_t *v = jl_astaggedvalue(obj);
+    // bigval_header: but we cannot access the function here. So use container_of instead.
+    bigval_t* hdr = container_of(v, bigval_t, header);
+    return hdr->sz;
 }
 
 void set_jl_last_err(int e) 
@@ -244,30 +232,12 @@ void set_jl_last_err(int e)
 
 int get_jl_last_err(void) 
 {
-    // gc_n_threads = jl_atomic_load_acquire(&jl_n_threads);
-    // gc_all_tls_states = jl_atomic_load_relaxed(&jl_all_tls_states);
-    // for (int t_i = 0; t_i < gc_n_threads; t_i++) {
-    //     jl_ptls_t ptls = gc_all_tls_states[t_i];
-    //     ptls->cursor = 0;
-    //     ptls->limit = 0;
-    // }
-
-    gc_n_threads = jl_atomic_load_acquire(&jl_n_threads);
-    gc_all_tls_states = jl_atomic_load_relaxed(&jl_all_tls_states);
-    for (int t_i = 0; t_i < gc_n_threads; t_i++) {
-        jl_ptls_t ptls = gc_all_tls_states[t_i];
-        printf("Check thread local cursor/limit for ptls: %p\n", ptls); fflush(stdout);
-        assert(ptls->mmtk_mutator.allocators.immix[0].cursor == 0);
-        assert(ptls->mmtk_mutator.allocators.immix[0].limit == 0);
-        assert(ptls->mmtk_mutator.allocators.immix[0].large_cursor == 0);
-        assert(ptls->mmtk_mutator.allocators.immix[0].large_limit == 0);
-    }
-
     return errno;
 }
 
-void* get_obj_start_ref(jl_value_t* obj) 
+void* get_obj_start_ref(void* obj_raw) 
 {
+    jl_value_t* obj = (jl_value_t*) obj_raw;
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag;
     void* obj_start_ref; 
@@ -281,8 +251,9 @@ void* get_obj_start_ref(jl_value_t* obj)
     return obj_start_ref;
 }
 
-size_t get_so_size(jl_value_t* obj) 
+size_t get_so_size(void* obj_raw) 
 {
+    jl_value_t* obj = (jl_value_t*) obj_raw;
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag;
 
@@ -402,8 +373,10 @@ size_t get_so_size(jl_value_t* obj)
     return 0;
 }
 
-void run_finalizer_function(jl_value_t *o, jl_value_t *ff, bool is_ptr)
+void run_finalizer_function(void *o_raw, void *ff_raw, bool is_ptr)
 {
+    jl_value_t *o = (jl_value_t*) o_raw;
+    jl_value_t *ff = (jl_value_t*) ff_raw;
     if (is_ptr) {
         run_finalizer(jl_current_task, (jl_value_t *)(((uintptr_t)o) | 1), (jl_value_t *)ff);
     } else {
@@ -433,7 +406,7 @@ void mmtk_jl_run_pending_finalizers(void* ptls) {
     }
 }
 
-void mmtk_jl_run_finalizers(jl_ptls_t ptls) {
+void mmtk_jl_run_finalizers(void* ptls) {
     // Only disable finalizers on current thread
     // Doing this on all threads is racy (it's impossible to check
     // or wait for finalizers on other threads without dead lock).
@@ -673,7 +646,7 @@ static void jl_gc_queue_remset_mmtk(jl_ptls_t ptls2)
     }
 }
 
-void calculate_roots(jl_ptls_t ptls)
+void calculate_roots(void* ptls_raw)
 {
     for (int t_i = 0; t_i < gc_n_threads; t_i++)
         gc_premark(gc_all_tls_states[t_i]);
@@ -692,8 +665,8 @@ void calculate_roots(jl_ptls_t ptls)
     queue_roots();
 }
 
-JL_DLLEXPORT void scan_julia_exc_obj(jl_task_t* obj, closure_pointer closure, ProcessEdgeFn process_edge) {
-    jl_task_t *ta = (jl_task_t*)obj;
+JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, closure_pointer closure, ProcessEdgeFn process_edge) {
+    jl_task_t *ta = (jl_task_t*)obj_raw;
 
     if (ta->excstack) { // inlining label `excstack` from mark_loop
         // if it is not managed by MMTk, nothing needs to be done because the object does not need to be scanned
@@ -755,8 +728,9 @@ const bool PRINT_OBJ_TYPE = false;
  * directly (not an edge), specifying whether to scan the object or not; and only scan the object 
  * (necessary for boot image / non-MMTk objects)
 **/
-JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge) 
+JL_DLLEXPORT void scan_julia_obj(void* obj_raw, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge) 
 {
+    jl_value_t* obj = (jl_value_t*) obj_raw;
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag; // type of obj
 
@@ -973,7 +947,6 @@ void update_gc_time(uint64_t inc) {
 }
 
 uintptr_t get_abi_structs_checksum_c(void) {
-    // printf("hi");
     return sizeof(MMTkMutatorContext);
 }
 

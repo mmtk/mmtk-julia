@@ -15,7 +15,7 @@ use mmtk::Mutator;
 use mmtk::MMTK;
 use reference_glue::JuliaFinalizableObject;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
@@ -100,7 +100,7 @@ lazy_static! {
     pub static ref FINALIZER_ROOTS: RwLock<HashSet<JuliaFinalizableObject>> =
         RwLock::new(HashSet::new());
 
-    // This stores all the &'static Mutators. Use Address as &Mutator cannot be shared.
+    // This stores *mut Mutator for all the mutators. Use Address as pointers cannot be shared across threads.
     pub static ref MUTATORS: RwLock<HashSet<Address>> = RwLock::new(HashSet::new());
 }
 
