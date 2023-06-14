@@ -84,7 +84,6 @@ typedef struct {
     void (* run_finalizer_function) (void* obj, void* function, bool is_ptr);
     int (* get_jl_last_err) (void);
     void (* set_jl_last_err) (int e);
-    // FIXME: I don't think this is correct, as we pass an object reference to get_lo_size, in the same way as get_so_size.
     size_t (* get_lo_size) (void* obj);
     size_t (* get_so_size) (void* obj);
     void* (* get_obj_start_ref) (void* obj);

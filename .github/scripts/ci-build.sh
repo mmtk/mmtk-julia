@@ -26,6 +26,7 @@ cd $MMTK_JULIA_DIR/mmtk
 cargo build --features $plan $build_args
 
 cd $JULIA_PATH
+
 # Clean first
 make cleanall
 # Build
