@@ -87,7 +87,7 @@ impl Scanning<JuliaVM> for VMScanning {
         let sweep_malloced_arrays_work = SweepMallocedArrays::new();
         memory_manager::add_work_packet(
             &SINGLETON,
-            WorkBucketStage::Compact,
+            WorkBucketStage::Release,
             sweep_malloced_arrays_work,
         );
     }
