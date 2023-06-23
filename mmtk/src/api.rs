@@ -166,7 +166,13 @@ pub extern "C" fn mmtk_alloc(
     offset: usize,
     semantics: AllocationSemantics,
 ) -> Address {
-    memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, size, align, offset, semantics)
+    debug_assert!(mmtk::util::conversions::raw_is_aligned(size, <JuliaVM as mmtk::vm::VMBinding>::MIN_ALIGNMENT), "Trying to allocate {} bytes which is not aligned to MIN_ALIGNMENT", size);
+    let ret = memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, size, align, offset, semantics);
+
+    debug_assert!((ret + offset).is_aligned_to(align));
+    // info!("Alloc size {} align {} offset {} semantics {:?} = {}", size, align, offset, semantics, ret);
+
+    ret
 }
 
 #[no_mangle]

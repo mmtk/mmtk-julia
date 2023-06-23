@@ -37,8 +37,7 @@ JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
     mmtk_harness_end();
 }
 
-JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offset,
-                                                    int osize, void *ty)
+JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, size_t osize, void *ty)
 {
     // safepoint
     jl_gc_safepoint();
@@ -278,8 +277,7 @@ size_t get_so_size(void* obj_raw)
                 printf("size greater than minimum!\n");
                 mmtk_runtime_panic();
             }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
+            int osize = tsz + sizeof(jl_taggedvalue_t);
             return osize;
         } else if (a->flags.how == 1) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
@@ -288,8 +286,7 @@ size_t get_so_size(void* obj_raw)
                 printf("size greater than minimum!\n");
                 mmtk_runtime_panic();
             }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
+            int osize = tsz + sizeof(jl_taggedvalue_t);
 
             return osize;
         } else if (a->flags.how == 2) {
@@ -299,8 +296,7 @@ size_t get_so_size(void* obj_raw)
                 printf("size greater than minimum!\n");
                 mmtk_runtime_panic();
             }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
+            int osize = tsz + sizeof(jl_taggedvalue_t);
 
             return osize;
         } else if (a->flags.how == 3) {
@@ -310,8 +306,7 @@ size_t get_so_size(void* obj_raw)
                 printf("size greater than minimum!\n");
                 mmtk_runtime_panic();
             }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
+            int osize = tsz + sizeof(jl_taggedvalue_t);
             return osize;
         }
     } else if (vt == jl_simplevector_type) {
@@ -320,8 +315,7 @@ size_t get_so_size(void* obj_raw)
             printf("size greater than minimum!\n");
             mmtk_runtime_panic();
         }
-        int pool_id = jl_gc_szclass(l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
+        int osize = l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t);
         return osize;
     } else if (vt == jl_module_type) {
         size_t dtsz = sizeof(jl_module_t);
@@ -329,8 +323,7 @@ size_t get_so_size(void* obj_raw)
             printf("size greater than minimum!\n");
             mmtk_runtime_panic();
         }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
+        int osize = dtsz + sizeof(jl_taggedvalue_t);
         return osize;
     } else if (vt == jl_task_type) {
         size_t dtsz = sizeof(jl_task_t);
@@ -338,8 +331,7 @@ size_t get_so_size(void* obj_raw)
             printf("size greater than minimum!\n");
             mmtk_runtime_panic();
         }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
+        int osize = dtsz + sizeof(jl_taggedvalue_t);
         return osize;
     } else if (vt == jl_string_type) {
         size_t dtsz = jl_string_len(obj) + sizeof(size_t) + 1;
@@ -347,8 +339,7 @@ size_t get_so_size(void* obj_raw)
             printf("size greater than minimum!\n");
             mmtk_runtime_panic();
         }
-        int pool_id = jl_gc_szclass_align8(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
+        int osize = dtsz + sizeof(jl_taggedvalue_t);
         return osize;
     } else if (vt == jl_method_type) {
         size_t dtsz = sizeof(jl_method_t);
@@ -356,9 +347,7 @@ size_t get_so_size(void* obj_raw)
             printf("size greater than minimum!\n");
             mmtk_runtime_panic();
         }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        
-        int osize = jl_gc_sizeclasses[pool_id];
+        int osize = dtsz + sizeof(jl_taggedvalue_t);
         return osize;
     } else  {
         size_t dtsz = jl_datatype_size(vt);
@@ -366,8 +355,7 @@ size_t get_so_size(void* obj_raw)
             printf("size greater than minimum!\n");
             mmtk_runtime_panic();
         }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
+        int osize = dtsz + sizeof(jl_taggedvalue_t);
         return osize;
     }
     return 0;
