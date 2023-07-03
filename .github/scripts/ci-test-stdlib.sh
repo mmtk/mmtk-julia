@@ -15,6 +15,10 @@ declare -a tests_to_skip=(
     # getnameinfo(ip"0.1.1.1") == "0.1.1.1"
     # DNSError: ip"0.1.1.1", temporary failure (EAI_AGAIN)
     "Sockets"
+    # LoadError: No active project
+    # See https://github.com/JuliaLang/julia/issues/50055.
+    # FIXME: We should run this test when the above issue is resolved.
+    "Pkg"
 )
 # These tests need multiple workers.
 declare -a tests_with_multi_workers=(
