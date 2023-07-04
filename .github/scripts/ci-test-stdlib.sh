@@ -18,7 +18,8 @@ declare -a tests_to_skip=(
     # LoadError: No active project
     # See https://github.com/JuliaLang/julia/issues/50055.
     # FIXME: We should run this test when the above issue is resolved.
-    "Pkg"
+    "Pkg",
+    "SparseArrays"
 )
 # These tests need multiple workers.
 declare -a tests_with_multi_workers=(
