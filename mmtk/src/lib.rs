@@ -122,9 +122,6 @@ extern "C" {
 type ProcessEdgeFn =
     *const extern "C" fn(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, slot: Address);
 
-type ProcessOffsetEdgeFn =
-    *const extern "C" fn(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, slot: Address, offset: usize);
-
 type TraceObjectImmediatelyFn =
     *const extern "C" fn(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, object: ObjectReference) -> ObjectReference;
 

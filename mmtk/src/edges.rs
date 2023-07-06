@@ -1,11 +1,7 @@
-use atomic::Atomic;
 use mmtk::{
     util::{Address, ObjectReference},
-    vm::edge_shape::{Edge, SimpleEdge},
+    vm::edge_shape::SimpleEdge,
 };
-
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
 
 pub type JuliaVMEdge = SimpleEdge;
 

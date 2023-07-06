@@ -1,6 +1,5 @@
 use crate::api::*;
 use crate::edges::JuliaVMEdge;
-use crate::edges::OffsetEdge;
 use crate::julia_types::*;
 use crate::UPCALLS;
 use mmtk::util::{Address, ObjectReference};
@@ -57,8 +56,8 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
 
         if flags.how() == 1 {
             // julia-allocated buffer that needs to be marked
-            let offset = ((*addr.to_ptr::<mmtk_jl_array_t>()).offset as u16
-                * (*addr.to_ptr::<mmtk_jl_array_t>()).elsize) as usize;
+            // let offset = ((*addr.to_ptr::<mmtk_jl_array_t>()).offset as u16
+            //     * (*addr.to_ptr::<mmtk_jl_array_t>()).elsize) as usize;
             // process_offset_edge(closure, addr, offset);
             unimplemented!();
         } else if flags.how() == 3 {
@@ -319,44 +318,12 @@ fn read_stack(addr: Address, offset: usize, lb: usize, ub: usize) -> Address {
 #[inline(always)]
 pub fn process_edge(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, slot: Address) {
     let simple_edge = SimpleEdge::from_address(slot);
-    closure.visit_edge(JuliaVMEdge::Simple(simple_edge));
+    closure.visit_edge(simple_edge);
 }
 
-// #[inline(always)]
-// pub fn process_offset_edge(
-//     closure: &mut dyn EdgeVisitor<JuliaVMEdge>,
-//     slot: Address,
-//     offset: usize,
-// ) {
-//     let internal_obj: ObjectReference = unsafe { slot.load() };
-//     let internal_obj_addr = internal_obj.to_raw_address();
-//     if internal_obj_addr.is_zero() {
-//         return;
-//     }
-
-//     let offset_edge = OffsetEdge::new_with_offset(slot, offset);
-
-//     if mmtk_object_is_managed_by_mmtk(internal_obj_addr.as_usize()) {
-//         closure.visit_edge(offset_edge);
-//     } else {
-//         unsafe {
-//             let has_been_scanned = ((*UPCALLS).julia_object_has_been_scanned)(internal_obj_addr);
-//             if has_been_scanned == 0 {
-//                 ((*UPCALLS).mark_julia_object_as_scanned)(internal_obj_addr);
-//                 closure.visit_edge(offset_edge);
-//             }
-//         }
-//     }
-// }
-
 #[inline(always)]
-pub fn process_offset_edge(
-    closure: &mut dyn EdgeVisitor<JuliaVMEdge>,
-    slot: Address,
-    offset: usize,
-) {
-    let offset_edge = OffsetEdge::new_with_offset(slot, offset);
-    closure.visit_edge(JuliaVMEdge::Offset(offset_edge));
+pub fn trace_object_immediately(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, object: ObjectReference) -> ObjectReference {
+    closure.visit_object_immediately(object)
 }
 
 #[inline(always)]
