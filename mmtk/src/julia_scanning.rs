@@ -1,6 +1,5 @@
 use crate::api::*;
 use crate::edges::JuliaVMEdge;
-use crate::edges::OffsetEdge;
 use crate::julia_types::*;
 use crate::UPCALLS;
 use mmtk::util::{Address, ObjectReference};
@@ -57,9 +56,10 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
 
         if flags.how() == 1 {
             // julia-allocated buffer that needs to be marked
-            let offset = ((*addr.to_ptr::<mmtk_jl_array_t>()).offset as u16
-                * (*addr.to_ptr::<mmtk_jl_array_t>()).elsize) as usize;
-            process_offset_edge(closure, addr, offset);
+            // let offset = ((*addr.to_ptr::<mmtk_jl_array_t>()).offset as u16
+            //     * (*addr.to_ptr::<mmtk_jl_array_t>()).elsize) as usize;
+            // process_offset_edge(closure, addr, offset);
+            unimplemented!();
         } else if flags.how() == 3 {
             // has a pointer to the object that owns the data
             #[allow(deref_nullptr)]
@@ -318,17 +318,12 @@ fn read_stack(addr: Address, offset: usize, lb: usize, ub: usize) -> Address {
 #[inline(always)]
 pub fn process_edge(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, slot: Address) {
     let simple_edge = SimpleEdge::from_address(slot);
-    closure.visit_edge(JuliaVMEdge::Simple(simple_edge));
+    closure.visit_edge(simple_edge);
 }
 
 #[inline(always)]
-pub fn process_offset_edge(
-    closure: &mut dyn EdgeVisitor<JuliaVMEdge>,
-    slot: Address,
-    offset: usize,
-) {
-    let offset_edge = OffsetEdge::new_with_offset(slot, offset);
-    closure.visit_edge(JuliaVMEdge::Offset(offset_edge));
+pub fn trace_object_immediately(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, object: ObjectReference) -> ObjectReference {
+    closure.visit_object_immediately(object)
 }
 
 #[inline(always)]

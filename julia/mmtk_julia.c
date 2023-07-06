@@ -728,7 +728,7 @@ const bool PRINT_OBJ_TYPE = false;
  * directly (not an edge), specifying whether to scan the object or not; and only scan the object 
  * (necessary for boot image / non-MMTk objects)
 **/
-JL_DLLEXPORT void scan_julia_obj(void* obj_raw, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge) 
+JL_DLLEXPORT void scan_julia_obj(void* obj_raw, closure_pointer closure, ProcessEdgeFn process_edge, TraceObjectImmediatelyFn trace_object_immediately) 
 {
     jl_value_t* obj = (jl_value_t*) obj_raw;
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
@@ -756,7 +756,15 @@ JL_DLLEXPORT void scan_julia_obj(void* obj_raw, closure_pointer closure, Process
 
         if (flags.how == 1) { // julia-allocated buffer that needs to be marked
             long offset = a->offset * a->elsize;
-            process_offset_edge(closure, &a->data, offset);
+            if (offset == 0) {
+                process_edge(closure, &a->data);
+            } else {
+                // Special case: we need to deal with offset edge.
+                // We trace object immediately here.
+                uint8_t* data = (uint8_t*)(a->data);
+                uint8_t* new_obj = (uint8_t*)trace_object_immediately(closure, data - offset);
+                a->data = new_obj + offset;
+            }
         }
         if (flags.how == 2) { // malloc-allocated pointer this array object manages
             // should be processed below if it contains pointers
