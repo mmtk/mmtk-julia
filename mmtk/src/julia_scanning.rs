@@ -1,11 +1,9 @@
+use crate::api::*;
 use crate::edges::JuliaVMEdge;
 use crate::edges::OffsetEdge;
 use crate::julia_types::*;
-use crate::scanning::*;
-use crate::BI_METADATA_END_ALIGNED_UP;
-use crate::BI_METADATA_START_ALIGNED_DOWN;
 use crate::UPCALLS;
-use mmtk::util::{Address, ObjectReference};
+use mmtk::util::Address;
 use mmtk::vm::edge_shape::SimpleEdge;
 use mmtk::vm::EdgeVisitor;
 use std::sync::atomic::AtomicUsize;
@@ -180,7 +178,7 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
                 continue;
             }
 
-            if !b_addr.is_zero() && object_is_managed_by_mmtk(b_addr.as_usize()) {
+            if !b_addr.is_zero() && mmtk_object_is_managed_by_mmtk(b_addr.as_usize()) {
                 process_edge(closure, Address::from_usize(addr_usize));
             }
 
@@ -218,7 +216,7 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
         // FIXME: the code below is executed COPY_STACKS has been defined in the C Julia implementation - it is on by default
         if !stkbuf_addr.is_zero()
             && copy_stack != 0
-            && object_is_managed_by_mmtk(stkbuf_addr.as_usize())
+            && mmtk_object_is_managed_by_mmtk(stkbuf_addr.as_usize())
         {
             let stkbuf_edge = Address::from_ptr(::std::ptr::addr_of!((*ta).stkbuf));
             process_edge(closure, stkbuf_edge);
@@ -232,7 +230,7 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
                 panic!("tid must be positive.")
             }
             let stackbase = ((*UPCALLS).get_stackbase)((*ta).tid);
-            ub = stackbase;
+            ub = stackbase as u64;
             lb = ub - ((*ta).copy_stack() as u64);
             offset = (*ta).stkbuf as isize - lb as isize;
         }
@@ -363,63 +361,63 @@ fn read_stack(addr: Address, offset: isize, lb: u64, ub: u64) -> Address {
 
 #[inline(always)]
 pub fn process_edge(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, slot: Address) {
-    let internal_obj: ObjectReference = unsafe { slot.load() };
-    let internal_obj_addr = internal_obj.to_raw_address();
-    if internal_obj_addr.is_zero() {
-        return;
-    }
+    // let internal_obj: ObjectReference = unsafe { slot.load() };
+    // let internal_obj_addr = internal_obj.to_raw_address();
+    // if internal_obj_addr.is_zero() {
+    //     return;
+    // }
 
     let simple_edge = SimpleEdge::from_address(slot);
 
-    if object_is_managed_by_mmtk(internal_obj_addr.as_usize()) {
-        closure.visit_edge(JuliaVMEdge::Simple(simple_edge));
-    } else {
-        unsafe {
-            let has_been_scanned = boot_image_object_has_been_scanned(internal_obj_addr);
-            if has_been_scanned == 0 {
-                boot_image_mark_object_as_scanned(internal_obj_addr);
-                closure.visit_edge(JuliaVMEdge::Simple(simple_edge));
-            }
-        }
-    }
+    // if mmtk_object_is_managed_by_mmtk(internal_obj_addr.as_usize()) {
+    closure.visit_edge(JuliaVMEdge::Simple(simple_edge));
+    // } else {
+    //     unsafe {
+    //         let has_been_scanned = boot_image_object_has_been_scanned(internal_obj_addr);
+    //         if has_been_scanned == 0 {
+    //             boot_image_mark_object_as_scanned(internal_obj_addr);
+    //             closure.visit_edge(JuliaVMEdge::Simple(simple_edge));
+    //         }
+    //     }
+    // }
 }
 
-#[inline(always)]
-pub unsafe fn boot_image_object_has_been_scanned(obj: Address) -> u8 {
-    let obj_type_addr = mmtk_jl_typeof(obj);
-    let obj_type = obj_type_addr.to_ptr::<mmtk_jl_datatype_t>();
+// #[inline(always)]
+// pub unsafe fn boot_image_object_has_been_scanned(obj: Address) -> u8 {
+//     let obj_type_addr = mmtk_jl_typeof(obj);
+//     let obj_type = obj_type_addr.to_ptr::<mmtk_jl_datatype_t>();
 
-    if obj_type == jl_symbol_type {
-        return 1;
-    }
+//     if obj_type == jl_symbol_type {
+//         return 1;
+//     }
 
-    if BI_METADATA_START_ALIGNED_DOWN == 0 {
-        return 0;
-    }
+//     if BI_METADATA_START_ALIGNED_DOWN == 0 {
+//         return 0;
+//     }
 
-    if obj.as_usize() < BI_METADATA_START_ALIGNED_DOWN
-        || obj.as_usize() >= BI_METADATA_END_ALIGNED_UP
-    {
-        return 0;
-    }
+//     if obj.as_usize() < BI_METADATA_START_ALIGNED_DOWN
+//         || obj.as_usize() >= BI_METADATA_END_ALIGNED_UP
+//     {
+//         return 0;
+//     }
 
-    return check_metadata_scanned(obj);
-}
+//     return check_metadata_scanned(obj);
+// }
 
-#[inline(always)]
-pub unsafe fn boot_image_mark_object_as_scanned(obj: Address) {
-    if BI_METADATA_START_ALIGNED_DOWN == 0 {
-        return;
-    }
+// #[inline(always)]
+// pub unsafe fn boot_image_mark_object_as_scanned(obj: Address) {
+//     if BI_METADATA_START_ALIGNED_DOWN == 0 {
+//         return;
+//     }
 
-    if obj.as_usize() < BI_METADATA_START_ALIGNED_DOWN
-        || obj.as_usize() >= BI_METADATA_END_ALIGNED_UP
-    {
-        return;
-    }
+//     if obj.as_usize() < BI_METADATA_START_ALIGNED_DOWN
+//         || obj.as_usize() >= BI_METADATA_END_ALIGNED_UP
+//     {
+//         return;
+//     }
 
-    mark_metadata_scanned(obj);
-}
+//     mark_metadata_scanned(obj);
+// }
 
 #[inline(always)]
 pub fn process_offset_edge(
@@ -427,25 +425,25 @@ pub fn process_offset_edge(
     slot: Address,
     offset: usize,
 ) {
-    let internal_obj: ObjectReference = unsafe { slot.load() };
-    let internal_obj_addr = internal_obj.to_raw_address();
-    if internal_obj_addr.is_zero() {
-        return;
-    }
+    // let internal_obj: ObjectReference = unsafe { slot.load() };
+    // let internal_obj_addr = internal_obj.to_raw_address();
+    // if internal_obj_addr.is_zero() {
+    //     return;
+    // }
 
     let offset_edge = OffsetEdge::new_with_offset(slot, offset);
 
-    if object_is_managed_by_mmtk(internal_obj_addr.as_usize()) {
-        closure.visit_edge(JuliaVMEdge::Offset(offset_edge));
-    } else {
-        unsafe {
-            let has_been_scanned = boot_image_object_has_been_scanned(internal_obj_addr);
-            if has_been_scanned == 0 {
-                boot_image_mark_object_as_scanned(internal_obj_addr);
-                closure.visit_edge(JuliaVMEdge::Offset(offset_edge));
-            }
-        }
-    }
+    // if mmtk_object_is_managed_by_mmtk(internal_obj_addr.as_usize()) {
+    closure.visit_edge(JuliaVMEdge::Offset(offset_edge));
+    // } else {
+    //     unsafe {
+    //         let has_been_scanned = boot_image_object_has_been_scanned(internal_obj_addr);
+    //         if has_been_scanned == 0 {
+    //             boot_image_mark_object_as_scanned(internal_obj_addr);
+    //             closure.visit_edge(JuliaVMEdge::Offset(offset_edge));
+    //         }
+    //     }
+    // }
 }
 
 #[inline(always)]

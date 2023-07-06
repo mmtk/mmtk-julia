@@ -10,6 +10,8 @@ if [ $# -eq 0 ]
 fi
 # debug or release
 build_type=$1
+# plan to use
+plan=$2
 
 # helloworld.jl
 HELLO_WORLD_JL=$BINDING_PATH/.github/scripts/hello_world.jl
@@ -20,10 +22,11 @@ if [ "$build_type" == "release" ]; then
     build_args=$build_args" --release"
 fi
 
-cd $MMTK_JULIA_DIR
-cargo build --features immix $build_args
+cd $MMTK_JULIA_DIR/mmtk
+cargo build --features $plan $build_args
 
 cd $JULIA_PATH
+
 # Clean first
 make cleanall
 # Build

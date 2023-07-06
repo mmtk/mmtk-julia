@@ -4,34 +4,9 @@
 #include <stdbool.h>
 
 long JULIA_HEADER_SIZE = 0;
-long BI_METADATA_START_ALIGNED_DOWN = 0;
-long BI_METADATA_END_ALIGNED_UP = 0;
 
-void init_boot_image_metadata_info(long start_aligned_down, long end_aligned_up) {
-    BI_METADATA_START_ALIGNED_DOWN = start_aligned_down;
-    BI_METADATA_END_ALIGNED_UP = end_aligned_up;
-}
-
-void* get_mutator_ref(void* mutator) {
-    return mutator;
-}
-
-void* get_mutator_from_ref(void* mutator) {
-    return mutator;
-}
-
-int mutator_cursor = 0;
-
-void reset_mutator_count() {
-    mutator_cursor = 0;
-}
-
-int get_next_julia_mutator() {
-    return mutator_cursor++;
-}
-
-extern void start_spawned_worker_thread(void*, void*);
-extern void start_spawned_controller_thread(void*, void*);
+extern void mmtk_start_spawned_worker_thread(void*, void*);
+extern void mmtk_start_spawned_controller_thread(void*, void*);
 
 struct thread_args {
     void* tls;
@@ -47,7 +22,7 @@ void *fn_spawn_worker_thread(void* args) {
     struct thread_args *ta = (struct thread_args *)  args;
     void* tls = (*ta).tls;
     void* ctx = (*ta).ctx;
-    start_spawned_worker_thread(tls, ctx);
+    mmtk_start_spawned_worker_thread(tls, ctx);
     return NULL;
 }
 
@@ -55,7 +30,7 @@ void *fn_spawn_controller_thread(void* args) {
     struct thread_args *ta = (struct thread_args *)  args;
     void* tls = (*ta).tls;
     void* ctx = (*ta).ctx;
-    start_spawned_controller_thread(tls, ctx);
+    mmtk_start_spawned_controller_thread(tls, ctx);
     return NULL;
 }
 

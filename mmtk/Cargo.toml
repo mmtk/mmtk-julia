@@ -10,7 +10,7 @@ edition = "2018"
 [package.metadata.julia]
 # Our CI matches the following line and extract mmtk/julia. If this line is updated, please check ci yaml files and make sure it works.
 julia_repo = "https://github.com/mmtk/julia.git"
-julia_version = "c5be9d97a0e925de33bc6faf30de9f9c27840114"
+julia_version = "0d8bbd943af2642f04dc6d8c2a74543c4ec8e84f"
 
 [lib]
 crate-type = ["staticlib", "rlib", "dylib"]
@@ -23,22 +23,33 @@ built = "*"
 [dependencies]
 libc = "0.2"
 lazy_static = "1.1"
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "a272c2399df39177361788449b1f96d060a86080" }
+# Be very careful to commit any changes to the following mmtk dependency, as our CI scripts (including mmtk-core CI)
+# rely on matching these lines to modify them: e.g. comment out the git dependency and use the local path.
+# These changes are safe:
+# - change branch
+# - change repo name
+# But other changes including adding/removing whitespaces in commented lines may break the CI
+mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "f1a0bb7fbec97dd84e35a40e8be01cf5018f2f9e" }
+# Uncomment the following to build locally
+# mmtk = { path = "../repos/mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
-enum-map = "=2.1"
+enum-map = ">=2.1"
 atomic = "0.4.6"
 chrono = "*"
 
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 
 [features]
-default = []
+default = ["mmtk/malloc_counted_size", "mmtk/vm_space"]
+
+# Plans
 nogc = []
-semispace = []
-gencopy = []
-pageprotect = []
-malloc_counted_size = ["mmtk/malloc_counted_size"]
-immix = ["malloc_counted_size", "mmtk/immix_no_defrag", "mmtk/immix_smaller_block"]
-marksweep = ["malloc_counted_size", "scan_obj_c"]
+immix = ["non_moving_immix"]
+stickyimmix = ["non_moving_immix"]
+marksweep = []
+
+# TODO remove this when we properly support moving
+non_moving_immix = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
+
 # FIXME update and use rust object scanner as default for immix
 scan_obj_c = []

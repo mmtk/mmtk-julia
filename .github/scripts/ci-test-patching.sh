@@ -15,7 +15,7 @@ declare -a tests_to_skip=(
     # '@test.*$' "$JULIA_PATH/usr/share/julia/stdlib/v1.8/LibGit2/test/libgit2.jl"
 
     # This test checks GC logging
-    '@test occursin("GC: pause", read(open(tmppath), String))' "$JULIA_PATH/test/misc.jl"
+    '@test occursin("GC: pause", read(tmppath, String))' "$JULIA_PATH/test/misc.jl"
 )
 
 for (( i=0; i < ${#tests_to_skip[@]}; i+=2 )); do
