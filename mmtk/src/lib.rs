@@ -125,13 +125,16 @@ type ProcessEdgeFn =
 type ProcessOffsetEdgeFn =
     *const extern "C" fn(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, slot: Address, offset: usize);
 
+type TraceObjectImmediatelyFn =
+    *const extern "C" fn(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, object: ObjectReference) -> ObjectReference;
+
 #[repr(C)]
 pub struct Julia_Upcalls {
     pub scan_julia_obj: extern "C" fn(
         obj: Address,
         closure: &mut dyn EdgeVisitor<JuliaVMEdge>,
         process_edge: ProcessEdgeFn,
-        process_offset_edge: ProcessOffsetEdgeFn,
+        trace_object_immediately: TraceObjectImmediatelyFn,
     ),
     pub scan_julia_exc_obj: extern "C" fn(
         obj: Address,

@@ -545,9 +545,7 @@ pub extern "C" fn mmtk_object_reference_write_post(
     memory_manager::object_reference_write_post(
         mutator,
         src,
-        crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(
-            Address::ZERO,
-        )),
+        mmtk::vm::edge_shape::SimpleEdge::from_address(Address::ZERO),
         target,
     )
 }
@@ -561,9 +559,7 @@ pub extern "C" fn mmtk_object_reference_write_slow(
     use mmtk::MutatorContext;
     mutator.barrier().object_reference_write_slow(
         src,
-        crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(
-            Address::ZERO,
-        )),
+        mmtk::vm::edge_shape::SimpleEdge::from_address(Address::ZERO),
         target,
     );
 }

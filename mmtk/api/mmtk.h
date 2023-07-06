@@ -18,6 +18,7 @@ typedef void* MMTk_Mutator;
 typedef void* MMTk_TraceLocal;
 typedef void (*ProcessEdgeFn)(closure_pointer closure, void* slot);
 typedef void (*ProcessOffsetEdgeFn)(closure_pointer closure, void* slot, int offset);
+typedef void* (*TraceObjectImmediatelyFn)(closure_pointer closure, void* object);
 
 /**
  * Allocation
@@ -77,7 +78,7 @@ extern const void* MMTK_SIDE_LOG_BIT_BASE_ADDRESS;
 // * int is 4 bytes
 // * size_t is 8 bytes
 typedef struct {
-    void (* scan_julia_obj) (void* obj, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge);
+    void (* scan_julia_obj) (void* obj, closure_pointer closure, ProcessEdgeFn process_edge, TraceObjectImmediatelyFn trace_object_immediately);
     void (* scan_julia_exc_obj) (void* obj, closure_pointer closure, ProcessEdgeFn process_edge);
     void* (* get_stackbase) (int16_t tid);
     void (* calculate_roots) (void* tls);

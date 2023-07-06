@@ -1,8 +1,10 @@
 use crate::edges::JuliaVMEdge;
 #[cfg(feature = "scan_obj_c")]
 use crate::julia_scanning::process_edge;
+// #[cfg(feature = "scan_obj_c")]
+// use crate::julia_scanning::process_offset_edge;
 #[cfg(feature = "scan_obj_c")]
-use crate::julia_scanning::process_offset_edge;
+use crate::julia_scanning::trace_object_immediately;
 use crate::FINALIZER_ROOTS;
 use crate::{ROOT_EDGES, ROOT_NODES, SINGLETON, UPCALLS};
 use mmtk::memory_manager;
@@ -69,7 +71,7 @@ impl Scanning<JuliaVM> for VMScanning {
             .lock()
             .unwrap()
             .drain()
-            .map(|e| JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(e)))
+            .map(|e| mmtk::vm::edge_shape::SimpleEdge::from_address(e))
             .collect();
         info!("{} thread root edges", roots.len());
         factory.create_process_edge_roots_work(roots);
@@ -106,7 +108,7 @@ pub fn process_object(object: ObjectReference, closure: &mut dyn EdgeVisitor<Jul
     #[cfg(feature = "scan_obj_c")]
     {
         unsafe {
-            ((*UPCALLS).scan_julia_obj)(addr, closure, process_edge as _, process_offset_edge as _)
+            ((*UPCALLS).scan_julia_obj)(addr, closure, process_edge as _, trace_object_immediately as _)
         };
     }
 
