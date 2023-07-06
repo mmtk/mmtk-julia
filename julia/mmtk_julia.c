@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include "gc.h"
 
+#include "mmtk_julia_types.h"
+
 extern int64_t perm_scanned_bytes;
 extern void run_finalizer(jl_task_t *ct, void *o, void *ff);
 extern int gc_n_threads;
@@ -946,8 +948,62 @@ void update_gc_time(uint64_t inc) {
     gc_num.total_time += inc;
 }
 
+#define assert_size(ty_a, ty_b) \
+    if(sizeof(ty_a) != sizeof(ty_b)) {\
+        printf("%s size = %ld, %s size = %ld. Need to update our type definition.\n", #ty_a, sizeof(ty_a), #ty_b, sizeof(ty_b));\
+        exit(1); \
+    }
+
+#define PRINT_STRUCT_SIZE false
+#define print_sizeof(type) (PRINT_STRUCT_SIZE ? (printf("C " #type " = %zu bytes\n", sizeof(type)), sizeof(type)) : sizeof(type))
+
 uintptr_t get_abi_structs_checksum_c(void) {
-    return sizeof(MMTkMutatorContext);
+    assert_size(struct mmtk__jl_taggedvalue_bits, struct _jl_taggedvalue_bits);
+    assert_size(mmtk_jl_taggedvalue_t, jl_taggedvalue_t);
+    assert_size(mmtk_jl_array_flags_t, jl_array_flags_t);
+    assert_size(mmtk_jl_datatype_layout_t, jl_datatype_layout_t);
+    assert_size(mmtk_jl_typename_t, jl_typename_t);
+    assert_size(mmtk_jl_svec_t, jl_svec_t);
+    assert_size(mmtk_jl_datatype_t, jl_datatype_t);
+    assert_size(mmtk_jl_array_t, jl_array_t);
+    assert_size(mmtk_jl_sym_t, jl_sym_t);
+    assert_size(mmtk_jl_binding_t, jl_binding_t);
+    assert_size(mmtk_htable_t, htable_t);
+    assert_size(mmtk_arraylist_t, arraylist_t);
+    assert_size(mmtk_jl_uuid_t, jl_uuid_t);
+    assert_size(mmtk_jl_mutex_t, jl_mutex_t);
+    assert_size(mmtk_jl_module_t, jl_module_t);
+    assert_size(mmtk_jl_excstack_t, jl_excstack_t);
+    assert_size(mmtk_jl_bt_element_t, jl_bt_element_t);
+    assert_size(mmtk_jl_stack_context_t, jl_stack_context_t);
+    assert_size(mmtk_jl_ucontext_t, jl_ucontext_t);
+    assert_size(struct mmtk__jl_gcframe_t, struct _jl_gcframe_t);
+    assert_size(mmtk_jl_task_t, jl_task_t);
+    assert_size(mmtk_jl_weakref_t, jl_weakref_t);
+
+    return print_sizeof(MMTkMutatorContext)
+        ^ print_sizeof(struct mmtk__jl_taggedvalue_bits)
+        ^ print_sizeof(mmtk_jl_taggedvalue_t)
+        ^ print_sizeof(mmtk_jl_array_flags_t)
+        ^ print_sizeof(mmtk_jl_datatype_layout_t)
+        ^ print_sizeof(mmtk_jl_typename_t)
+        ^ print_sizeof(mmtk_jl_svec_t)
+        ^ print_sizeof(mmtk_jl_datatype_t)
+        ^ print_sizeof(mmtk_jl_array_t)
+        ^ print_sizeof(mmtk_jl_sym_t)
+        ^ print_sizeof(mmtk_jl_binding_t)
+        ^ print_sizeof(mmtk_htable_t)
+        ^ print_sizeof(mmtk_arraylist_t)
+        ^ print_sizeof(mmtk_jl_uuid_t)
+        ^ print_sizeof(mmtk_jl_mutex_t)
+        ^ print_sizeof(mmtk_jl_module_t)
+        ^ print_sizeof(mmtk_jl_excstack_t)
+        ^ print_sizeof(mmtk_jl_bt_element_t)
+        ^ print_sizeof(mmtk_jl_stack_context_t)
+        ^ print_sizeof(mmtk_jl_ucontext_t)
+        ^ print_sizeof(struct mmtk__jl_gcframe_t)
+        ^ print_sizeof(mmtk_jl_task_t)
+        ^ print_sizeof(mmtk_jl_weakref_t);
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {

@@ -161,36 +161,51 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
         }
     } else if obj_type == jl_module_type {
         let m = addr.to_ptr::<mmtk_jl_module_t>();
-        let bsize = (*m).bindings.size;
-        let begin =
-            Address::from_mut_ptr((*m).bindings.table) + std::mem::size_of::<Address>() as usize;
-        let end = Address::from_mut_ptr((*m).bindings.table)
-            + bsize as usize * std::mem::size_of::<Address>();
+        let bindings = (*m).bindings;
+        let table = (bindings as *mut u8).add(std::mem::size_of::<mmtk_jl_svec_t>()) as *mut *mut mmtk_jl_binding_t;
+        let bsize = (*bindings).length;
+        let mut begin = table.add(1);
+        let end = table.add(bsize);
 
-        for addr_usize in
-            (begin.as_usize()..end.as_usize()).step_by(2 * std::mem::size_of::<Address>())
-        {
-            let b = Address::from_usize(Address::from_usize(addr_usize).load::<usize>())
-                .to_mut_ptr::<mmtk_jl_binding_t>();
-            let b_addr = Address::from_mut_ptr(b);
-
-            if b_addr.as_usize() == HT_NOTFOUND {
-                continue;
+        while begin < end {
+            let b: *mut mmtk_jl_binding_t = *begin;
+            if b != crate::reference_glue::jl_nothing as *mut mmtk_jl_binding_t {
+                process_edge(closure, Address::from_mut_ptr(b));
             }
 
-            if !b_addr.is_zero() && mmtk_object_is_managed_by_mmtk(b_addr.as_usize()) {
-                process_edge(closure, Address::from_usize(addr_usize));
-            }
-
-            let value = ::std::ptr::addr_of!((*b).value);
-            let globalref = ::std::ptr::addr_of!((*b).globalref);
-
-            process_edge(closure, Address::from_usize(value as usize));
-            process_edge(closure, Address::from_usize(globalref as usize));
+            begin = begin.add(1);
         }
+
+        // for addr_usize in
+        //     (begin.as_usize()..end.as_usize()).step_by(2 * std::mem::size_of::<Address>())
+        // {
+        //     let b = Address::from_usize(Address::from_usize(addr_usize).load::<usize>())
+        //         .to_mut_ptr::<mmtk_jl_binding_t>();
+        //     let b_addr = Address::from_mut_ptr(b);
+
+        //     if b_addr.as_usize() == HT_NOTFOUND {
+        //         continue;
+        //     }
+
+        //     if !b_addr.is_zero() && mmtk_object_is_managed_by_mmtk(b_addr.as_usize()) {
+        //         process_edge(closure, Address::from_usize(addr_usize));
+        //     }
+
+        //     let value = ::std::ptr::addr_of!((*b).value);
+        //     let globalref = ::std::ptr::addr_of!((*b).globalref);
+
+        //     process_edge(closure, Address::from_usize(value as usize));
+        //     process_edge(closure, Address::from_usize(globalref as usize));
+        // }
 
         let parent_edge = ::std::ptr::addr_of!((*m).parent);
         process_edge(closure, Address::from_usize(parent_edge as usize));
+
+        let bindingkeyset_edge = ::std::ptr::addr_of!((*m).bindingkeyset);
+        process_edge(closure, Address::from_usize(bindingkeyset_edge as usize));
+
+        let bindings_edge = ::std::ptr::addr_of!((*m).bindings);
+        process_edge(closure, Address::from_usize(bindings_edge as usize));
 
         let nusings = (*m).usings.len;
         if nusings != 0 {
