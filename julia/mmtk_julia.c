@@ -128,33 +128,6 @@ static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
     close_mutator_iterator(iter);
 }
 
-extern void mark_metadata_scanned(jl_value_t* obj);
-extern int8_t check_metadata_scanned(jl_value_t* obj);
-
-int8_t object_has_been_scanned(void* obj)
-{
-    uintptr_t tag = (uintptr_t)jl_typeof(obj);
-    jl_datatype_t *vt = (jl_datatype_t*)tag;
-
-    if (jl_object_in_image((jl_value_t *)obj)) {
-        jl_taggedvalue_t *o = jl_astaggedvalue(obj);
-        return o->bits.gc == GC_MARKED;
-    }
-
-    if (vt == jl_symbol_type) {
-        return 1;
-    };
-
-    return 0;
-}
-
-void mark_object_as_scanned(void* obj) {
-    if (jl_object_in_image((jl_value_t *)obj)) {
-        jl_taggedvalue_t *o = jl_astaggedvalue(obj);
-        o->bits.gc = GC_MARKED;
-    }
-}
-
 void mmtk_wait_in_a_safepoint(void) {
     jl_ptls_t ptls = jl_current_task->ptls;
     jl_gc_safepoint_(ptls);
@@ -967,8 +940,6 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .set_gc_old_state = set_gc_old_state,
     .mmtk_jl_run_finalizers = mmtk_jl_run_finalizers,
     .jl_throw_out_of_memory_error = jl_throw_out_of_memory_error,
-    .mark_object_as_scanned = mark_object_as_scanned,
-    .object_has_been_scanned = object_has_been_scanned,
     .sweep_malloced_array = mmtk_sweep_malloced_arrays,
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
