@@ -38,15 +38,13 @@ impl RootLabel {
 const PRINT_STRUCT_SIZE: bool = false;
 
 macro_rules! print_sizeof {
-    ($t: ty) => {
-        {
-            let sz = std::mem::size_of::<$t>();
-            if PRINT_STRUCT_SIZE {
-                println!("Rust {} = {} bytes", stringify!($t), sz);
-            }
-            sz
+    ($t: ty) => {{
+        let sz = std::mem::size_of::<$t>();
+        if PRINT_STRUCT_SIZE {
+            println!("Rust {} = {} bytes", stringify!($t), sz);
         }
-    };
+        sz
+    }};
 }
 
 pub(crate) fn get_abi_structs_checksum_rust() -> usize {

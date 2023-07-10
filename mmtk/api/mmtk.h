@@ -106,7 +106,7 @@ typedef struct {
 /**
  * Misc
  */
-extern void mmtk_gc_init(uintptr_t min_heap_size, uintptr_t max_heap_size, uintptr_t n_gcthreads, Julia_Upcalls *calls, uintptr_t header_size);
+extern void mmtk_gc_init(uintptr_t min_heap_size, uintptr_t max_heap_size, uintptr_t n_gcthreads, Julia_Upcalls *calls, uintptr_t header_size, uintptr_t tag);
 extern bool mmtk_will_never_move(void* object);
 extern bool mmtk_process(char* name, char* value);
 extern void mmtk_scan_region(void);

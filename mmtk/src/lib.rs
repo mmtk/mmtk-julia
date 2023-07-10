@@ -71,6 +71,7 @@ lazy_static! {
 #[link(kind = "static", name = "runtime_gc_c")]
 extern "C" {
     pub static JULIA_HEADER_SIZE: usize;
+    pub static JULIA_BUFF_TAG: usize;
 }
 
 #[no_mangle]
@@ -112,7 +113,7 @@ lazy_static! {
 #[allow(improper_ctypes)]
 extern "C" {
     pub fn spawn_collector_thread(tls: VMThread, ctx: *mut GCWorker<JuliaVM>, kind: i32);
-    pub fn set_julia_obj_header_size(size: usize);
+    pub fn set_julia_obj_header_size_and_buffer_tag(size: usize, tag: usize);
     pub fn reset_mutator_count();
     pub fn get_next_julia_mutator() -> usize;
     pub fn get_mutator_ref(mutator: *mut Mutator<JuliaVM>) -> ObjectReference;

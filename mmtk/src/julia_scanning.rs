@@ -1,7 +1,7 @@
-use crate::api::*;
 use crate::edges::JuliaVMEdge;
 use crate::edges::OffsetEdge;
 use crate::julia_types::*;
+use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
 use mmtk::util::Address;
 use mmtk::vm::edge_shape::SimpleEdge;
@@ -9,8 +9,7 @@ use mmtk::vm::EdgeVisitor;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-const HT_NOTFOUND: usize = 1;
-const JL_BUFF_TAG: usize = 0x4eadc000; // from vm/julia/julia_internal
+const JL_MAX_TAGS: usize = 64; // from vm/julia/src/jl_exports.h
 
 extern "C" {
     static jl_simplevector_type: *const mmtk_jl_datatype_t;
@@ -22,8 +21,12 @@ extern "C" {
     static jl_symbol_type: *const mmtk_jl_datatype_t;
 }
 
+extern "C" {
+    pub static mut small_typeof: [*mut mmtk_jl_datatype_t; 128usize];
+}
+
 #[inline(always)]
-pub unsafe fn mmtk_jl_typeof(addr: Address) -> Address {
+pub unsafe fn mmtk_jl_typetagof(addr: Address) -> Address {
     let as_tagged_value =
         addr.as_usize() - std::mem::size_of::<crate::julia_scanning::mmtk_jl_taggedvalue_t>();
     let t_header = Address::from_usize(as_tagged_value).load::<Address>();
@@ -33,16 +36,37 @@ pub unsafe fn mmtk_jl_typeof(addr: Address) -> Address {
 }
 
 #[inline(always)]
+pub unsafe fn mmtk_jl_typeof(addr: Address) -> Address {
+    mmtk_jl_to_typeof(mmtk_jl_typetagof(addr))
+}
+
+#[inline(always)]
+pub unsafe fn mmtk_jl_to_typeof(t: Address) -> Address {
+    let t_raw = t.as_usize();
+    if t_raw < (JL_MAX_TAGS << 4) {
+        let ty = small_typeof[t_raw / std::mem::size_of::<Address>()];
+        return Address::from_mut_ptr(ty);
+    }
+    return t;
+}
+
+const PRINT_OBJ_TYPE: bool = false;
+
+#[inline(always)]
 pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<JuliaVMEdge>) {
     // get Julia object type
     let obj_type_addr = mmtk_jl_typeof(addr);
     let obj_type = obj_type_addr.to_ptr::<mmtk_jl_datatype_t>();
 
-    if obj_type_addr.as_usize() == JL_BUFF_TAG || obj_type == jl_symbol_type {
+    if obj_type_addr.as_usize() == JULIA_BUFF_TAG || obj_type == jl_symbol_type {
         return;
     }
 
     if obj_type == jl_simplevector_type {
+        if PRINT_OBJ_TYPE {
+            println!("scan_julia_obj {}: simple vector\n", addr);
+        }
+
         let length = (*addr.to_ptr::<mmtk_jl_svec_t>()).length as usize;
 
         let start_addr = addr + std::mem::size_of::<crate::julia_scanning::mmtk_jl_svec_t>();
@@ -54,6 +78,10 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
             process_edge(closure, addr);
         }
     } else if (*obj_type).name == jl_array_typename {
+        if PRINT_OBJ_TYPE {
+            println!("scan_julia_obj {}: array\n", addr);
+        }
+
         let flags = &(*addr.to_ptr::<mmtk_jl_array_t>()).flags;
         let data = (*addr.to_ptr::<mmtk_jl_array_t>()).data;
         let length = (*addr.to_ptr::<mmtk_jl_array_t>()).length;
@@ -160,9 +188,14 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
             }
         }
     } else if obj_type == jl_module_type {
+        if PRINT_OBJ_TYPE {
+            println!("scan_julia_obj {}: module\n", addr);
+        }
+
         let m = addr.to_ptr::<mmtk_jl_module_t>();
         let bindings = (*m).bindings;
-        let table = (bindings as *mut u8).add(std::mem::size_of::<mmtk_jl_svec_t>()) as *mut *mut mmtk_jl_binding_t;
+        let table = (bindings as *mut u8).add(std::mem::size_of::<mmtk_jl_svec_t>())
+            as *mut *mut mmtk_jl_binding_t;
         let bsize = (*bindings).length;
         let mut begin = table.add(1);
         let end = table.add(bsize);
@@ -170,33 +203,15 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
         while begin < end {
             let b: *mut mmtk_jl_binding_t = *begin;
             if b != crate::reference_glue::jl_nothing as *mut mmtk_jl_binding_t {
+                if PRINT_OBJ_TYPE {
+                    println!(" - scan table: {}\n", addr);
+                }
+
                 process_edge(closure, Address::from_mut_ptr(b));
             }
 
             begin = begin.add(1);
         }
-
-        // for addr_usize in
-        //     (begin.as_usize()..end.as_usize()).step_by(2 * std::mem::size_of::<Address>())
-        // {
-        //     let b = Address::from_usize(Address::from_usize(addr_usize).load::<usize>())
-        //         .to_mut_ptr::<mmtk_jl_binding_t>();
-        //     let b_addr = Address::from_mut_ptr(b);
-
-        //     if b_addr.as_usize() == HT_NOTFOUND {
-        //         continue;
-        //     }
-
-        //     if !b_addr.is_zero() && mmtk_object_is_managed_by_mmtk(b_addr.as_usize()) {
-        //         process_edge(closure, Address::from_usize(addr_usize));
-        //     }
-
-        //     let value = ::std::ptr::addr_of!((*b).value);
-        //     let globalref = ::std::ptr::addr_of!((*b).globalref);
-
-        //     process_edge(closure, Address::from_usize(value as usize));
-        //     process_edge(closure, Address::from_usize(globalref as usize));
-        // }
 
         let parent_edge = ::std::ptr::addr_of!((*m).parent);
         process_edge(closure, Address::from_usize(parent_edge as usize));
@@ -220,19 +235,16 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
             }
         }
     } else if obj_type == jl_task_type {
-        unsafe {
-            ((*UPCALLS).scan_julia_obj)(addr, closure, process_edge as _, process_offset_edge as _)
-        };
+        if PRINT_OBJ_TYPE {
+            println!("scan_julia_obj {}: task\n", addr);
+        }
 
         let ta = addr.to_ptr::<mmtk_jl_task_t>();
         let stkbuf = (*ta).stkbuf;
         let stkbuf_addr = Address::from_mut_ptr(stkbuf);
         let copy_stack = (*ta).copy_stack();
         // FIXME: the code below is executed COPY_STACKS has been defined in the C Julia implementation - it is on by default
-        if !stkbuf_addr.is_zero()
-            && copy_stack != 0
-            && mmtk_object_is_managed_by_mmtk(stkbuf_addr.as_usize())
-        {
+        if !stkbuf_addr.is_zero() && copy_stack != 0 {
             let stkbuf_edge = Address::from_ptr(::std::ptr::addr_of!((*ta).stkbuf));
             process_edge(closure, stkbuf_edge);
         }
@@ -305,6 +317,10 @@ pub unsafe fn scan_julia_object(addr: Address, closure: &mut dyn EdgeVisitor<Jul
     } else if obj_type == jl_string_type || obj_type == jl_weakref_type {
         return;
     } else {
+        if PRINT_OBJ_TYPE {
+            println!("scan_julia_obj {}: datatype\n", addr);
+        }
+
         let layout = (*obj_type).layout;
         let npointers = (*layout).npointers;
         if npointers == 0 {

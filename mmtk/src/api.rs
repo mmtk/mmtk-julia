@@ -10,7 +10,7 @@ use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
 use crate::UPCALLS;
 use crate::{
-    set_julia_obj_header_size, BUILDER, DISABLED_GC, FINALIZERS_RUNNING, MUTATORS,
+    set_julia_obj_header_size_and_buffer_tag, BUILDER, DISABLED_GC, FINALIZERS_RUNNING, MUTATORS,
     USER_TRIGGERED_GC,
 };
 use crate::{ROOT_EDGES, ROOT_NODES};
@@ -34,10 +34,11 @@ pub extern "C" fn mmtk_gc_init(
     n_gcthreads: usize,
     calls: *const Julia_Upcalls,
     header_size: usize,
+    buffer_tag: usize,
 ) {
     unsafe {
         UPCALLS = calls;
-        set_julia_obj_header_size(header_size);
+        set_julia_obj_header_size_and_buffer_tag(header_size, buffer_tag);
     };
 
     // Assert to make sure our ABI is correct
