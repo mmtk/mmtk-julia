@@ -42,7 +42,7 @@ These environment variables are set during julia initialization time, so they ca
 
 (1) Clone this repo: https://github.com/mmtk/mmtk-julia (run `git clone https://github.com/mmtk/mmtk-julia`)
 
-(2) Enter the mmtk-julia directory and clone https://github.com/mmtk/julia (run `git clone https://github.com/mmtk/julia.git`)
+(2) Clone this repo: https://github.com/mmtk/julia (run `git clone https://github.com/mmtk/julia.git`)
 
 (3) In `mmtk-julia/mmtk`, run `cargo build --features immix --release`
 
@@ -50,7 +50,7 @@ These environment variables are set during julia initialization time, so they ca
 
 (5) In `julia`, run `MMTK_BUILD=release MMTK_JULIA_DIR=../mmtk-julia make`.
 
-If you would like to have a debug build, remove `--release` from Step (4) and use `MMTK_BUILD=debug` in Step (5)
+If you would like to have a debug build, remove `--release` from Step (3) and use `MMTK_BUILD=debug` in Step (5)
 
 ### Further information
 
