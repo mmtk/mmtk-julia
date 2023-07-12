@@ -218,15 +218,6 @@ void wait_for_the_world(void)
     }
 }
 
-size_t get_lo_size(void* obj_raw) 
-{
-    jl_value_t* obj = (jl_value_t*) obj_raw;
-    jl_taggedvalue_t *v = jl_astaggedvalue(obj);
-    // bigval_header: but we cannot access the function here. So use container_of instead.
-    bigval_t* hdr = container_of(v, bigval_t, header);
-    return hdr->sz;
-}
-
 void set_jl_last_err(int e) 
 {
     errno = e;
@@ -235,22 +226,6 @@ void set_jl_last_err(int e)
 int get_jl_last_err(void) 
 {
     return errno;
-}
-
-void* get_obj_start_ref(void* obj_raw) 
-{
-    jl_value_t* obj = (jl_value_t*) obj_raw;
-    uintptr_t tag = (uintptr_t)jl_typeof(obj);
-    jl_datatype_t *vt = (jl_datatype_t*)tag;
-    void* obj_start_ref; 
-
-    if ((uintptr_t)vt == jl_buff_tag) {
-        obj_start_ref = (void*)((size_t)obj - 2*sizeof(jl_taggedvalue_t));
-    } else {
-        obj_start_ref = (void*)((size_t)obj - sizeof(jl_taggedvalue_t));
-    }
-
-    return obj_start_ref;
 }
 
 size_t get_so_size(void* obj_raw) 
@@ -268,12 +243,18 @@ size_t get_so_size(void* obj_raw)
             int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
             if (mmtk_object_is_managed_by_mmtk(a->data)) {
                 size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
+                // printf("pre_data_bytes from c = %d\n", pre_data_bytes);
+                // fflush(stdout);
                 if (pre_data_bytes > 0) { // a->data is allocated after a
                     tsz = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
                     tsz += jl_array_nbytes(a);
+                    // printf("tsz = %d\n", tsz);
+                    // fflush(stdout);
                 }
                 if (tsz + sizeof(jl_taggedvalue_t) > 2032) { // if it's too large to be inlined (a->data and a are disjoint objects)
                     tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t); // simply keep the info before data
+                    // printf("tsz + sizeof(jl_taggedvalue_t) > 2032 --- tsz = %d\n", tsz);
+                    // fflush(stdout);
                 }
             }
             if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
@@ -1014,9 +995,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .run_finalizer_function = run_finalizer_function,
     .get_jl_last_err = get_jl_last_err,
     .set_jl_last_err = set_jl_last_err,
-    .get_lo_size = get_lo_size,
     .get_so_size = get_so_size,
-    .get_obj_start_ref = get_obj_start_ref,
     .wait_for_the_world = wait_for_the_world,
     .set_gc_initial_state = set_gc_initial_state,
     .set_gc_final_state = set_gc_final_state,

@@ -2766,6 +2766,547 @@ fn bindgen_test_layout_mmtk_jl_weakref_t() {
     );
 }
 #[repr(C)]
+#[derive(Copy, Clone)]
+pub union mmtk___jl_purity_overrides_t {
+    pub overrides: mmtk___jl_purity_overrides_t__bindgen_ty_1,
+    pub bits: u8,
+}
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct mmtk___jl_purity_overrides_t__bindgen_ty_1 {
+    pub _bitfield_align_1: [u8; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 1usize]>,
+}
+#[test]
+fn bindgen_test_layout_mmtk___jl_purity_overrides_t__bindgen_ty_1() {
+    assert_eq!(
+        ::std::mem::size_of::<mmtk___jl_purity_overrides_t__bindgen_ty_1>(),
+        1usize,
+        concat!(
+            "Size of: ",
+            stringify!(mmtk___jl_purity_overrides_t__bindgen_ty_1)
+        )
+    );
+    assert_eq!(
+        ::std::mem::align_of::<mmtk___jl_purity_overrides_t__bindgen_ty_1>(),
+        1usize,
+        concat!(
+            "Alignment of ",
+            stringify!(mmtk___jl_purity_overrides_t__bindgen_ty_1)
+        )
+    );
+}
+impl mmtk___jl_purity_overrides_t__bindgen_ty_1 {
+    #[inline]
+    pub fn ipo_consistent(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 1u8) as u8) }
+    }
+    #[inline]
+    pub fn set_ipo_consistent(&mut self, val: u8) {
+        unsafe {
+            let val: u8 = ::std::mem::transmute(val);
+            self._bitfield_1.set(0usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn ipo_effect_free(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(1usize, 1u8) as u8) }
+    }
+    #[inline]
+    pub fn set_ipo_effect_free(&mut self, val: u8) {
+        unsafe {
+            let val: u8 = ::std::mem::transmute(val);
+            self._bitfield_1.set(1usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn ipo_nothrow(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(2usize, 1u8) as u8) }
+    }
+    #[inline]
+    pub fn set_ipo_nothrow(&mut self, val: u8) {
+        unsafe {
+            let val: u8 = ::std::mem::transmute(val);
+            self._bitfield_1.set(2usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn ipo_terminates_globally(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(3usize, 1u8) as u8) }
+    }
+    #[inline]
+    pub fn set_ipo_terminates_globally(&mut self, val: u8) {
+        unsafe {
+            let val: u8 = ::std::mem::transmute(val);
+            self._bitfield_1.set(3usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn ipo_terminates_locally(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(4usize, 1u8) as u8) }
+    }
+    #[inline]
+    pub fn set_ipo_terminates_locally(&mut self, val: u8) {
+        unsafe {
+            let val: u8 = ::std::mem::transmute(val);
+            self._bitfield_1.set(4usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn ipo_notaskstate(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(5usize, 1u8) as u8) }
+    }
+    #[inline]
+    pub fn set_ipo_notaskstate(&mut self, val: u8) {
+        unsafe {
+            let val: u8 = ::std::mem::transmute(val);
+            self._bitfield_1.set(5usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn ipo_inaccessiblememonly(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(6usize, 1u8) as u8) }
+    }
+    #[inline]
+    pub fn set_ipo_inaccessiblememonly(&mut self, val: u8) {
+        unsafe {
+            let val: u8 = ::std::mem::transmute(val);
+            self._bitfield_1.set(6usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn new_bitfield_1(
+        ipo_consistent: u8,
+        ipo_effect_free: u8,
+        ipo_nothrow: u8,
+        ipo_terminates_globally: u8,
+        ipo_terminates_locally: u8,
+        ipo_notaskstate: u8,
+        ipo_inaccessiblememonly: u8,
+    ) -> __BindgenBitfieldUnit<[u8; 1usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 1usize]> = Default::default();
+        __bindgen_bitfield_unit.set(0usize, 1u8, {
+            let ipo_consistent: u8 = unsafe { ::std::mem::transmute(ipo_consistent) };
+            ipo_consistent as u64
+        });
+        __bindgen_bitfield_unit.set(1usize, 1u8, {
+            let ipo_effect_free: u8 = unsafe { ::std::mem::transmute(ipo_effect_free) };
+            ipo_effect_free as u64
+        });
+        __bindgen_bitfield_unit.set(2usize, 1u8, {
+            let ipo_nothrow: u8 = unsafe { ::std::mem::transmute(ipo_nothrow) };
+            ipo_nothrow as u64
+        });
+        __bindgen_bitfield_unit.set(3usize, 1u8, {
+            let ipo_terminates_globally: u8 =
+                unsafe { ::std::mem::transmute(ipo_terminates_globally) };
+            ipo_terminates_globally as u64
+        });
+        __bindgen_bitfield_unit.set(4usize, 1u8, {
+            let ipo_terminates_locally: u8 =
+                unsafe { ::std::mem::transmute(ipo_terminates_locally) };
+            ipo_terminates_locally as u64
+        });
+        __bindgen_bitfield_unit.set(5usize, 1u8, {
+            let ipo_notaskstate: u8 = unsafe { ::std::mem::transmute(ipo_notaskstate) };
+            ipo_notaskstate as u64
+        });
+        __bindgen_bitfield_unit.set(6usize, 1u8, {
+            let ipo_inaccessiblememonly: u8 =
+                unsafe { ::std::mem::transmute(ipo_inaccessiblememonly) };
+            ipo_inaccessiblememonly as u64
+        });
+        __bindgen_bitfield_unit
+    }
+}
+#[test]
+fn bindgen_test_layout_mmtk___jl_purity_overrides_t() {
+    const UNINIT: ::std::mem::MaybeUninit<mmtk___jl_purity_overrides_t> =
+        ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<mmtk___jl_purity_overrides_t>(),
+        1usize,
+        concat!("Size of: ", stringify!(mmtk___jl_purity_overrides_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<mmtk___jl_purity_overrides_t>(),
+        1usize,
+        concat!("Alignment of ", stringify!(mmtk___jl_purity_overrides_t))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).overrides) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk___jl_purity_overrides_t),
+            "::",
+            stringify!(overrides)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).bits) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk___jl_purity_overrides_t),
+            "::",
+            stringify!(bits)
+        )
+    );
+}
+pub type mmtk__jl_purity_overrides_t = mmtk___jl_purity_overrides_t;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct mmtk__jl_method_t {
+    pub name: *mut ::std::os::raw::c_void,
+    pub module: *mut mmtk__jl_module_t,
+    pub file: *mut ::std::os::raw::c_void,
+    pub line: i32,
+    pub primary_world: usize,
+    pub deleted_world: usize,
+    pub sig: *mut ::std::os::raw::c_void,
+    pub specializations: u64,
+    pub speckeyset: u64,
+    pub slot_syms: *mut ::std::os::raw::c_void,
+    pub external_mt: *mut ::std::os::raw::c_void,
+    pub source: *mut ::std::os::raw::c_void,
+    pub unspecialized: u64,
+    pub generator: *mut ::std::os::raw::c_void,
+    pub roots: *mut ::std::os::raw::c_void,
+    pub root_blocks: *mut ::std::os::raw::c_void,
+    pub nroots_sysimg: i32,
+    pub ccallable: *mut ::std::os::raw::c_void,
+    pub invokes: u64,
+    pub recursion_relation: *mut ::std::os::raw::c_void,
+    pub nargs: u32,
+    pub called: u32,
+    pub nospecialize: u32,
+    pub nkw: u32,
+    pub isva: u8,
+    pub is_for_opaque_closure: u8,
+    pub constprop: u8,
+    pub max_varargs: u8,
+    pub purity: mmtk__jl_purity_overrides_t,
+    pub writelock: mmtk_jl_mutex_t,
+}
+#[test]
+fn bindgen_test_layout_mmtk__jl_method_t() {
+    const UNINIT: ::std::mem::MaybeUninit<mmtk__jl_method_t> = ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<mmtk__jl_method_t>(),
+        200usize,
+        concat!("Size of: ", stringify!(mmtk__jl_method_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<mmtk__jl_method_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(mmtk__jl_method_t))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).name) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(name)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).module) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(module)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).file) as usize - ptr as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(file)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).line) as usize - ptr as usize },
+        24usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(line)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).primary_world) as usize - ptr as usize },
+        32usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(primary_world)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).deleted_world) as usize - ptr as usize },
+        40usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(deleted_world)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).sig) as usize - ptr as usize },
+        48usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(sig)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).specializations) as usize - ptr as usize },
+        56usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(specializations)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).speckeyset) as usize - ptr as usize },
+        64usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(speckeyset)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).slot_syms) as usize - ptr as usize },
+        72usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(slot_syms)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).external_mt) as usize - ptr as usize },
+        80usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(external_mt)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).source) as usize - ptr as usize },
+        88usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(source)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).unspecialized) as usize - ptr as usize },
+        96usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(unspecialized)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).generator) as usize - ptr as usize },
+        104usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(generator)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).roots) as usize - ptr as usize },
+        112usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(roots)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).root_blocks) as usize - ptr as usize },
+        120usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(root_blocks)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).nroots_sysimg) as usize - ptr as usize },
+        128usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(nroots_sysimg)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).ccallable) as usize - ptr as usize },
+        136usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(ccallable)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).invokes) as usize - ptr as usize },
+        144usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(invokes)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).recursion_relation) as usize - ptr as usize },
+        152usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(recursion_relation)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).nargs) as usize - ptr as usize },
+        160usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(nargs)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).called) as usize - ptr as usize },
+        164usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(called)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).nospecialize) as usize - ptr as usize },
+        168usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(nospecialize)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).nkw) as usize - ptr as usize },
+        172usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(nkw)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).isva) as usize - ptr as usize },
+        176usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(isva)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).is_for_opaque_closure) as usize - ptr as usize },
+        177usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(is_for_opaque_closure)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).constprop) as usize - ptr as usize },
+        178usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(constprop)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).max_varargs) as usize - ptr as usize },
+        179usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(max_varargs)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).purity) as usize - ptr as usize },
+        180usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(purity)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).writelock) as usize - ptr as usize },
+        184usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_method_t),
+            "::",
+            stringify!(writelock)
+        )
+    );
+}
+pub type mmtk_jl_method_t = mmtk__jl_method_t;
+#[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct mmtk__jl_binding_t {
     pub _address: u8,

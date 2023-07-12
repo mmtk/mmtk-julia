@@ -337,3 +337,83 @@ typedef struct mmtk__jl_task_t {
 typedef struct {
     mmtk_jl_value_t *value;
 } mmtk_jl_weakref_t;
+
+// the following mirrors `struct EffectsOverride` in `base/compiler/effects.jl`
+typedef union mmtk___jl_purity_overrides_t {
+    struct {
+        uint8_t ipo_consistent          : 1;
+        uint8_t ipo_effect_free         : 1;
+        uint8_t ipo_nothrow             : 1;
+        uint8_t ipo_terminates_globally : 1;
+        // Weaker form of `terminates` that asserts
+        // that any control flow syntactically in the method
+        // is guaranteed to terminate, but does not make
+        // assertions about any called functions.
+        uint8_t ipo_terminates_locally  : 1;
+        uint8_t ipo_notaskstate         : 1;
+        uint8_t ipo_inaccessiblememonly : 1;
+    } overrides;
+    uint8_t bits;
+} mmtk__jl_purity_overrides_t;
+
+// This type describes a single method definition, and stores data
+// shared by the specializations of a function.
+typedef struct mmtk__jl_method_t {
+    void *name;  // for error reporting
+    struct mmtk__jl_module_t *module;
+    void *file;
+    int32_t line;
+    size_t primary_world;
+    size_t deleted_world;
+
+    // method's type signature. redundant with TypeMapEntry->specTypes
+    void *sig;
+
+    // table of all jl_method_instance_t specializations we have
+    _Atomic(void*) specializations; // allocated as [hashable, ..., NULL, linear, ....], or a single item
+    _Atomic(void*) speckeyset; // index lookup by hash into specializations
+
+    void *slot_syms; // compacted list of slot names (String)
+    void *external_mt; // reference to the method table this method is part of, null if part of the internal table
+    void *source;  // original code template (jl_code_info_t, but may be compressed), null for builtins
+    _Atomic(void*) unspecialized;  // unspecialized executable method instance, or null
+    void *generator;  // executable code-generating function if available
+    void *roots;  // pointers in generated code (shared to reduce memory), or null
+    // Identify roots by module-of-origin. We only track the module for roots added during incremental compilation.
+    // May be NULL if no external roots have been added, otherwise it's a Vector{UInt64}
+    void *root_blocks;   // RLE (build_id.lo, offset) pairs (even/odd indexing)
+    int32_t nroots_sysimg;     // # of roots stored in the system image
+    void *ccallable; // svec(rettype, sig) if a ccallable entry point is requested for this
+
+    // cache of specializations of this method for invoke(), i.e.
+    // cases where this method was called even though it was not necessarily
+    // the most specific for the argument types.
+    _Atomic(void*) invokes;
+
+    // A function that compares two specializations of this method, returning
+    // `true` if the first signature is to be considered "smaller" than the
+    // second for purposes of recursion analysis. Set to NULL to use
+    // the default recursion relation.
+    void *recursion_relation;
+
+    uint32_t nargs;
+    uint32_t called;        // bit flags: whether each of the first 8 arguments is called
+    uint32_t nospecialize;  // bit flags: which arguments should not be specialized
+    uint32_t nkw;           // # of leading arguments that are actually keyword arguments
+                            // of another method.
+    // various boolean properties
+    uint8_t isva;
+    uint8_t is_for_opaque_closure;
+    // uint8 settings
+    uint8_t constprop;      // 0x00 = use heuristic; 0x01 = aggressive; 0x02 = none
+    uint8_t max_varargs;    // 0xFF = use heuristic; otherwise, max # of args to expand
+                            // varargs when specializing.
+
+    // Override the conclusions of inter-procedural effect analysis,
+    // forcing the conclusion to always true.
+    mmtk__jl_purity_overrides_t purity;
+
+// hidden fields:
+    // lock for modifications to the method
+    mmtk_jl_mutex_t writelock;
+} mmtk_jl_method_t;

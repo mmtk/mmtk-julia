@@ -84,9 +84,7 @@ typedef struct {
     void (* run_finalizer_function) (void* obj, void* function, bool is_ptr);
     int (* get_jl_last_err) (void);
     void (* set_jl_last_err) (int e);
-    size_t (* get_lo_size) (void* obj);
     size_t (* get_so_size) (void* obj);
-    void* (* get_obj_start_ref) (void* obj);
     void (* wait_for_the_world) (void);
     int8_t (* set_gc_initial_state) (void* tls);
     void (* set_gc_final_state) (int8_t old_state);

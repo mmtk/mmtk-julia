@@ -12,13 +12,14 @@ use std::sync::atomic::Ordering;
 const JL_MAX_TAGS: usize = 64; // from vm/julia/src/jl_exports.h
 
 extern "C" {
-    static jl_simplevector_type: *const mmtk_jl_datatype_t;
-    static jl_array_typename: *mut mmtk_jl_typename_t;
-    static jl_module_type: *const mmtk_jl_datatype_t;
-    static jl_task_type: *const mmtk_jl_datatype_t;
-    static jl_string_type: *const mmtk_jl_datatype_t;
-    static jl_weakref_type: *const mmtk_jl_datatype_t;
-    static jl_symbol_type: *const mmtk_jl_datatype_t;
+    pub static jl_simplevector_type: *const mmtk_jl_datatype_t;
+    pub static jl_array_typename: *mut mmtk_jl_typename_t;
+    pub static jl_module_type: *const mmtk_jl_datatype_t;
+    pub static jl_task_type: *const mmtk_jl_datatype_t;
+    pub static jl_string_type: *const mmtk_jl_datatype_t;
+    pub static jl_weakref_type: *const mmtk_jl_datatype_t;
+    pub static jl_symbol_type: *const mmtk_jl_datatype_t;
+    pub static jl_method_type: *const mmtk_jl_datatype_t;
 }
 
 extern "C" {
@@ -444,7 +445,7 @@ pub fn process_offset_edge(
 }
 
 #[inline(always)]
-fn mmtk_jl_array_ndimwords(ndims: u16) -> usize {
+pub fn mmtk_jl_array_ndimwords(ndims: u16) -> usize {
     if ndims < 3 {
         return 0;
     }
