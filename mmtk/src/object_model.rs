@@ -164,7 +164,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
         let dtsz = length * std::mem::size_of::<Address>() + std::mem::size_of::<mmtk_jl_svec_t>();
 
         debug_assert!(
-            dtsz + JULIA_HEADER_SIZE < 2032,
+            dtsz + JULIA_HEADER_SIZE <= 2032,
             "size {} greater than minimum!",
             dtsz + JULIA_HEADER_SIZE
         );
@@ -179,7 +179,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
     } else if obj_type == jl_module_type {
         let dtsz = std::mem::size_of::<mmtk_jl_module_t>();
         debug_assert!(
-            dtsz + JULIA_HEADER_SIZE < 2032,
+            dtsz + JULIA_HEADER_SIZE <= 2032,
             "size {} greater than minimum!",
             dtsz + JULIA_HEADER_SIZE
         );
@@ -192,7 +192,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
     } else if obj_type == jl_task_type {
         let dtsz = std::mem::size_of::<mmtk_jl_task_t>();
         debug_assert!(
-            dtsz + JULIA_HEADER_SIZE < 2032,
+            dtsz + JULIA_HEADER_SIZE <= 2032,
             "size {} greater than minimum!",
             dtsz + JULIA_HEADER_SIZE
         );
@@ -207,7 +207,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
         let dtsz = length + std::mem::size_of::<usize>() + 1;
 
         debug_assert!(
-            dtsz + JULIA_HEADER_SIZE < 2032,
+            dtsz + JULIA_HEADER_SIZE <= 2032,
             "size {} greater than minimum!",
             dtsz + JULIA_HEADER_SIZE
         );
@@ -220,7 +220,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
     } else if obj_type == jl_method_type {
         let dtsz = std::mem::size_of::<mmtk_jl_method_t>();
         debug_assert!(
-            dtsz + JULIA_HEADER_SIZE < 2032,
+            dtsz + JULIA_HEADER_SIZE <= 2032,
             "size {} greater than minimum!",
             dtsz + JULIA_HEADER_SIZE
         );
@@ -259,7 +259,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
                     }
                 }
                 debug_assert!(
-                    dtsz + JULIA_HEADER_SIZE < 2032,
+                    dtsz + JULIA_HEADER_SIZE <= 2032,
                     "size {} greater than minimum!",
                     dtsz + JULIA_HEADER_SIZE
                 );
@@ -274,7 +274,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
                     + a_ndims_words * std::mem::size_of::<usize>();
 
                 debug_assert!(
-                    dtsz + JULIA_HEADER_SIZE < 2032,
+                    dtsz + JULIA_HEADER_SIZE <= 2032,
                     "size {} greater than minimum!",
                     dtsz + JULIA_HEADER_SIZE
                 );
@@ -289,7 +289,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
                     + a_ndims_words * std::mem::size_of::<usize>()
                     + std::mem::size_of::<Address>();
                 debug_assert!(
-                    dtsz + JULIA_HEADER_SIZE < 2032,
+                    dtsz + JULIA_HEADER_SIZE <= 2032,
                     "size {} greater than minimum!",
                     dtsz + JULIA_HEADER_SIZE
                 );
@@ -307,7 +307,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
         let layout = (*obj_type).layout;
         let dtsz = (*layout).size as usize;
         debug_assert!(
-            dtsz + JULIA_HEADER_SIZE < 2032,
+            dtsz + JULIA_HEADER_SIZE <= 2032,
             "size {} greater than minimum!",
             dtsz + JULIA_HEADER_SIZE
         );
