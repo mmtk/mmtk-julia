@@ -391,9 +391,18 @@ fn read_stack(addr: Address, offset: isize, lb: u64, ub: u64) -> Address {
     }
 }
 
+use mmtk::vm::edge_shape::Edge;
+
 #[inline(always)]
 pub fn process_edge(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, slot: Address) {
     let simple_edge = SimpleEdge::from_address(slot);
+    debug_assert!(
+        simple_edge.load().is_null()
+            || mmtk::memory_manager::is_mapped_address(simple_edge.load().to_raw_address()),
+        "Object {:?} in slot {:?} is not mapped address",
+        simple_edge.load(),
+        simple_edge
+    );
     closure.visit_edge(JuliaVMEdge::Simple(simple_edge));
 }
 
@@ -441,6 +450,13 @@ pub fn process_offset_edge(
     offset: usize,
 ) {
     let offset_edge = OffsetEdge::new_with_offset(slot, offset);
+    debug_assert!(
+        offset_edge.load().is_null()
+            || mmtk::memory_manager::is_mapped_address(offset_edge.load().to_raw_address()),
+        "Object {:?} in slot {:?} is not mapped address",
+        offset_edge.load(),
+        offset_edge
+    );
     closure.visit_edge(JuliaVMEdge::Offset(offset_edge));
 }
 
