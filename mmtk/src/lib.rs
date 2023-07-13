@@ -13,7 +13,6 @@ use mmtk::vm::VMBinding;
 use mmtk::MMTKBuilder;
 use mmtk::Mutator;
 use mmtk::MMTK;
-use reference_glue::JuliaFinalizableObject;
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -80,12 +79,6 @@ pub static BLOCK_FOR_GC: AtomicBool = AtomicBool::new(false);
 pub static WORLD_HAS_STOPPED: AtomicBool = AtomicBool::new(false);
 
 #[no_mangle]
-pub static SCHEDULED_FINALIZATION: AtomicBool = AtomicBool::new(false);
-
-#[no_mangle]
-pub static FINALIZERS_RUNNING: AtomicBool = AtomicBool::new(false);
-
-#[no_mangle]
 pub static DISABLED_GC: AtomicBool = AtomicBool::new(false);
 
 #[no_mangle]
@@ -98,8 +91,6 @@ lazy_static! {
         Arc::new((Mutex::new(0), Condvar::new()));
     pub static ref ROOT_NODES: Mutex<HashSet<ObjectReference>> = Mutex::new(HashSet::new());
     pub static ref ROOT_EDGES: Mutex<HashSet<Address>> = Mutex::new(HashSet::new());
-    pub static ref FINALIZER_ROOTS: RwLock<HashSet<JuliaFinalizableObject>> =
-        RwLock::new(HashSet::new());
 
     // We create a boxed mutator with MMTk core, and we mem copy its content to jl_tls_state_t (shallow copy).
     // This map stores the pair of the mutator address in jl_tls_state_t and the original boxed mutator.
@@ -140,8 +131,6 @@ pub struct Julia_Upcalls {
     ),
     pub get_stackbase: extern "C" fn(tid: u16) -> usize,
     pub calculate_roots: extern "C" fn(tls: OpaquePointer),
-    pub run_finalizer_function:
-        extern "C" fn(obj: ObjectReference, function: Address, is_ptr: bool),
     pub get_jl_last_err: extern "C" fn() -> u32,
     pub set_jl_last_err: extern "C" fn(errno: u32),
     pub get_lo_size: extern "C" fn(object: ObjectReference) -> usize,
@@ -159,6 +148,8 @@ pub struct Julia_Upcalls {
     pub jl_hrtime: extern "C" fn() -> u64,
     pub update_gc_time: extern "C" fn(u64),
     pub get_abi_structs_checksum_c: extern "C" fn() -> usize,
+    pub scan_thread_finalizers: extern "C" fn(tls: OpaquePointer, tracer: Address, trace_object_fn: *const extern "C" fn(tracer: Address, object: ObjectReference)),
+    pub scan_to_finalize_objects: extern "C" fn(tracer: Address, trace_object_fn: *const extern "C" fn(tracer: Address, object: ObjectReference)),
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();

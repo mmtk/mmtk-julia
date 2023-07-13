@@ -346,61 +346,131 @@ size_t get_so_size(void* obj_raw)
     return 0;
 }
 
-void run_finalizer_function(void *o_raw, void *ff_raw, bool is_ptr)
-{
-    jl_value_t *o = (jl_value_t*) o_raw;
-    jl_value_t *ff = (jl_value_t*) ff_raw;
-    if (is_ptr) {
-        run_finalizer(jl_current_task, (jl_value_t *)(((uintptr_t)o) | 1), (jl_value_t *)ff);
-    } else {
-        run_finalizer(jl_current_task, (jl_value_t *) o, (jl_value_t *)ff);
+extern void run_finalizers(jl_task_t *ct);
+
+void mmtk_jl_run_finalizers(void* ptls_raw) {
+    jl_ptls_t ptls = (jl_ptls_t) ptls_raw;
+    if (!ptls->finalizers_inhibited && ptls->locks.len == 0) {
+        JL_TIMING(GC, GC_Finalizers);
+        run_finalizers(jl_current_task);
     }
 }
 
+extern jl_mutex_t finalizers_lock;
+extern arraylist_t to_finalize;
 
-static inline void mmtk_jl_run_finalizers_in_list(bool at_exit) {
-    jl_task_t* ct = jl_current_task;
-    uint8_t sticky = ct->sticky;
-    mmtk_run_finalizers(at_exit);
-     ct->sticky = sticky;
-}
-
-void mmtk_jl_run_pending_finalizers(void* ptls) {
-    if (!((jl_ptls_t)ptls)->in_finalizer && !((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
-        jl_task_t *ct = jl_current_task;
-        ((jl_ptls_t)ptls)->in_finalizer = 1;
-        uint64_t save_rngState[JL_RNG_SIZE];
-        memcpy(&save_rngState[0], &ct->rngState[0], sizeof(save_rngState));
-        jl_rng_split(ct->rngState, finalizer_rngState);
-        jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 0);
-        mmtk_jl_run_finalizers_in_list(false);
-        memcpy(&ct->rngState[0], &save_rngState[0], sizeof(save_rngState));
-        ((jl_ptls_t)ptls)->in_finalizer = 0;
+static inline int mmtk_is_live(jl_value_t* obj) {
+    if (mmtk_is_live_object(obj)) {
+        return 1;
+    } else {
+        return 0;
     }
 }
 
-void mmtk_jl_run_finalizers(void* ptls) {
-    // Only disable finalizers on current thread
-    // Doing this on all threads is racy (it's impossible to check
-    // or wait for finalizers on other threads without dead lock).
-    if (!((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
-        jl_task_t *ct = jl_current_task;
-        int8_t was_in_finalizer = ((jl_ptls_t)ptls)->in_finalizer;
-        ((jl_ptls_t)ptls)->in_finalizer = 1;
-        uint64_t save_rngState[JL_RNG_SIZE];
-        memcpy(&save_rngState[0], &ct->rngState[0], sizeof(save_rngState));
-        jl_rng_split(ct->rngState, finalizer_rngState);
-        jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 0);
-        mmtk_jl_run_finalizers_in_list(false);
-        memcpy(&ct->rngState[0], &save_rngState[0], sizeof(save_rngState));
-        ((jl_ptls_t)ptls)->in_finalizer = was_in_finalizer;
-    } else {
+// Check gc_mark_finlist in gc.c
+void mark_finlist(arraylist_t *list, size_t start, void* tracer, void* (*trace_object_fn)(void*,void*)) {
+    size_t len = list->len;
+    if (len <= start)
+        return;
+    jl_value_t **fl_begin = (jl_value_t**)list->items + start;
+    jl_value_t **fl_end = (jl_value_t**)list->items + len;
+
+    jl_value_t *new_obj;
+    for (; fl_begin < fl_end; fl_begin++) {
+        new_obj = *fl_begin;
+        if (__unlikely(new_obj == NULL))
+            continue;
+        if (gc_ptr_tag(new_obj, 1)) {
+            new_obj = (jl_value_t *)gc_ptr_clear_tag(new_obj, 1);
+            fl_begin++;
+            assert(fl_begin < fl_end);
+        }
+        if (gc_ptr_tag(new_obj, 2))
+            continue;
+        jl_value_t* traced = (jl_value_t*) trace_object_fn(tracer, new_obj);
+        if (__unlikely(traced != new_obj)) {
+            printf("Object is moved -- we need to save the new object back to the finalizer list\n");
+            exit(1);
+        }
+    }
+}
+
+// Check sweep_finalizer_list in gc.c
+// Scan thread local finalizer list. For dead objects, push them to to_finalize list.
+void scan_thread_finalizers(void* ptls_raw, void* tracer, void* (*trace_object_fn)(void* tracer, void* obj)) {
+    jl_ptls_t ptls = (jl_ptls_t) ptls_raw;
+    arraylist_t *list = &ptls->finalizers;
+
+    if (list->len == 0) {
+        return;
+    }
+
+    // Avoid keep acquiring lock and push to to_finalize. We push to a local list first.
+    arraylist_t tmp_to_finalize;
+    arraylist_new(&tmp_to_finalize, 0);
+
+    void **items = list->items;
+    size_t len = list->len;
+    size_t j = 0;
+    for (size_t i=0; i < len; i+=2) {
+        void *v0 = items[i];
+        void *v = gc_ptr_clear_tag(v0, 3);
+        if (__unlikely(!v0)) {
+            // remove from this list
+            continue;
+        }
+
+        void *fin = items[i+1];
+        int isfreed;
+        if (gc_ptr_tag(v0, 2)) {
+            isfreed = 1;
+        }
+        else {
+            isfreed = !mmtk_is_live((jl_value_t*)v);
+        }
+
+        if (isfreed) {
+            // remove from this list
+        }
+        else {
+            if (j < i) {
+                items[j] = items[i];
+                items[j+1] = items[i+1];
+            }
+            j += 2;
+        }
+        if (isfreed) {
+            // schedule_finalization(v0, fin);
+            arraylist_push(&tmp_to_finalize, v0);
+            arraylist_push(&tmp_to_finalize, fin);
+        }
+    }
+    list->len = j;
+
+    // Keep all the objects alive
+    mark_finlist(&tmp_to_finalize, 0, tracer, trace_object_fn);
+    mark_finlist(&ptls->finalizers, 0, tracer, trace_object_fn);
+
+    // Push temp list to to_finalize
+    if (tmp_to_finalize.len != 0) {
+        JL_LOCK_NOGC(&finalizers_lock);
+
+        void **items = tmp_to_finalize.items;
+        for(size_t i = 0; i < tmp_to_finalize.len; i+=2) {
+            void *v = items[i];
+            void *f = items[i + 1];
+            arraylist_push(&to_finalize, v);
+            arraylist_push(&to_finalize, f);
+        }
+
+        JL_UNLOCK_NOGC(&finalizers_lock);
         jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 1);
     }
 }
 
-void mmtk_jl_gc_run_all_finalizers(void) {
-    mmtk_jl_run_finalizers_in_list(true);
+// Scan to_fianlize list
+void scan_to_finalize_objects(void* tracer, void* (*trace_object_fn)(void* tracer, void* obj)) {
+    mark_finlist(&to_finalize, 0, tracer, trace_object_fn);
 }
 
 // add the initial root set to mmtk roots
@@ -928,7 +998,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
     .calculate_roots = calculate_roots,
-    .run_finalizer_function = run_finalizer_function,
+    // .run_finalizer_function = run_finalizer_function,
     .get_jl_last_err = get_jl_last_err,
     .set_jl_last_err = set_jl_last_err,
     .get_lo_size = get_lo_size,
@@ -946,4 +1016,6 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .jl_hrtime = jl_hrtime,
     .update_gc_time = update_gc_time,
     .get_abi_structs_checksum_c = get_abi_structs_checksum_c,
+    .scan_thread_finalizers = scan_thread_finalizers,
+    .scan_to_finalize_objects = scan_to_finalize_objects,
 };
