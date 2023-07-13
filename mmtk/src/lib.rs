@@ -148,8 +148,15 @@ pub struct Julia_Upcalls {
     pub jl_hrtime: extern "C" fn() -> u64,
     pub update_gc_time: extern "C" fn(u64),
     pub get_abi_structs_checksum_c: extern "C" fn() -> usize,
-    pub scan_thread_finalizers: extern "C" fn(tls: OpaquePointer, tracer: Address, trace_object_fn: *const extern "C" fn(tracer: Address, object: ObjectReference)),
-    pub scan_to_finalize_objects: extern "C" fn(tracer: Address, trace_object_fn: *const extern "C" fn(tracer: Address, object: ObjectReference)),
+    pub scan_thread_finalizers: extern "C" fn(
+        tls: OpaquePointer,
+        tracer: Address,
+        trace_object_fn: *const extern "C" fn(tracer: Address, object: ObjectReference),
+    ),
+    pub scan_to_finalize_objects: extern "C" fn(
+        tracer: Address,
+        trace_object_fn: *const extern "C" fn(tracer: Address, object: ObjectReference),
+    ),
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();

@@ -7,10 +7,7 @@ use crate::BLOCK_FOR_GC;
 use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
 use crate::UPCALLS;
-use crate::{
-    set_julia_obj_header_size, BUILDER, DISABLED_GC, MUTATORS,
-    USER_TRIGGERED_GC,
-};
+use crate::{set_julia_obj_header_size, BUILDER, DISABLED_GC, MUTATORS, USER_TRIGGERED_GC};
 use crate::{ROOT_EDGES, ROOT_NODES};
 
 use libc::c_char;
