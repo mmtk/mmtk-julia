@@ -470,7 +470,9 @@ void scan_thread_finalizers(void* ptls_raw, void* tracer, void* (*trace_object_f
 
 // Scan to_fianlize list
 void scan_to_finalize_objects(void* tracer, void* (*trace_object_fn)(void* tracer, void* obj)) {
+    JL_LOCK_NOGC(&finalizers_lock);
     mark_finlist(&to_finalize, 0, tracer, trace_object_fn);
+    JL_UNLOCK_NOGC(&finalizers_lock);
 }
 
 // add the initial root set to mmtk roots
