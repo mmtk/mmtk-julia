@@ -13,12 +13,14 @@ julia_repo = "https://github.com/qinsoon/julia.git"
 julia_version = "fd3409a7fe53de0ca228c05d74bf66bab1a0747c"
 
 [lib]
-crate-type = ["staticlib", "rlib", "dylib"]
+crate-type = ["cdylib"]
 
 [build-dependencies]
 cc = "*"
 built = "*"
 
+[profile.release]
+lto = true
 
 [dependencies]
 libc = "0.2"
