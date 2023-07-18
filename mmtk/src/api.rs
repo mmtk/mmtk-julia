@@ -598,3 +598,11 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
         addr_size.load::<u64>() as usize
     }
 }
+
+#[no_mangle]
+pub extern "C" fn mmtk_is_current_gc_nursery() -> bool {
+    match SINGLETON.get_plan().generational() {
+        Some(gen) => gen.is_current_gc_nursery(),
+        None => false,
+    }
+}

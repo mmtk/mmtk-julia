@@ -7,10 +7,8 @@ use crate::{ROOT_EDGES, ROOT_NODES, SINGLETON, UPCALLS};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::opaque_pointer::*;
-use mmtk::util::Address;
 use mmtk::util::ObjectReference;
 use mmtk::vm::EdgeVisitor;
-use mmtk::vm::ObjectTracer;
 use mmtk::vm::ObjectTracerContext;
 use mmtk::vm::RootsWorkFactory;
 use mmtk::vm::Scanning;
@@ -91,29 +89,32 @@ impl Scanning<JuliaVM> for VMScanning {
         _worker: &mut GCWorker<JuliaVM>,
         tracer_context: impl ObjectTracerContext<JuliaVM>,
     ) -> bool {
-        use crate::mmtk::vm::ActivePlan;
+        // use crate::mmtk::vm::ActivePlan;
 
-        let process_to_finalize = ScanToFinalizeList {
-            tracer_context: tracer_context.clone(),
-        };
-        memory_manager::add_work_packet(
-            &SINGLETON,
-            WorkBucketStage::VMRefClosure,
-            process_to_finalize,
-        );
+        let single_thread_process_finalizer = ScanFinalizersSingleThreaded { tracer_context };
+        memory_manager::add_work_packet(&SINGLETON, WorkBucketStage::VMRefClosure, single_thread_process_finalizer);
 
-        for mutator in <JuliaVM as VMBinding>::VMActivePlan::mutators() {
-            info!("Create ScanFinalizers: {:?}", mutator.mutator_tls);
-            let process_finalizer = ScanFinalizers {
-                tls: mutator.mutator_tls,
-                tracer_context: tracer_context.clone(),
-            };
-            memory_manager::add_work_packet(
-                &SINGLETON,
-                WorkBucketStage::VMRefClosure,
-                process_finalizer,
-            );
-        }
+        // let process_to_finalize = ScanToFinalizeList {
+        //     tracer_context: tracer_context.clone(),
+        // };
+        // memory_manager::add_work_packet(
+        //     &SINGLETON,
+        //     WorkBucketStage::VMRefClosure,
+        //     process_to_finalize,
+        // );
+
+        // for mutator in <JuliaVM as VMBinding>::VMActivePlan::mutators() {
+        //     info!("Create ScanFinalizers: {:?}", mutator.mutator_tls);
+        //     let process_finalizer = ScanFinalizers {
+        //         tls: mutator.mutator_tls,
+        //         tracer_context: tracer_context.clone(),
+        //     };
+        //     memory_manager::add_work_packet(
+        //         &SINGLETON,
+        //         WorkBucketStage::VMRefClosure,
+        //         process_finalizer,
+        //     );
+        // }
 
         // We have pushed work. No need to repeat this method.
         false
@@ -155,48 +156,14 @@ impl<VM: VMBinding> GCWork<VM> for SweepMallocedArrays {
     }
 }
 
-pub struct ScanFinalizers<C: ObjectTracerContext<JuliaVM>> {
-    tls: VMMutatorThread,
+pub struct ScanFinalizersSingleThreaded<C: ObjectTracerContext<JuliaVM>> {
     tracer_context: C,
 }
 
-pub extern "C" fn trace_finalizer<T: ObjectTracer>(
-    tracer: Address,
-    object: ObjectReference,
-) -> ObjectReference {
-    let tracer: &mut T = unsafe { &mut *tracer.to_mut_ptr() };
-    tracer.trace_object(object)
-}
-
-impl<C: ObjectTracerContext<JuliaVM>> GCWork<JuliaVM> for ScanFinalizers<C> {
+impl<C: ObjectTracerContext<JuliaVM>> GCWork<JuliaVM> for ScanFinalizersSingleThreaded<C> {
     fn do_work(&mut self, worker: &mut GCWorker<JuliaVM>, _mmtk: &'static MMTK<JuliaVM>) {
         self.tracer_context.with_tracer(worker, |tracer| {
-            // let trace_object_fn = <T::TracerType as ObjectTracer>::trace_object;
-            unsafe {
-                ((*UPCALLS).scan_thread_finalizers)(
-                    self.tls.0 .0,
-                    Address::from_mut_ptr(tracer),
-                    trace_finalizer::<C::TracerType> as _,
-                )
-            }
-        })
-    }
-}
-
-pub struct ScanToFinalizeList<C: ObjectTracerContext<JuliaVM>> {
-    tracer_context: C,
-}
-
-impl<C: ObjectTracerContext<JuliaVM>> GCWork<JuliaVM> for ScanToFinalizeList<C> {
-    fn do_work(&mut self, worker: &mut GCWorker<JuliaVM>, _mmtk: &'static MMTK<JuliaVM>) {
-        self.tracer_context.with_tracer(worker, |tracer| {
-            // let trace_object_fn = <T::TracerType as ObjectTracer>::trace_object;
-            unsafe {
-                ((*UPCALLS).scan_to_finalize_objects)(
-                    Address::from_mut_ptr(tracer),
-                    trace_finalizer::<C::TracerType> as _,
-                )
-            }
-        })
+            crate::finalizer::scan_finalizers_in_rust(tracer);
+        });
     }
 }

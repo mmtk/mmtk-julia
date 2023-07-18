@@ -24,6 +24,7 @@ pub mod active_plan;
 pub mod api;
 pub mod collection;
 pub mod edges;
+pub mod finalizer;
 pub mod object_model;
 pub mod reference_glue;
 pub mod scanning;
@@ -148,15 +149,11 @@ pub struct Julia_Upcalls {
     pub jl_hrtime: extern "C" fn() -> u64,
     pub update_gc_time: extern "C" fn(u64),
     pub get_abi_structs_checksum_c: extern "C" fn() -> usize,
-    pub scan_thread_finalizers: extern "C" fn(
-        tls: OpaquePointer,
-        tracer: Address,
-        trace_object_fn: *const extern "C" fn(tracer: Address, object: ObjectReference),
-    ),
-    pub scan_to_finalize_objects: extern "C" fn(
-        tracer: Address,
-        trace_object_fn: *const extern "C" fn(tracer: Address, object: ObjectReference),
-    ),
+    pub get_thread_finalizer_list: extern "C" fn (tls: OpaquePointer) -> Address,
+    pub get_to_finalize_list: extern "C" fn () -> Address,
+    pub get_marked_finalizers_list: extern "C" fn () -> Address,
+    pub arraylist_grow: extern "C" fn (Address, usize),
+    pub get_jl_gc_have_pending_finalizers: extern "C" fn () -> *mut i32,
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();

@@ -57,6 +57,8 @@ extern int mmtk_object_is_managed_by_mmtk(void* addr);
 extern void mmtk_runtime_panic(void);
 extern void mmtk_unreachable(void);
 
+extern uint8_t mmtk_is_current_gc_nursery(void);
+
 extern void mmtk_set_vm_space(void* addr, size_t size);
 extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
 
@@ -96,8 +98,11 @@ typedef struct {
     uint64_t (* jl_hrtime) (void);
     void (* update_gc_time) (uint64_t);
     uintptr_t (* get_abi_structs_checksum_c) (void);
-    void (* scan_thread_finalizers) (void* tls, void* tracer, void* (*trace_object_fn)(void* tracer, void* obj));
-    void (* scan_to_finalize_objects) (void* tracer, void* (*trace_object_fn)(void* tracer, void* obj));
+    void* (* get_thread_finalizer_list) (void* tls);
+    void* (* get_to_finalize_list)(void);
+    void* (* get_marked_finalizers_list)(void);
+    void (*arraylist_grow)(void* a, size_t n);
+    int* (*get_jl_gc_have_pending_finalizers)(void);
 } Julia_Upcalls;
 
 /**
