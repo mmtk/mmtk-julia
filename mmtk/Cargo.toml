@@ -13,7 +13,7 @@ julia_repo = "https://github.com/udesou/julia.git"
 julia_version = "a0ccd9c6a6e818b8858d3b71d1d2dcdfebdd81d1"
 
 [lib]
-crate-type = ["staticlib", "rlib", "dylib"]
+crate-type = ["cdylib"]
 
 [build-dependencies]
 cc = "*"
@@ -29,18 +29,24 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "f1a0bb7fbec97dd84e35a40e8be01cf5018f2f9e" }
+# mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "f1a0bb7fbec97dd84e35a40e8be01cf5018f2f9e" }
 # Uncomment the following to build locally
-# mmtk = { path = "../repos/mmtk-core" }
+mmtk = { path = "/home/eduardo/mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
 enum-map = ">=2.1"
 atomic = "0.4.6"
 chrono = "*"
+diff = "0.1.13"
+
+[profile.release]
+overflow-checks = false
+lto = true
+
 
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 
 [features]
-default = ["mmtk/malloc_counted_size", "mmtk/vm_space"]
+default = ["mmtk/malloc_counted_size", "scan_obj_c",  "mmtk/vm_space", "mmtk/perf_counter", "mmtk/work_packet_stats"]
 
 # Plans
 nogc = []

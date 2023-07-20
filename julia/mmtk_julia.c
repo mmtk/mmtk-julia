@@ -441,7 +441,7 @@ static inline uintptr_t mmtk_gc_read_stack(void *_addr, uintptr_t offset,
     return *(uintptr_t*)real_addr;
 }
 
-void scan_gcstack(jl_task_t *ta, closure_pointer closure, ProcessEdgeFn process_edge)
+void scan_gcstack(jl_task_t *ta, void* closure, ProcessEdgeFn process_edge)
 {
     void *stkbuf = ta->stkbuf;
 #ifdef COPY_STACKS
@@ -540,7 +540,7 @@ void scan_gcstack(jl_task_t *ta, closure_pointer closure, ProcessEdgeFn process_
 void root_scan_task(jl_ptls_t ptls, jl_task_t* task)
 {
     // This is never accessed so just leave it uninitialized.
-    closure_pointer c;
+    void* c = NULL;
 
     // Scan the stack
     scan_gcstack(task, c, mmtk_process_root_edges);
@@ -621,7 +621,7 @@ void calculate_roots(void* ptls_raw)
     queue_roots();
 }
 
-JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, closure_pointer closure, ProcessEdgeFn process_edge) {
+JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn process_edge) {
     jl_task_t *ta = (jl_task_t*)obj_raw;
 
     if (ta->excstack) { // inlining label `excstack` from mark_loop
@@ -684,7 +684,7 @@ const bool PRINT_OBJ_TYPE = false;
  * directly (not an edge), specifying whether to scan the object or not; and only scan the object 
  * (necessary for boot image / non-MMTk objects)
 **/
-JL_DLLEXPORT void scan_julia_obj(void* obj_raw, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge) 
+JL_DLLEXPORT void scan_julia_obj(void* obj_raw, void* closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge) 
 {
     jl_value_t* obj = (jl_value_t*) obj_raw;
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
@@ -819,9 +819,8 @@ JL_DLLEXPORT void scan_julia_obj(void* obj_raw, closure_pointer closure, Process
             jl_value_t **objary_end = objary_begin + nusings;
 
             for (; objary_begin < objary_end; objary_begin += 1) {
-                jl_value_t *pnew_obj = *objary_begin;
                 if (PRINT_OBJ_TYPE) { printf(" - scan usings: %p\n", objary_begin); fflush(stdout); }
-                process_edge(closure, pnew_obj);
+                process_edge(closure, objary_begin);
             }
         }
     } else if (vt == jl_task_type) { // scanning a jl_task_type object

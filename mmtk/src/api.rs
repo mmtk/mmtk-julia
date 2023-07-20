@@ -674,16 +674,13 @@ pub extern "C" fn mmtk_add_object_to_mmtk_roots(obj: ObjectReference) {
     ROOT_NODES.lock().unwrap().insert(obj);
 }
 
-use crate::JuliaVMEdge;
-use mmtk::vm::EdgeVisitor;
+// use crate::JuliaVMEdge;
+// use mmtk::vm::EdgeVisitor;
 
 // Pass this as 'process_edge' so we can reuse scan_julia_task_obj.
 #[no_mangle]
 #[allow(improper_ctypes_definitions)] // closure is a fat pointer, we propelry define its type in C header.
-pub extern "C" fn mmtk_process_root_edges(
-    _closure: &mut dyn EdgeVisitor<JuliaVMEdge>,
-    addr: Address,
-) {
+pub extern "C" fn mmtk_process_root_edges(_closure: Address, addr: Address) {
     ROOT_EDGES.lock().unwrap().insert(addr);
 }
 

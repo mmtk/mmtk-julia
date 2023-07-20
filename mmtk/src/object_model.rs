@@ -233,9 +233,9 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
     } else if (*obj_type).name == jl_array_typename {
         let flags = &(*obj_address.to_ptr::<mmtk_jl_array_t>()).flags;
 
-        let osize = match flags.how() {
+        let osize = match flags.how_custom() {
             0 => {
-                let a_ndims = flags.ndims();
+                let a_ndims = flags.ndims_custom();
                 let a_ndims_words = mmtk_jl_array_ndimwords(a_ndims);
                 let mut dtsz = std::mem::size_of::<mmtk_jl_array_t>()
                     + a_ndims_words * std::mem::size_of::<usize>();
@@ -268,7 +268,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
                 JL_GC_SIZECLASSES[pool_id] as usize
             }
             1 | 2 => {
-                let a_ndims = flags.ndims();
+                let a_ndims = flags.ndims_custom();
                 let a_ndims_words = mmtk_jl_array_ndimwords(a_ndims);
                 let dtsz = std::mem::size_of::<mmtk_jl_array_t>()
                     + a_ndims_words * std::mem::size_of::<usize>();
@@ -283,7 +283,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
                 JL_GC_SIZECLASSES[pool_id] as usize
             }
             3 => {
-                let a_ndims = flags.ndims();
+                let a_ndims = flags.ndims_custom();
                 let a_ndims_words = mmtk_jl_array_ndimwords(a_ndims);
                 let dtsz = std::mem::size_of::<mmtk_jl_array_t>()
                     + a_ndims_words * std::mem::size_of::<usize>()
@@ -355,7 +355,7 @@ pub unsafe fn mmtk_jl_array_nbytes(
 ) -> usize {
     let a = array.to_ptr::<mmtk_jl_array_t>();
     let mut sz: usize;
-    let ptr_array = !(*a).flags.ptrarray();
+    let ptr_array = !(*a).flags.ptrarray_custom();
 
     let elem_type =
         Address::from_mut_ptr((*array_type).parameters) + std::mem::size_of::<mmtk_jl_svec_t>();

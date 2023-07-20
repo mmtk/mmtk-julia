@@ -1,3 +1,4 @@
+extern crate diff;
 extern crate libc;
 extern crate log;
 extern crate mmtk;
@@ -8,7 +9,6 @@ use mmtk::scheduler::*;
 use mmtk::util::opaque_pointer::*;
 use mmtk::util::Address;
 use mmtk::util::ObjectReference;
-use mmtk::vm::EdgeVisitor;
 use mmtk::vm::VMBinding;
 use mmtk::MMTKBuilder;
 use mmtk::Mutator;
@@ -36,6 +36,12 @@ pub mod julia_scanning;
 #[allow(non_upper_case_globals)]
 #[allow(non_snake_case)]
 pub mod julia_types;
+
+#[allow(non_camel_case_types)]
+#[allow(improper_ctypes_definitions)]
+#[allow(non_upper_case_globals)]
+#[allow(non_snake_case)]
+pub mod julia_types_custom;
 
 #[derive(Default)]
 pub struct JuliaVM;
@@ -120,25 +126,20 @@ extern "C" {
     pub fn get_mutator_from_ref(mutator: ObjectReference) -> *mut Mutator<JuliaVM>;
 }
 
-type ProcessEdgeFn =
-    *const extern "C" fn(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, slot: Address);
+type ProcessEdgeFn = *const extern "C" fn(closure: Address, slot: Address);
 
-type ProcessOffsetEdgeFn =
-    *const extern "C" fn(closure: &mut dyn EdgeVisitor<JuliaVMEdge>, slot: Address, offset: usize);
+type ProcessOffsetEdgeFn = *const extern "C" fn(closure: Address, slot: Address, offset: usize);
 
 #[repr(C)]
 pub struct Julia_Upcalls {
     pub scan_julia_obj: extern "C" fn(
         obj: Address,
-        closure: &mut dyn EdgeVisitor<JuliaVMEdge>,
+        closure: Address,
         process_edge: ProcessEdgeFn,
         process_offset_edge: ProcessOffsetEdgeFn,
     ),
-    pub scan_julia_exc_obj: extern "C" fn(
-        obj: Address,
-        closure: &mut dyn EdgeVisitor<JuliaVMEdge>,
-        process_edge: ProcessEdgeFn,
-    ),
+    pub scan_julia_exc_obj:
+        extern "C" fn(obj: Address, closure: Address, process_edge: ProcessEdgeFn),
     pub get_stackbase: extern "C" fn(tid: u16) -> usize,
     pub calculate_roots: extern "C" fn(tls: OpaquePointer),
     pub run_finalizer_function:
