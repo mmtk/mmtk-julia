@@ -13,17 +13,28 @@ pub fn scan_finalizers_in_rust<T: ObjectTracer>(tracer: &mut T) {
     use crate::mmtk::vm::ActivePlan;
     let to_finalize = ArrayListT::to_finalize_list();
     let marked_finalizers_list = ArrayListT::marked_finalizers_list();
-    let jl_gc_have_pending_finalizers: *mut i32 = unsafe { ((*UPCALLS).get_jl_gc_have_pending_finalizers)() };
+    let jl_gc_have_pending_finalizers: *mut i32 =
+        unsafe { ((*UPCALLS).get_jl_gc_have_pending_finalizers)() };
 
     let mut orig_marked_len = marked_finalizers_list.len;
 
     for mutator in <JuliaVM as VMBinding>::VMActivePlan::mutators() {
         let list = ArrayListT::thread_local_finalizer_list(mutator);
-        sweep_finalizer_list(list, to_finalize, Some(marked_finalizers_list), jl_gc_have_pending_finalizers);
+        sweep_finalizer_list(
+            list,
+            to_finalize,
+            Some(marked_finalizers_list),
+            jl_gc_have_pending_finalizers,
+        );
     }
 
     if !crate::api::mmtk_is_current_gc_nursery() {
-        sweep_finalizer_list(marked_finalizers_list, to_finalize, None, jl_gc_have_pending_finalizers);
+        sweep_finalizer_list(
+            marked_finalizers_list,
+            to_finalize,
+            None,
+            jl_gc_have_pending_finalizers,
+        );
         orig_marked_len = 0;
     }
 
@@ -56,7 +67,7 @@ impl ArrayListT {
 
     /// ptls->finalizers: new finalizers are registered into this thread local list
     fn thread_local_finalizer_list(mutator: &Mutator<JuliaVM>) -> &mut ArrayListT {
-        let list = unsafe { ((*UPCALLS).get_thread_finalizer_list)(mutator.mutator_tls.0.0) };
+        let list = unsafe { ((*UPCALLS).get_thread_finalizer_list)(mutator.mutator_tls.0 .0) };
         unsafe { &mut *list.to_mut_ptr() }
     }
     /// to_finalize: objects that are dead are in this list waiting for finalization
@@ -86,7 +97,9 @@ impl ArrayListT {
         let newlen = self.len + n;
         if newlen > self.max {
             // Call into C to grow the list.
-            unsafe { ((*UPCALLS).arraylist_grow)(Address::from_mut_ptr(self as _), n); }
+            unsafe {
+                ((*UPCALLS).arraylist_grow)(Address::from_mut_ptr(self as _), n);
+            }
         }
         self.len = newlen
     }
@@ -94,7 +107,12 @@ impl ArrayListT {
 
 // sweep_finalizer_list in gc.c
 // finalizer_list_marked is None if list is finalizer_list_marked.
-fn sweep_finalizer_list(list: &mut ArrayListT, to_finalize: &mut ArrayListT, mut finalizer_list_marked: Option<&mut ArrayListT>, jl_gc_have_pending_finalizers: *mut i32) {
+fn sweep_finalizer_list(
+    list: &mut ArrayListT,
+    to_finalize: &mut ArrayListT,
+    mut finalizer_list_marked: Option<&mut ArrayListT>,
+    jl_gc_have_pending_finalizers: *mut i32,
+) {
     if list.len == 0 {
         return;
     }
@@ -129,7 +147,9 @@ fn sweep_finalizer_list(list: &mut ArrayListT, to_finalize: &mut ArrayListT, mut
         if isfreed {
             to_finalize.push(v0);
             to_finalize.push(fin);
-            unsafe { *jl_gc_have_pending_finalizers = 1; }
+            unsafe {
+                *jl_gc_have_pending_finalizers = 1;
+            }
         }
         if isold {
             let finalizer_list_marked = finalizer_list_marked.as_mut().unwrap();
@@ -170,7 +190,10 @@ fn mark_finlist<T: ObjectTracer>(list: &mut ArrayListT, start: usize, tracer: &m
         }
 
         let traced = tracer.trace_object(obj);
-        debug_assert_eq!(traced, obj, "Object is moved -- we need to save the new object back to the finalizer list");
+        debug_assert_eq!(
+            traced, obj,
+            "Object is moved -- we need to save the new object back to the finalizer list"
+        );
         i += 1;
     }
 }

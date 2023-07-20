@@ -149,11 +149,11 @@ pub struct Julia_Upcalls {
     pub jl_hrtime: extern "C" fn() -> u64,
     pub update_gc_time: extern "C" fn(u64),
     pub get_abi_structs_checksum_c: extern "C" fn() -> usize,
-    pub get_thread_finalizer_list: extern "C" fn (tls: OpaquePointer) -> Address,
-    pub get_to_finalize_list: extern "C" fn () -> Address,
-    pub get_marked_finalizers_list: extern "C" fn () -> Address,
-    pub arraylist_grow: extern "C" fn (Address, usize),
-    pub get_jl_gc_have_pending_finalizers: extern "C" fn () -> *mut i32,
+    pub get_thread_finalizer_list: extern "C" fn(tls: OpaquePointer) -> Address,
+    pub get_to_finalize_list: extern "C" fn() -> Address,
+    pub get_marked_finalizers_list: extern "C" fn() -> Address,
+    pub arraylist_grow: extern "C" fn(Address, usize),
+    pub get_jl_gc_have_pending_finalizers: extern "C" fn() -> *mut i32,
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();
