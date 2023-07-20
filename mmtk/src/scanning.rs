@@ -92,7 +92,11 @@ impl Scanning<JuliaVM> for VMScanning {
         // use crate::mmtk::vm::ActivePlan;
 
         let single_thread_process_finalizer = ScanFinalizersSingleThreaded { tracer_context };
-        memory_manager::add_work_packet(&SINGLETON, WorkBucketStage::VMRefClosure, single_thread_process_finalizer);
+        memory_manager::add_work_packet(
+            &SINGLETON,
+            WorkBucketStage::VMRefClosure,
+            single_thread_process_finalizer,
+        );
 
         // let process_to_finalize = ScanToFinalizeList {
         //     tracer_context: tracer_context.clone(),
