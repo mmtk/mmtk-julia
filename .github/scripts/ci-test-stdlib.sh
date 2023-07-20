@@ -45,7 +45,6 @@ do
         # Get the basename such as Dates/Sockets/LinearAlgebra/etc
         test=$(echo "$dir" | xargs -I {} basename {})
         echo "Run stdlib tests: "$test
-
         # Skip some tests
         if [[ "${tests_to_skip[@]}" =~ "$test" ]]; then
             echo "-> Skip"

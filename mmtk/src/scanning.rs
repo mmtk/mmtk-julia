@@ -7,6 +7,8 @@ use crate::{ROOT_EDGES, ROOT_NODES, SINGLETON, UPCALLS};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::opaque_pointer::*;
+#[cfg(feature = "scan_obj_c")]
+use mmtk::util::Address;
 use mmtk::util::ObjectReference;
 use mmtk::vm::EdgeVisitor;
 use mmtk::vm::ObjectTracerContext;
@@ -125,13 +127,18 @@ impl Scanning<JuliaVM> for VMScanning {
     }
 }
 
-pub fn process_object(object: ObjectReference, closure: &mut dyn EdgeVisitor<JuliaVMEdge>) {
+pub fn process_object<EV: EdgeVisitor<JuliaVMEdge>>(object: ObjectReference, closure: &mut EV) {
     let addr = object.to_raw_address();
 
     #[cfg(feature = "scan_obj_c")]
     {
         unsafe {
-            ((*UPCALLS).scan_julia_obj)(addr, closure, process_edge as _, process_offset_edge as _)
+            ((*UPCALLS).scan_julia_obj)(
+                addr,
+                Address::from_mut_ptr(closure),
+                process_edge::<EV> as _,
+                process_offset_edge::<EV> as _,
+            )
         };
     }
 

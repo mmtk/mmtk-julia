@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include "gc.h"
 
+#include "mmtk_julia_types.h"
+
 extern int64_t perm_scanned_bytes;
 extern void run_finalizer(jl_task_t *ct, void *o, void *ff);
 extern int gc_n_threads;
@@ -188,15 +190,6 @@ void wait_for_the_world(void)
     }
 }
 
-size_t get_lo_size(void* obj_raw) 
-{
-    jl_value_t* obj = (jl_value_t*) obj_raw;
-    jl_taggedvalue_t *v = jl_astaggedvalue(obj);
-    // bigval_header: but we cannot access the function here. So use container_of instead.
-    bigval_t* hdr = container_of(v, bigval_t, header);
-    return hdr->sz;
-}
-
 void set_jl_last_err(int e) 
 {
     errno = e;
@@ -205,22 +198,6 @@ void set_jl_last_err(int e)
 int get_jl_last_err(void) 
 {
     return errno;
-}
-
-void* get_obj_start_ref(void* obj_raw) 
-{
-    jl_value_t* obj = (jl_value_t*) obj_raw;
-    uintptr_t tag = (uintptr_t)jl_typeof(obj);
-    jl_datatype_t *vt = (jl_datatype_t*)tag;
-    void* obj_start_ref; 
-
-    if ((uintptr_t)vt == jl_buff_tag) {
-        obj_start_ref = (void*)((size_t)obj - 2*sizeof(jl_taggedvalue_t));
-    } else {
-        obj_start_ref = (void*)((size_t)obj - sizeof(jl_taggedvalue_t));
-    }
-
-    return obj_start_ref;
 }
 
 size_t get_so_size(void* obj_raw) 
@@ -238,12 +215,18 @@ size_t get_so_size(void* obj_raw)
             int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
             if (mmtk_object_is_managed_by_mmtk(a->data)) {
                 size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
+                // printf("pre_data_bytes from c = %d\n", pre_data_bytes);
+                // fflush(stdout);
                 if (pre_data_bytes > 0) { // a->data is allocated after a
                     tsz = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
                     tsz += jl_array_nbytes(a);
+                    // printf("tsz = %d\n", tsz);
+                    // fflush(stdout);
                 }
                 if (tsz + sizeof(jl_taggedvalue_t) > 2032) { // if it's too large to be inlined (a->data and a are disjoint objects)
                     tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t); // simply keep the info before data
+                    // printf("tsz + sizeof(jl_taggedvalue_t) > 2032 --- tsz = %d\n", tsz);
+                    // fflush(stdout);
                 }
             }
             if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
@@ -428,7 +411,7 @@ static inline uintptr_t mmtk_gc_read_stack(void *_addr, uintptr_t offset,
     return *(uintptr_t*)real_addr;
 }
 
-void scan_gcstack(jl_task_t *ta, closure_pointer closure, ProcessEdgeFn process_edge)
+void scan_gcstack(jl_task_t *ta, void* closure, ProcessEdgeFn process_edge)
 {
     void *stkbuf = ta->stkbuf;
 #ifdef COPY_STACKS
@@ -527,7 +510,7 @@ void scan_gcstack(jl_task_t *ta, closure_pointer closure, ProcessEdgeFn process_
 void root_scan_task(jl_ptls_t ptls, jl_task_t* task)
 {
     // This is never accessed so just leave it uninitialized.
-    closure_pointer c;
+    void* c = NULL;
 
     // Scan the stack
     scan_gcstack(task, c, mmtk_process_root_edges);
@@ -608,7 +591,7 @@ void calculate_roots(void* ptls_raw)
     queue_roots();
 }
 
-JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, closure_pointer closure, ProcessEdgeFn process_edge) {
+JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn process_edge) {
     jl_task_t *ta = (jl_task_t*)obj_raw;
 
     if (ta->excstack) { // inlining label `excstack` from mark_loop
@@ -671,7 +654,7 @@ const bool PRINT_OBJ_TYPE = false;
  * directly (not an edge), specifying whether to scan the object or not; and only scan the object 
  * (necessary for boot image / non-MMTk objects)
 **/
-JL_DLLEXPORT void scan_julia_obj(void* obj_raw, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge) 
+JL_DLLEXPORT void scan_julia_obj(void* obj_raw, void* closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge) 
 {
     jl_value_t* obj = (jl_value_t*) obj_raw;
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
@@ -806,9 +789,8 @@ JL_DLLEXPORT void scan_julia_obj(void* obj_raw, closure_pointer closure, Process
             jl_value_t **objary_end = objary_begin + nusings;
 
             for (; objary_begin < objary_end; objary_begin += 1) {
-                jl_value_t *pnew_obj = *objary_begin;
                 if (PRINT_OBJ_TYPE) { printf(" - scan usings: %p\n", objary_begin); fflush(stdout); }
-                process_edge(closure, pnew_obj);
+                process_edge(closure, objary_begin);
             }
         }
     } else if (vt == jl_task_type) { // scanning a jl_task_type object
@@ -889,8 +871,62 @@ void update_gc_time(uint64_t inc) {
     gc_num.total_time += inc;
 }
 
+#define assert_size(ty_a, ty_b) \
+    if(sizeof(ty_a) != sizeof(ty_b)) {\
+        printf("%s size = %ld, %s size = %ld. Need to update our type definition.\n", #ty_a, sizeof(ty_a), #ty_b, sizeof(ty_b));\
+        exit(1); \
+    }
+
+#define PRINT_STRUCT_SIZE false
+#define print_sizeof(type) (PRINT_STRUCT_SIZE ? (printf("C " #type " = %zu bytes\n", sizeof(type)), sizeof(type)) : sizeof(type))
+
 uintptr_t get_abi_structs_checksum_c(void) {
-    return sizeof(MMTkMutatorContext);
+    assert_size(struct mmtk__jl_taggedvalue_bits, struct _jl_taggedvalue_bits);
+    assert_size(mmtk_jl_taggedvalue_t, jl_taggedvalue_t);
+    assert_size(mmtk_jl_array_flags_t, jl_array_flags_t);
+    assert_size(mmtk_jl_datatype_layout_t, jl_datatype_layout_t);
+    assert_size(mmtk_jl_typename_t, jl_typename_t);
+    assert_size(mmtk_jl_svec_t, jl_svec_t);
+    assert_size(mmtk_jl_datatype_t, jl_datatype_t);
+    assert_size(mmtk_jl_array_t, jl_array_t);
+    assert_size(mmtk_jl_sym_t, jl_sym_t);
+    assert_size(mmtk_jl_binding_t, jl_binding_t);
+    assert_size(mmtk_htable_t, htable_t);
+    assert_size(mmtk_arraylist_t, arraylist_t);
+    assert_size(mmtk_jl_uuid_t, jl_uuid_t);
+    assert_size(mmtk_jl_mutex_t, jl_mutex_t);
+    assert_size(mmtk_jl_module_t, jl_module_t);
+    assert_size(mmtk_jl_excstack_t, jl_excstack_t);
+    assert_size(mmtk_jl_bt_element_t, jl_bt_element_t);
+    assert_size(mmtk_jl_stack_context_t, jl_stack_context_t);
+    assert_size(mmtk_jl_ucontext_t, jl_ucontext_t);
+    assert_size(struct mmtk__jl_gcframe_t, struct _jl_gcframe_t);
+    assert_size(mmtk_jl_task_t, jl_task_t);
+    assert_size(mmtk_jl_weakref_t, jl_weakref_t);
+
+    return print_sizeof(MMTkMutatorContext)
+        ^ print_sizeof(struct mmtk__jl_taggedvalue_bits)
+        ^ print_sizeof(mmtk_jl_taggedvalue_t)
+        ^ print_sizeof(mmtk_jl_array_flags_t)
+        ^ print_sizeof(mmtk_jl_datatype_layout_t)
+        ^ print_sizeof(mmtk_jl_typename_t)
+        ^ print_sizeof(mmtk_jl_svec_t)
+        ^ print_sizeof(mmtk_jl_datatype_t)
+        ^ print_sizeof(mmtk_jl_array_t)
+        ^ print_sizeof(mmtk_jl_sym_t)
+        ^ print_sizeof(mmtk_jl_binding_t)
+        ^ print_sizeof(mmtk_htable_t)
+        ^ print_sizeof(mmtk_arraylist_t)
+        ^ print_sizeof(mmtk_jl_uuid_t)
+        ^ print_sizeof(mmtk_jl_mutex_t)
+        ^ print_sizeof(mmtk_jl_module_t)
+        ^ print_sizeof(mmtk_jl_excstack_t)
+        ^ print_sizeof(mmtk_jl_bt_element_t)
+        ^ print_sizeof(mmtk_jl_stack_context_t)
+        ^ print_sizeof(mmtk_jl_ucontext_t)
+        ^ print_sizeof(struct mmtk__jl_gcframe_t)
+        ^ print_sizeof(mmtk_jl_task_t)
+        ^ print_sizeof(mmtk_jl_weakref_t);
 }
 
 int* get_jl_gc_have_pending_finalizers(void) {
@@ -905,9 +941,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     // .run_finalizer_function = run_finalizer_function,
     .get_jl_last_err = get_jl_last_err,
     .set_jl_last_err = set_jl_last_err,
-    .get_lo_size = get_lo_size,
     .get_so_size = get_so_size,
-    .get_obj_start_ref = get_obj_start_ref,
     .wait_for_the_world = wait_for_the_world,
     .set_gc_initial_state = set_gc_initial_state,
     .set_gc_final_state = set_gc_final_state,
