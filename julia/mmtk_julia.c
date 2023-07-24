@@ -348,6 +348,7 @@ size_t get_so_size(void* obj_raw)
 
 extern void run_finalizers(jl_task_t *ct);
 
+// Called after GC to run finalizers
 void mmtk_jl_run_finalizers(void* ptls_raw) {
     jl_ptls_t ptls = (jl_ptls_t) ptls_raw;
     if (!ptls->finalizers_inhibited && ptls->locks.len == 0) {
@@ -356,10 +357,12 @@ void mmtk_jl_run_finalizers(void* ptls_raw) {
     }
 }
 
+// We implement finalization in the binding side. These functions
+// returns some pointers so MMTk can manipulate finalizer lists.
+
 extern jl_mutex_t finalizers_lock;
 extern arraylist_t to_finalize;
 extern arraylist_t finalizer_list_marked;
-extern int prev_sweep_full;
 
 void* get_thread_finalizer_list(void* ptls_raw) {
     jl_ptls_t ptls = (jl_ptls_t) ptls_raw;
@@ -372,6 +375,10 @@ void* get_to_finalize_list(void) {
 
 void* get_marked_finalizers_list(void) {
     return (void*)&finalizer_list_marked;
+}
+
+int* get_jl_gc_have_pending_finalizers(void) {
+    return (int*)&jl_gc_have_pending_finalizers;
 }
 
 // add the initial root set to mmtk roots
@@ -892,10 +899,6 @@ void update_gc_time(uint64_t inc) {
 
 uintptr_t get_abi_structs_checksum_c(void) {
     return sizeof(MMTkMutatorContext);
-}
-
-int* get_jl_gc_have_pending_finalizers(void) {
-    return (int*)&jl_gc_have_pending_finalizers;
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {

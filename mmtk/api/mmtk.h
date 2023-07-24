@@ -57,8 +57,6 @@ extern int mmtk_object_is_managed_by_mmtk(void* addr);
 extern void mmtk_runtime_panic(void);
 extern void mmtk_unreachable(void);
 
-extern uint8_t mmtk_is_current_gc_nursery(void);
-
 extern void mmtk_set_vm_space(void* addr, size_t size);
 extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
 
@@ -83,7 +81,6 @@ typedef struct {
     void (* scan_julia_exc_obj) (void* obj, closure_pointer closure, ProcessEdgeFn process_edge);
     void* (* get_stackbase) (int16_t tid);
     void (* calculate_roots) (void* tls);
-    // void (* run_finalizer_function) (void* obj, void* function, bool is_ptr);
     int (* get_jl_last_err) (void);
     void (* set_jl_last_err) (int e);
     size_t (* get_lo_size) (void* obj);

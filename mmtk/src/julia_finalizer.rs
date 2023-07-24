@@ -16,8 +16,10 @@ pub fn scan_finalizers_in_rust<T: ObjectTracer>(tracer: &mut T) {
     let jl_gc_have_pending_finalizers: *mut i32 =
         unsafe { ((*UPCALLS).get_jl_gc_have_pending_finalizers)() };
 
+    // Current length of marked list: we only need to trace objects after this length if this is a nursery GC.
     let mut orig_marked_len = marked_finalizers_list.len;
 
+    // Sweep thread local list: if they are not alive, move to to_finalize.
     for mutator in <JuliaVM as VMBinding>::VMActivePlan::mutators() {
         let list = ArrayListT::thread_local_finalizer_list(mutator);
         sweep_finalizer_list(
@@ -28,7 +30,8 @@ pub fn scan_finalizers_in_rust<T: ObjectTracer>(tracer: &mut T) {
         );
     }
 
-    if !crate::api::mmtk_is_current_gc_nursery() {
+    // If this is a full heap GC, we also sweep marked list.
+    if !crate::collection::is_current_gc_nursery() {
         sweep_finalizer_list(
             marked_finalizers_list,
             to_finalize,
@@ -38,12 +41,14 @@ pub fn scan_finalizers_in_rust<T: ObjectTracer>(tracer: &mut T) {
         orig_marked_len = 0;
     }
 
+    // Go through thread local list again and trace objects
     for mutator in <JuliaVM as VMBinding>::VMActivePlan::mutators() {
         let list = ArrayListT::thread_local_finalizer_list(mutator);
         mark_finlist(list, 0, tracer);
     }
-
+    // Trace new objects in marked list
     mark_finlist(marked_finalizers_list, orig_marked_len, tracer);
+    // Trace objects in to_finalize (which are just pushed in sweeping thread local list)
     mark_finlist(to_finalize, 0, tracer);
 }
 
@@ -105,11 +110,20 @@ impl ArrayListT {
     }
 }
 
+fn gc_ptr_clear_tag(addr: Address, tag: usize) -> ObjectReference {
+    ObjectReference::from_raw_address(unsafe { Address::from_usize(addr & !tag) })
+}
+
+fn gc_ptr_tag(addr: Address, tag: usize) -> bool {
+    addr & tag != 0
+}
+
 // sweep_finalizer_list in gc.c
-// finalizer_list_marked is None if list is finalizer_list_marked.
 fn sweep_finalizer_list(
     list: &mut ArrayListT,
     to_finalize: &mut ArrayListT,
+    // finalizer_list_marked is None if list (1st parameter) is finalizer_list_marked.
+    // Rust does not allow sending the same mutable reference as two different arguments (cannot borrow __ as mutable more than once at a time)
     mut finalizer_list_marked: Option<&mut ArrayListT>,
     jl_gc_have_pending_finalizers: *mut i32,
 ) {
@@ -121,7 +135,7 @@ fn sweep_finalizer_list(
     let mut j = 0;
     while i < list.len {
         let v0: Address = list.get(i);
-        let v = unsafe { ObjectReference::from_raw_address(Address::from_usize(v0 & (!3usize))) };
+        let v = gc_ptr_clear_tag(v0, 3);
         if v0.is_zero() {
             i += 2;
             // remove from this list
@@ -129,11 +143,12 @@ fn sweep_finalizer_list(
         }
 
         let fin = list.get(i + 1);
-        let (isfreed, isold) = if v0 & 2usize != 0 {
+        let (isfreed, isold) = if gc_ptr_tag(v0, 2) {
             (true, false)
         } else {
             let isfreed = !memory_manager::is_live_object(v);
-            (isfreed, finalizer_list_marked.is_some() && !isfreed)
+            let isold = finalizer_list_marked.is_some() && !isfreed;
+            (isfreed, isold)
         };
         if isfreed || isold {
             // remove from this list
@@ -176,22 +191,22 @@ fn mark_finlist<T: ObjectTracer>(list: &mut ArrayListT, start: usize, tracer: &m
             continue;
         }
 
-        let obj = if cur & 1usize != 0 {
+        let new_obj = if gc_ptr_tag(cur, 1) {
             // Skip next
             i += 1;
             debug_assert!(i < list.len);
-            ObjectReference::from_raw_address(unsafe { Address::from_usize(cur & (!1usize)) })
+            gc_ptr_clear_tag(cur, 1)
         } else {
             ObjectReference::from_raw_address(cur)
         };
-        if cur & 2usize != 0 {
+        if gc_ptr_tag(cur, 2) {
             i += 1;
             continue;
         }
 
-        let traced = tracer.trace_object(obj);
+        let traced = tracer.trace_object(new_obj);
         debug_assert_eq!(
-            traced, obj,
+            traced, new_obj,
             "Object is moved -- we need to save the new object back to the finalizer list"
         );
         i += 1;

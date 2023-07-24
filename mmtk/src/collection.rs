@@ -140,3 +140,10 @@ impl Collection<JuliaVM> for VMCollection {
     ) {
     }
 }
+
+pub fn is_current_gc_nursery() -> bool {
+    match crate::SINGLETON.get_plan().generational() {
+        Some(gen) => gen.is_current_gc_nursery(),
+        None => false,
+    }
+}

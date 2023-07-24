@@ -24,12 +24,12 @@ pub mod active_plan;
 pub mod api;
 pub mod collection;
 pub mod edges;
-pub mod finalizer;
 pub mod object_model;
 pub mod reference_glue;
 pub mod scanning;
 pub mod util;
 
+pub mod julia_finalizer;
 pub mod julia_scanning;
 #[allow(non_camel_case_types)]
 #[allow(improper_ctypes_definitions)]
