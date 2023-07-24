@@ -9,8 +9,8 @@ edition = "2018"
 # Metadata for the Julia repository
 [package.metadata.julia]
 # Our CI matches the following line and extract mmtk/julia. If this line is updated, please check ci yaml files and make sure it works.
-julia_repo = "https://github.com/qinsoon/julia.git"
-julia_version = "fd3409a7fe53de0ca228c05d74bf66bab1a0747c"
+julia_repo = "https://github.com/mmtk/julia.git"
+julia_version = "f690aa3a5621bfa1d6a07f911818f203d3f8d650"
 
 [lib]
 crate-type = ["cdylib"]
@@ -31,7 +31,7 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "f1a0bb7fbec97dd84e35a40e8be01cf5018f2f9e" }
+mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "47ee126f91f25b911498b3d49c35f672f5e935f9" }
 # Uncomment the following to build locally
 # mmtk = { path = "../repos/mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
@@ -42,7 +42,7 @@ chrono = "*"
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 
 [features]
-default = ["mmtk/malloc_counted_size", "scan_obj_c", "mmtk/vm_space"]
+default = ["scan_obj_c", "mmtk/vm_space"]
 
 # Plans
 nogc = []
