@@ -110,7 +110,7 @@ pub extern "C" fn mmtk_gc_init(
     // Make sure we initialize MMTk here
     lazy_static::initialize(&SINGLETON);
 
-    // Assert to make our fastpath allocation is correct.
+    // Assert to make sure our fastpath allocation is correct.
     {
         // If the assertion failed, check the allocation fastpath in Julia
         // - runtime fastpath: mmtk_immix_alloc_fast and mmtk_immortal_alloc_fast in julia.h
@@ -120,6 +120,12 @@ pub extern "C" fn mmtk_gc_init(
         assert_eq!(default_allocator, AllocatorSelector::Immix(0));
         let immortal_allocator = memory_manager::get_allocator_mapping::<JuliaVM>(&SINGLETON, AllocationSemantics::Immortal);
         assert_eq!(immortal_allocator, AllocatorSelector::BumpPointer(0));
+    }
+
+    // Assert to make sure alignment used in C is correct
+    {
+        // If the assertion failed, check MMTK_MIN_ALIGNMENT in julia.h
+        assert_eq!(<JuliaVM as mmtk::vm::VMBinding>::MIN_ALIGNMENT, 4);
     }
 }
 
