@@ -111,9 +111,15 @@ pub extern "C" fn mmtk_gc_init(
         // - runtime fastpath: mmtk_immix_alloc_fast and mmtk_immortal_alloc_fast in julia.h
         // - compiler inserted fastpath: llvm-final-gc-lowering.cpp
         use mmtk::util::alloc::AllocatorSelector;
-        let default_allocator = memory_manager::get_allocator_mapping::<JuliaVM>(&SINGLETON, AllocationSemantics::Default);
+        let default_allocator = memory_manager::get_allocator_mapping::<JuliaVM>(
+            &SINGLETON,
+            AllocationSemantics::Default,
+        );
         assert_eq!(default_allocator, AllocatorSelector::Immix(0));
-        let immortal_allocator = memory_manager::get_allocator_mapping::<JuliaVM>(&SINGLETON, AllocationSemantics::Immortal);
+        let immortal_allocator = memory_manager::get_allocator_mapping::<JuliaVM>(
+            &SINGLETON,
+            AllocationSemantics::Immortal,
+        );
         assert_eq!(immortal_allocator, AllocatorSelector::BumpPointer(0));
     }
 
