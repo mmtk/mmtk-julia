@@ -199,61 +199,39 @@ int get_jl_last_err(void)
     return errno;
 }
 
-void run_finalizer_function(void *o_raw, void *ff_raw, bool is_ptr)
-{
-    jl_value_t *o = (jl_value_t*) o_raw;
-    jl_value_t *ff = (jl_value_t*) ff_raw;
-    if (is_ptr) {
-        run_finalizer(jl_current_task, (jl_value_t *)(((uintptr_t)o) | 1), (jl_value_t *)ff);
-    } else {
-        run_finalizer(jl_current_task, (jl_value_t *) o, (jl_value_t *)ff);
+extern void run_finalizers(jl_task_t *ct);
+
+// Called after GC to run finalizers
+void mmtk_jl_run_finalizers(void* ptls_raw) {
+    jl_ptls_t ptls = (jl_ptls_t) ptls_raw;
+    if (!ptls->finalizers_inhibited && ptls->locks.len == 0) {
+        JL_TIMING(GC, GC_Finalizers);
+        run_finalizers(jl_current_task);
     }
 }
 
+// We implement finalization in the binding side. These functions
+// returns some pointers so MMTk can manipulate finalizer lists.
 
-static inline void mmtk_jl_run_finalizers_in_list(bool at_exit) {
-    jl_task_t* ct = jl_current_task;
-    uint8_t sticky = ct->sticky;
-    mmtk_run_finalizers(at_exit);
-     ct->sticky = sticky;
+extern jl_mutex_t finalizers_lock;
+extern arraylist_t to_finalize;
+extern arraylist_t finalizer_list_marked;
+
+void* get_thread_finalizer_list(void* ptls_raw) {
+    jl_ptls_t ptls = (jl_ptls_t) ptls_raw;
+    return (void*)&ptls->finalizers;
 }
 
-void mmtk_jl_run_pending_finalizers(void* ptls) {
-    if (!((jl_ptls_t)ptls)->in_finalizer && !((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
-        jl_task_t *ct = jl_current_task;
-        ((jl_ptls_t)ptls)->in_finalizer = 1;
-        uint64_t save_rngState[JL_RNG_SIZE];
-        memcpy(&save_rngState[0], &ct->rngState[0], sizeof(save_rngState));
-        jl_rng_split(ct->rngState, finalizer_rngState);
-        jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 0);
-        mmtk_jl_run_finalizers_in_list(false);
-        memcpy(&ct->rngState[0], &save_rngState[0], sizeof(save_rngState));
-        ((jl_ptls_t)ptls)->in_finalizer = 0;
-    }
+void* get_to_finalize_list(void) {
+    return (void*)&to_finalize;
 }
 
-void mmtk_jl_run_finalizers(void* ptls) {
-    // Only disable finalizers on current thread
-    // Doing this on all threads is racy (it's impossible to check
-    // or wait for finalizers on other threads without dead lock).
-    if (!((jl_ptls_t)ptls)->finalizers_inhibited && ((jl_ptls_t)ptls)->locks.len == 0) {
-        jl_task_t *ct = jl_current_task;
-        int8_t was_in_finalizer = ((jl_ptls_t)ptls)->in_finalizer;
-        ((jl_ptls_t)ptls)->in_finalizer = 1;
-        uint64_t save_rngState[JL_RNG_SIZE];
-        memcpy(&save_rngState[0], &ct->rngState[0], sizeof(save_rngState));
-        jl_rng_split(ct->rngState, finalizer_rngState);
-        jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 0);
-        mmtk_jl_run_finalizers_in_list(false);
-        memcpy(&ct->rngState[0], &save_rngState[0], sizeof(save_rngState));
-        ((jl_ptls_t)ptls)->in_finalizer = was_in_finalizer;
-    } else {
-        jl_atomic_store_relaxed(&jl_gc_have_pending_finalizers, 1);
-    }
+void* get_marked_finalizers_list(void) {
+    return (void*)&finalizer_list_marked;
 }
 
-void mmtk_jl_gc_run_all_finalizers(void) {
-    mmtk_jl_run_finalizers_in_list(true);
+int* get_jl_gc_have_pending_finalizers(void) {
+    return (int*)&jl_gc_have_pending_finalizers;
 }
 
 // add the initial root set to mmtk roots
@@ -554,7 +532,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
     .calculate_roots = calculate_roots,
-    .run_finalizer_function = run_finalizer_function,
+    // .run_finalizer_function = run_finalizer_function,
     .get_jl_last_err = get_jl_last_err,
     .set_jl_last_err = set_jl_last_err,
     .wait_for_the_world = wait_for_the_world,
@@ -569,4 +547,9 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .jl_hrtime = jl_hrtime,
     .update_gc_time = update_gc_time,
     .get_abi_structs_checksum_c = get_abi_structs_checksum_c,
+    .get_thread_finalizer_list = get_thread_finalizer_list,
+    .get_to_finalize_list = get_to_finalize_list,
+    .get_marked_finalizers_list = get_marked_finalizers_list,
+    .arraylist_grow = (void (*)(void*, long unsigned int))arraylist_grow,
+    .get_jl_gc_have_pending_finalizers = get_jl_gc_have_pending_finalizers,
 };

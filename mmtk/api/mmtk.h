@@ -66,7 +66,6 @@ typedef struct {
     void (* scan_julia_exc_obj) (void* obj, void* closure, ProcessEdgeFn process_edge);
     void* (* get_stackbase) (int16_t tid);
     void (* calculate_roots) (void* tls);
-    void (* run_finalizer_function) (void* obj, void* function, bool is_ptr);
     int (* get_jl_last_err) (void);
     void (* set_jl_last_err) (int e);
     void (* wait_for_the_world) (void);
@@ -81,6 +80,11 @@ typedef struct {
     uint64_t (* jl_hrtime) (void);
     void (* update_gc_time) (uint64_t);
     uintptr_t (* get_abi_structs_checksum_c) (void);
+    void* (* get_thread_finalizer_list) (void* tls);
+    void* (* get_to_finalize_list)(void);
+    void* (* get_marked_finalizers_list)(void);
+    void (*arraylist_grow)(void* a, size_t n);
+    int* (*get_jl_gc_have_pending_finalizers)(void);
 } Julia_Upcalls;
 
 /**
