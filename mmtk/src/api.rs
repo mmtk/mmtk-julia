@@ -8,8 +8,7 @@ use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
 use crate::UPCALLS;
 use crate::{
-    set_julia_obj_header_size_and_buffer_tag, BUILDER, DISABLED_GC, MUTATORS,
-    USER_TRIGGERED_GC,
+    set_julia_obj_header_size_and_buffer_tag, BUILDER, DISABLED_GC, MUTATORS, USER_TRIGGERED_GC,
 };
 use crate::{ROOT_EDGES, ROOT_NODES};
 
@@ -494,10 +493,7 @@ pub extern "C" fn mmtk_add_object_to_mmtk_roots(obj: ObjectReference) {
 // Pass this as 'process_edge' so we can reuse scan_julia_task_obj.
 #[no_mangle]
 #[allow(improper_ctypes_definitions)] // closure is a fat pointer, we propelry define its type in C header.
-pub extern "C" fn mmtk_process_root_edges(
-    _closure: Address,
-    addr: Address,
-) {
+pub extern "C" fn mmtk_process_root_edges(_closure: Address, addr: Address) {
     ROOT_EDGES.lock().unwrap().insert(addr);
 }
 
