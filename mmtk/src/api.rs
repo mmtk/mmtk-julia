@@ -10,7 +10,7 @@ use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
 use crate::UPCALLS;
 use crate::{
-    set_julia_obj_header_size, BUILDER, DISABLED_GC, FINALIZERS_RUNNING, MUTATORS,
+    set_julia_obj_header_size_and_buffer_tag, BUILDER, DISABLED_GC, FINALIZERS_RUNNING, MUTATORS,
     USER_TRIGGERED_GC,
 };
 use crate::{ROOT_EDGES, ROOT_NODES};
@@ -34,10 +34,11 @@ pub extern "C" fn mmtk_gc_init(
     n_gcthreads: usize,
     calls: *const Julia_Upcalls,
     header_size: usize,
+    buffer_tag: usize,
 ) {
     unsafe {
         UPCALLS = calls;
-        set_julia_obj_header_size(header_size);
+        set_julia_obj_header_size_and_buffer_tag(header_size, buffer_tag);
     };
 
     // Assert to make sure our ABI is correct
@@ -597,14 +598,11 @@ pub extern "C" fn mmtk_add_object_to_mmtk_roots(obj: ObjectReference) {
     ROOT_NODES.lock().unwrap().insert(obj);
 }
 
-use crate::JuliaVMEdge;
-use mmtk::vm::EdgeVisitor;
-
 // Pass this as 'process_edge' so we can reuse scan_julia_task_obj.
 #[no_mangle]
 #[allow(improper_ctypes_definitions)] // closure is a fat pointer, we propelry define its type in C header.
 pub extern "C" fn mmtk_process_root_edges(
-    _closure: &mut dyn EdgeVisitor<JuliaVMEdge>,
+    _closure: Address,
     addr: Address,
 ) {
     ROOT_EDGES.lock().unwrap().insert(addr);

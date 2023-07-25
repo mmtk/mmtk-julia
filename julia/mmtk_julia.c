@@ -189,15 +189,6 @@ void wait_for_the_world(void)
     }
 }
 
-size_t get_lo_size(void* obj_raw) 
-{
-    jl_value_t* obj = (jl_value_t*) obj_raw;
-    jl_taggedvalue_t *v = jl_astaggedvalue(obj);
-    // bigval_header: but we cannot access the function here. So use container_of instead.
-    bigval_t* hdr = container_of(v, bigval_t, header);
-    return hdr->sz;
-}
-
 void set_jl_last_err(int e) 
 {
     errno = e;
@@ -206,144 +197,6 @@ void set_jl_last_err(int e)
 int get_jl_last_err(void) 
 {
     return errno;
-}
-
-void* get_obj_start_ref(void* obj_raw) 
-{
-    jl_value_t* obj = (jl_value_t*) obj_raw;
-    uintptr_t tag = (uintptr_t)jl_typeof(obj);
-    jl_datatype_t *vt = (jl_datatype_t*)tag;
-    void* obj_start_ref; 
-
-    if ((uintptr_t)vt == jl_buff_tag) {
-        obj_start_ref = (void*)((size_t)obj - 2*sizeof(jl_taggedvalue_t));
-    } else {
-        obj_start_ref = (void*)((size_t)obj - sizeof(jl_taggedvalue_t));
-    }
-
-    return obj_start_ref;
-}
-
-size_t get_so_size(void* obj_raw) 
-{
-    jl_value_t* obj = (jl_value_t*) obj_raw;
-    uintptr_t tag = (uintptr_t)jl_typeof(obj);
-    jl_datatype_t *vt = (jl_datatype_t*)tag;
-
-    if ((uintptr_t)vt == jl_buff_tag) {
-        return mmtk_get_obj_size(obj);
-    } else if (vt->name == jl_array_typename) {
-        jl_array_t* a = (jl_array_t*) obj;
-        if (a->flags.how == 0) {
-            int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-            if (mmtk_object_is_managed_by_mmtk(a->data)) {
-                size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
-                if (pre_data_bytes > 0) { // a->data is allocated after a
-                    tsz = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
-                    tsz += jl_array_nbytes(a);
-                }
-                if (tsz + sizeof(jl_taggedvalue_t) > 2032) { // if it's too large to be inlined (a->data and a are disjoint objects)
-                    tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t); // simply keep the info before data
-                }
-            }
-            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
-                printf("size greater than minimum!\n");
-                mmtk_runtime_panic();
-            }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-            return osize;
-        } else if (a->flags.how == 1) {
-            int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
-                printf("size greater than minimum!\n");
-                mmtk_runtime_panic();
-            }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-
-            return osize;
-        } else if (a->flags.how == 2) {
-            int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
-                printf("size greater than minimum!\n");
-                mmtk_runtime_panic();
-            }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-
-            return osize;
-        } else if (a->flags.how == 3) {
-            int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
-            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
-                printf("size greater than minimum!\n");
-                mmtk_runtime_panic();
-            }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-            return osize;
-        }
-    } else if (vt == jl_simplevector_type) {
-        size_t l = jl_svec_len(obj);
-        if (l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass(l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
-    } else if (vt == jl_module_type) {
-        size_t dtsz = sizeof(jl_module_t);
-        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
-    } else if (vt == jl_task_type) {
-        size_t dtsz = sizeof(jl_task_t);
-        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
-    } else if (vt == jl_string_type) {
-        size_t dtsz = jl_string_len(obj) + sizeof(size_t) + 1;
-        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass_align8(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
-    } else if (vt == jl_method_type) {
-        size_t dtsz = sizeof(jl_method_t);
-        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
-    } else  {
-        size_t dtsz = jl_datatype_size(vt);
-        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
-    }
-    return 0;
 }
 
 void run_finalizer_function(void *o_raw, void *ff_raw, bool is_ptr)
@@ -458,7 +311,7 @@ static inline uintptr_t mmtk_gc_read_stack(void *_addr, uintptr_t offset,
     return *(uintptr_t*)real_addr;
 }
 
-void scan_gcstack(jl_task_t *ta, closure_pointer closure, ProcessEdgeFn process_edge)
+void scan_gcstack(jl_task_t *ta, void* closure, ProcessEdgeFn process_edge)
 {
     void *stkbuf = ta->stkbuf;
 #ifdef COPY_STACKS
@@ -556,8 +409,8 @@ void scan_gcstack(jl_task_t *ta, closure_pointer closure, ProcessEdgeFn process_
 
 void root_scan_task(jl_ptls_t ptls, jl_task_t* task)
 {
-    // This is never accessed so just leave it uninitialized.
-    closure_pointer c;
+    // This is never accessed so just leave it NULL.
+    void* c = NULL;
 
     // Scan the stack
     scan_gcstack(task, c, mmtk_process_root_edges);
@@ -638,7 +491,7 @@ void calculate_roots(void* ptls_raw)
     queue_roots();
 }
 
-JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, closure_pointer closure, ProcessEdgeFn process_edge) {
+JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn process_edge) {
     jl_task_t *ta = (jl_task_t*)obj_raw;
 
     if (ta->excstack) { // inlining label `excstack` from mark_loop
@@ -689,232 +542,6 @@ JL_DLLEXPORT void* get_stackbase(int16_t tid) {
 
 const bool PRINT_OBJ_TYPE = false;
 
-/** 
- * Corresponds to the function mark_loop in the original Julia GC. It
- * dispatches MMTk work for scanning internal pointers for the object obj.
- * This function follows the flow defined in the `mark` goto label in mark_loop.
- * based on the type of obj it computes the internal pointers which are passed back to mmtk in 2 different ways:
- * (1) By adding an edge to vec_internals in order to create work packets. Note that this is a Rust vector limited 
- * by a `capacity`, once the vector is full, the work is dispatched through the function dispatch_work.
- * (2) By creating the work directly through the functions `trace_slot_with_offset`, `trace_obj` and `scan_obj`. The functions 
- * respectively: trace a buffer that contains an offset which needs to be added to the object after it is loaded; trace an object 
- * directly (not an edge), specifying whether to scan the object or not; and only scan the object 
- * (necessary for boot image / non-MMTk objects)
-**/
-JL_DLLEXPORT void scan_julia_obj(void* obj_raw, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge) 
-{
-    jl_value_t* obj = (jl_value_t*) obj_raw;
-    uintptr_t tag = (uintptr_t)jl_typeof(obj);
-    jl_datatype_t *vt = (jl_datatype_t*)tag; // type of obj
-
-    // if it is a symbol type it does not contain internal pointers 
-    // but we need to dispatch the work to appropriately drop the rust vector
-    if (vt == jl_symbol_type || (uintptr_t)vt == jl_buff_tag) {
-        return;
-    };
-
-    if (vt == jl_simplevector_type) { // scanning a jl_simplevector_type object (inlining label `objarray_loaded` from mark_loop)
-        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: simple vector\n", obj); fflush(stdout); }
-        size_t l = jl_svec_len(obj);
-        jl_value_t **data = jl_svec_data(obj);
-        jl_value_t **objary_begin = data;
-        jl_value_t **objary_end = data + l;
-        for (; objary_begin < objary_end; objary_begin += 1) {
-            process_edge(closure, objary_begin);
-        }
-    } else if (vt->name == jl_array_typename) { // scanning a jl_array_typename object
-        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: array\n", obj); fflush(stdout); }
-        jl_array_t *a = (jl_array_t*)obj;
-        jl_array_flags_t flags = a->flags;
-
-        if (flags.how == 1) { // julia-allocated buffer that needs to be marked
-            long offset = a->offset * a->elsize;
-            process_offset_edge(closure, &a->data, offset);
-        }
-        if (flags.how == 2) { // malloc-allocated pointer this array object manages
-            // should be processed below if it contains pointers
-        } else if (flags.how == 3) { // has a pointer to the object that owns the data
-            jl_value_t **owner_addr = jl_array_data_owner_addr(a);
-            process_edge(closure, owner_addr);
-            return;
-        }
-        if (a->data == NULL || jl_array_len(a) == 0) {
-            return;
-        }
-        if (flags.ptrarray) { // inlining label `objarray_loaded` from mark_loop
-            if ((jl_datatype_t*)jl_tparam0(vt) == jl_symbol_type) {
-                return;
-            }
-            size_t l = jl_array_len(a);
-
-            jl_value_t** objary_begin = (jl_value_t**)a->data;
-            jl_value_t** objary_end = objary_begin + l;
-
-            for (; objary_begin < objary_end; objary_begin++) {
-                process_edge(closure, objary_begin);
-            }
-        } else if (flags.hasptr) { // inlining label `objarray_loaded` from mark_loop
-            jl_datatype_t *et = (jl_datatype_t*)jl_tparam0(vt);
-            const jl_datatype_layout_t *layout = et->layout;
-            unsigned npointers = layout->npointers;
-            unsigned elsize = a->elsize / sizeof(jl_value_t*);
-            size_t l = jl_array_len(a);
-            jl_value_t** objary_begin = (jl_value_t**)a->data;
-            jl_value_t** objary_end = objary_begin + l * elsize;
-            uint8_t *obj8_begin;
-            uint8_t *obj8_end;
-
-            if (npointers == 1) { // inlining label `objarray_loaded` from mark_loop
-                objary_begin += layout->first_ptr;
-                for (; objary_begin < objary_end; objary_begin+=elsize) {
-                    process_edge(closure, objary_begin);
-                }
-            } else if (layout->fielddesc_type == 0) { // inlining label `array8_loaded` from mark_loop
-                obj8_begin = (uint8_t*)jl_dt_layout_ptrs(layout);
-                obj8_end = obj8_begin + npointers;
-                size_t elsize = ((jl_array_t*)obj)->elsize / sizeof(jl_value_t*);
-                jl_value_t **begin = objary_begin;
-                jl_value_t **end = objary_end;
-                uint8_t *elem_begin = obj8_begin;
-                uint8_t *elem_end = obj8_end;
-
-                for (; begin < end; begin += elsize) {
-                    for (; elem_begin < elem_end; elem_begin++) {
-                        jl_value_t **slot = &begin[*elem_begin];
-                        process_edge(closure, slot);
-                    }
-                    elem_begin = obj8_begin;
-                }
-            } else if (layout->fielddesc_type == 1) {
-                uint16_t *obj16_begin;
-                uint16_t *obj16_end;
-                size_t elsize = ((jl_array_t*)obj)->elsize / sizeof(jl_value_t*);
-                jl_value_t **begin = objary_begin;
-                jl_value_t **end = objary_end;
-                obj16_begin = (uint16_t*)jl_dt_layout_ptrs(layout);
-                obj16_end = obj16_begin + npointers;
-                for (; begin < end; begin += elsize) {
-                    for (; obj16_begin < obj16_end; obj16_begin++) {
-                        jl_value_t **slot = &begin[*obj16_begin];
-                        process_edge(closure, slot);
-                    }
-                    obj16_begin = (uint16_t*)jl_dt_layout_ptrs(layout);
-                }
-            } else {
-                assert(0 && "unimplemented");
-            }
-        } else { 
-            return;
-        }
-    } else if (vt == jl_module_type) { // inlining label `module_binding` from mark_loop
-        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: module\n", obj); fflush(stdout); }
-        jl_module_t *m = (jl_module_t*)obj;
-        jl_svec_t *bindings = jl_atomic_load_relaxed(&m->bindings);
-        jl_binding_t **table = (jl_binding_t**)jl_svec_data(bindings);
-        size_t bsize = jl_svec_len(bindings);
-        jl_binding_t **begin = table + 1;
-        jl_binding_t **end =  table + bsize;
-        for (; begin < end; begin++) {
-            jl_binding_t *b = *begin;
-            if (b == (jl_binding_t*)jl_nothing)
-                continue;
-
-            if (PRINT_OBJ_TYPE) { printf(" - scan table: %p\n", begin); fflush(stdout); }
-            process_edge(closure, begin);
-        }
-
-        if (PRINT_OBJ_TYPE) { printf(" - scan parent: %p\n", &m->parent); fflush(stdout); }
-        process_edge(closure, &m->parent);
-        if (PRINT_OBJ_TYPE) { printf(" - scan bindingkeyset: %p\n", &m->bindingkeyset); fflush(stdout); }
-        process_edge(closure, &m->bindingkeyset);
-        if (PRINT_OBJ_TYPE) { printf(" - scan bindings: %p\n", &m->bindings); fflush(stdout); }
-        process_edge(closure, &m->bindings);
-
-        size_t nusings = m->usings.len;
-        if (nusings) {
-            jl_value_t **objary_begin = (jl_value_t**)m->usings.items;
-            jl_value_t **objary_end = objary_begin + nusings;
-
-            for (; objary_begin < objary_end; objary_begin += 1) {
-                jl_value_t *pnew_obj = *objary_begin;
-                if (PRINT_OBJ_TYPE) { printf(" - scan usings: %p\n", objary_begin); fflush(stdout); }
-                process_edge(closure, pnew_obj);
-            }
-        }
-    } else if (vt == jl_task_type) { // scanning a jl_task_type object
-            jl_task_t *ta = (jl_task_t*)obj;
-
-            // Scan gcstacks
-            scan_gcstack(ta, closure, process_edge);
-
-            const jl_datatype_layout_t *layout = jl_task_type->layout; // inlining label `obj8_loaded` from mark_loop 
-            assert(layout->fielddesc_type == 0);
-            assert(layout->nfields > 0);
-            uint32_t npointers = layout->npointers;
-            uint8_t *obj8_begin = (uint8_t*)jl_dt_layout_ptrs(layout);
-            uint8_t *obj8_end = obj8_begin + npointers;
-            (void)jl_assume(obj8_begin < obj8_end);
-            for (; obj8_begin < obj8_end; obj8_begin++) {
-                jl_value_t **slot = &((jl_value_t**)obj)[*obj8_begin];
-                process_edge(closure, slot);
-            }
-    } else if (vt == jl_string_type) { // scanning a jl_string_type object
-        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: string\n", obj); fflush(stdout); }
-        return;
-    } else {  // scanning a jl_datatype object
-        if (PRINT_OBJ_TYPE) { printf("scan_julia_obj %p: datatype\n", obj); fflush(stdout); }
-        if (vt == jl_weakref_type) {
-            return;
-        }
-        const jl_datatype_layout_t *layout = vt->layout;
-        uint32_t npointers = layout->npointers;
-        if (npointers == 0) {
-            return;
-        } else {
-            assert(layout->nfields > 0 && layout->fielddesc_type != 3 && "opaque types should have been handled specially");
-            if (layout->fielddesc_type == 0) { // inlining label `obj8_loaded` from mark_loop 
-                uint8_t *obj8_begin;
-                uint8_t *obj8_end;
-
-                obj8_begin = (uint8_t*)jl_dt_layout_ptrs(layout);
-                obj8_end = obj8_begin + npointers;
-
-                (void)jl_assume(obj8_begin < obj8_end);
-                for (; obj8_begin < obj8_end; obj8_begin++) {
-                    jl_value_t **slot = &((jl_value_t**)obj)[*obj8_begin];
-                    process_edge(closure, slot);
-                }
-            }
-            else if(layout->fielddesc_type == 1) { // inlining label `obj16_loaded` from mark_loop 
-                // scan obj16
-                uint16_t *obj16_begin;
-                uint16_t *obj16_end;
-                obj16_begin = (uint16_t*)jl_dt_layout_ptrs(layout);
-                obj16_end = obj16_begin + npointers;
-                for (; obj16_begin < obj16_end; obj16_begin++) {
-                    jl_value_t **slot = &((jl_value_t**)obj)[*obj16_begin];
-                    process_edge(closure, slot);
-                }
-            }
-            else if (layout->fielddesc_type == 2) {
-                uint32_t *obj32_begin = (uint32_t*)jl_dt_layout_ptrs(layout);
-                uint32_t *obj32_end = obj32_begin + npointers;
-                for (; obj32_begin < obj32_end; obj32_begin++) {
-                    jl_value_t **slot = &((jl_value_t**)obj)[*obj32_begin];
-                    process_edge(closure, slot);
-                }
-            }
-            else {
-                // simply dispatch the work at the end of the function
-                assert(layout->fielddesc_type == 3);
-                mmtk_runtime_panic();
-            }
-        }
-    }
-
-    return;
-}
-
 void update_gc_time(uint64_t inc) {
     gc_num.total_time += inc;
 }
@@ -924,16 +551,12 @@ uintptr_t get_abi_structs_checksum_c(void) {
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
-    .scan_julia_obj = scan_julia_obj,
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
     .calculate_roots = calculate_roots,
     .run_finalizer_function = run_finalizer_function,
     .get_jl_last_err = get_jl_last_err,
     .set_jl_last_err = set_jl_last_err,
-    .get_lo_size = get_lo_size,
-    .get_so_size = get_so_size,
-    .get_obj_start_ref = get_obj_start_ref,
     .wait_for_the_world = wait_for_the_world,
     .set_gc_initial_state = set_gc_initial_state,
     .set_gc_final_state = set_gc_final_state,

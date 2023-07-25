@@ -40,7 +40,7 @@ chrono = "*"
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 
 [features]
-default = ["scan_obj_c", "mmtk/vm_space"]
+default = ["mmtk/vm_space"]
 
 # Plans
 nogc = []
@@ -50,6 +50,3 @@ marksweep = []
 
 # TODO remove this when we properly support moving
 non_moving_immix = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
-
-# FIXME update and use rust object scanner as default for immix
-scan_obj_c = []
