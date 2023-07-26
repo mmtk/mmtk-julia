@@ -97,7 +97,7 @@ impl mmtk__jl_task_t {
 }
 
 #[no_mangle]
-pub extern "C" fn julia_copy_stack_check(c_flag_is_defined: bool) {
+pub extern "C" fn mmtk_julia_copy_stack_check(c_flag_is_defined: bool) {
     if c_flag_is_defined {
         #[cfg(not(feature = "julia_copy_stack"))]
         panic!("COPY_STACK flag has been defined in C, but `julia_copy_stack` feature has not been set.")
