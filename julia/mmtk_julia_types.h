@@ -417,3 +417,48 @@ typedef struct mmtk__jl_method_t {
     // lock for modifications to the method
     mmtk_jl_mutex_t writelock;
 } mmtk_jl_method_t;
+
+#define JL_SMALL_TYPEOF(XX) \
+    /* kinds */ \
+    XX(typeofbottom) \
+    XX(datatype) \
+    XX(unionall) \
+    XX(uniontype) \
+    /* type parameter objects */ \
+    XX(vararg) \
+    XX(tvar) \
+    XX(symbol) \
+    XX(module) \
+    /* special GC objects */ \
+    XX(simplevector) \
+    XX(string) \
+    XX(task) \
+    /* bits types with special allocators */ \
+    XX(bool) \
+    XX(char) \
+    /*XX(float16)*/ \
+    /*XX(float32)*/ \
+    /*XX(float64)*/ \
+    XX(int16) \
+    XX(int32) \
+    XX(int64) \
+    XX(int8) \
+    XX(uint16) \
+    XX(uint32) \
+    XX(uint64) \
+    XX(uint8) \
+    /* AST objects */ \
+    /* XX(argument) */ \
+    /* XX(newvarnode) */ \
+    /* XX(slotnumber) */ \
+    /* XX(ssavalue) */ \
+    /* end of JL_SMALL_TYPEOF */
+enum mmtk_jlsmall_typeof_tags {
+    mmtk_jl_null_tag = 0,
+#define XX(name) mmtk_jl_##name##_tag,
+    JL_SMALL_TYPEOF(XX)
+#undef XX
+    mmtk_jl_tags_count,
+    mmtk_jl_bitstags_first = mmtk_jl_char_tag, // n.b. bool is not considered a bitstype, since it can be compared by pointer
+    mmtk_jl_max_tags = 64
+};

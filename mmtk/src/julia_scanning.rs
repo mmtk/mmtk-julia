@@ -20,6 +20,7 @@ extern "C" {
     pub static jl_weakref_type: *const mmtk_jl_datatype_t;
     pub static jl_symbol_type: *const mmtk_jl_datatype_t;
     pub static jl_method_type: *const mmtk_jl_datatype_t;
+    pub static jl_simplevector_tag: jlsmall_typeof_tags;
 }
 
 extern "C" {
@@ -53,6 +54,7 @@ pub unsafe fn mmtk_jl_to_typeof(t: Address) -> *const mmtk_jl_datatype_t {
 
 const PRINT_OBJ_TYPE: bool = false;
 
+// This function is a rewrite of `gc_mark_outrefs()` in `gc.c`
 // INFO: *_custom() functions are acessors to bitfields that do not use bindgen generated code.
 #[inline(always)]
 pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, closure: &mut EV) {
@@ -520,9 +522,8 @@ pub unsafe fn mmtk_jl_tparam0(vt: *const mmtk_jl_datatype_t) -> *const mmtk_jl_d
 
 #[inline(always)]
 pub unsafe fn mmtk_jl_svecref(vt: *mut mmtk_jl_svec_t, i: usize) -> *const mmtk_jl_datatype_t {
-    // FIXME: missing debug (?) assertions
-    // assert(jl_typetagis(t,jl_simplevector_tag << 4));
-    // assert(i < jl_svec_len(t));
+    debug_assert!(mmtk_jl_typetagof(Address::from_mut_ptr(vt)).as_usize() == (mmtk_jlsmall_typeof_tags_mmtk_jl_simplevector_tag << 4) as usize);
+    debug_assert!(i < mmtk_jl_svec_len(Address::from_mut_ptr(vt)));
 
     let svec_data = mmtk_jl_svec_data(Address::from_mut_ptr(vt));
     let result_ptr = svec_data + i;
