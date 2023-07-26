@@ -315,15 +315,17 @@ unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
 ) {
     let stkbuf = (*ta).stkbuf;
     let copy_stack = (*ta).copy_stack_custom();
-    // FIXME: the code below is executed COPY_STACKS has been defined in the C Julia implementation - it is on by default
+
+    #[cfg(feature = "julia_copy_stack")]
     if stkbuf != std::ptr::null_mut() && copy_stack != 0 {
         let stkbuf_edge = Address::from_ptr(::std::ptr::addr_of!((*ta).stkbuf));
         process_edge(closure, stkbuf_edge);
     }
+
     let mut s = (*ta).gcstack;
     let (mut offset, mut lb, mut ub) = (0 as isize, 0 as u64, u64::MAX);
 
-    // FIXME: the code below is executed COPY_STACKS has been defined in the C Julia implementation - it is on by default
+    #[cfg(feature = "julia_copy_stack")]
     if stkbuf != std::ptr::null_mut() && copy_stack != 0 && (*ta).ptls == std::ptr::null_mut() {
         if ((*ta).tid as i16) < 0 {
             panic!("tid must be positive.")
@@ -333,6 +335,7 @@ unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
         lb = ub - ((*ta).copy_stack() as u64);
         offset = (*ta).stkbuf as isize - lb as isize;
     }
+
     if s != std::ptr::null_mut() {
         let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
         let mut nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);

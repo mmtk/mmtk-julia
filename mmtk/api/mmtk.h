@@ -105,6 +105,7 @@ extern void mmtk_register_finalizer(void* obj, void* function, bool is_ptr);
 extern void mmtk_run_finalizers_for_obj(void* obj);
 extern void mmtk_run_finalizers(bool at_exit);
 extern void mmtk_gc_poll(void *tls);
+extern void mmtk_julia_copy_stack_check(int copy_stack);
 
 /**
  * VM Accounting
