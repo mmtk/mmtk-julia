@@ -40,9 +40,6 @@ JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
 JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offset,
                                                     int osize, void *ty)
 {
-    // safepoint
-    jl_gc_safepoint();
-
     jl_value_t *v;
     if ((uintptr_t)ty != jl_buff_tag) {
         // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
@@ -66,9 +63,6 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offse
 
 JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
 {
-    // safepoint
-    jl_gc_safepoint();
-
     size_t offs = offsetof(bigval_t, header);
     assert(sz >= sizeof(jl_taggedvalue_t) && "sz must include tag");
     static_assert(offsetof(bigval_t, header) >= sizeof(void*), "Empty bigval header?");
