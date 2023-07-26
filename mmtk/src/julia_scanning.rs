@@ -522,7 +522,10 @@ pub unsafe fn mmtk_jl_tparam0(vt: *const mmtk_jl_datatype_t) -> *const mmtk_jl_d
 
 #[inline(always)]
 pub unsafe fn mmtk_jl_svecref(vt: *mut mmtk_jl_svec_t, i: usize) -> *const mmtk_jl_datatype_t {
-    debug_assert!(mmtk_jl_typetagof(Address::from_mut_ptr(vt)).as_usize() == (mmtk_jlsmall_typeof_tags_mmtk_jl_simplevector_tag << 4) as usize);
+    debug_assert!(
+        mmtk_jl_typetagof(Address::from_mut_ptr(vt)).as_usize()
+            == (mmtk_jlsmall_typeof_tags_mmtk_jl_simplevector_tag << 4) as usize
+    );
     debug_assert!(i < mmtk_jl_svec_len(Address::from_mut_ptr(vt)));
 
     let svec_data = mmtk_jl_svec_data(Address::from_mut_ptr(vt));
