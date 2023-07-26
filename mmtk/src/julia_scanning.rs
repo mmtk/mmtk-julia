@@ -1,6 +1,7 @@
 use crate::edges::JuliaVMEdge;
 use crate::edges::OffsetEdge;
 use crate::julia_types::*;
+use crate::object_model::mmtk_jl_array_ndims;
 use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
 use mmtk::util::Address;
@@ -94,7 +95,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
             // should be processed below if it contains pointers
         } else if flags.how_custom() == 3 {
             // has a pointer to the object that owns the data
-            let owner_addr = mmtk_jl_array_data_owner_addr(obj);
+            let owner_addr = mmtk_jl_array_data_owner_addr(array);
             process_edge(closure, owner_addr);
             return;
         }
@@ -467,7 +468,7 @@ pub fn process_offset_edge<EV: EdgeVisitor<JuliaVMEdge>>(
 }
 
 #[inline(always)]
-pub fn mmtk_jl_array_ndimwords(ndims: u16) -> usize {
+pub fn mmtk_jl_array_ndimwords(ndims: u32) -> usize {
     if ndims < 3 {
         return 0;
     }
@@ -491,18 +492,12 @@ pub unsafe fn mmtk_jl_array_len(a: *const mmtk_jl_array_t) -> usize {
 }
 
 #[inline(always)]
-pub unsafe fn mmtk_jl_array_data_owner_addr(array: Address) -> Address {
-    array + mmtk_jl_array_data_owner_offset(mmtk_jl_array_ndims(array))
+pub unsafe fn mmtk_jl_array_data_owner_addr(array: *const mmtk_jl_array_t) -> Address {
+    Address::from_ptr(array) + mmtk_jl_array_data_owner_offset(mmtk_jl_array_ndims(array))
 }
 
 #[inline(always)]
-pub unsafe fn mmtk_jl_array_ndims(array: Address) -> u16 {
-    let a = array.to_ptr::<mmtk_jl_array_t>();
-    (*a).flags.ndims_custom()
-}
-
-#[inline(always)]
-pub unsafe fn mmtk_jl_array_data_owner_offset(ndims: u16) -> usize {
+pub unsafe fn mmtk_jl_array_data_owner_offset(ndims: u32) -> usize {
     // (offsetof(jl_array_t,ncols)
     #[allow(deref_nullptr)]
     let offset_ncols =
