@@ -20,7 +20,6 @@ extern "C" {
     pub static jl_weakref_type: *const mmtk_jl_datatype_t;
     pub static jl_symbol_type: *const mmtk_jl_datatype_t;
     pub static jl_method_type: *const mmtk_jl_datatype_t;
-    pub static jl_simplevector_tag: jlsmall_typeof_tags;
 }
 
 extern "C" {
