@@ -8,7 +8,7 @@ cur=$(realpath $(dirname "$0"))
 
 # Build release
 cd $cur
-./ci-build.sh release immix
+./ci-build.sh release Immix
 
 # Use release build to run tests
 cd $cur
