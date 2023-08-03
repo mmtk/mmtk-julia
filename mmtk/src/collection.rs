@@ -133,13 +133,6 @@ impl Collection<JuliaVM> for VMCollection {
         unsafe { ((*UPCALLS).jl_throw_out_of_memory_error)() };
     }
 
-    fn prepare_mutator<T: MutatorContext<JuliaVM>>(
-        _tls_w: VMWorkerThread,
-        _tls_m: VMMutatorThread,
-        _mutator: &T,
-    ) {
-    }
-
     fn vm_live_bytes() -> usize {
         crate::api::JULIA_MALLOC_BYTES.load(Ordering::SeqCst)
     }
