@@ -1,19 +1,19 @@
 // install bindgen with cargo install bindgen-cli
-// run ~/.cargo/bin/bindgen /home/eduardo/mmtk-julia/julia/mmtk_julia_types.h -o /home/eduardo/mmtk-julia/mmtk/src/julia_types.rs
+// run:
+// BINDGEN_EXTRA_CLANG_ARGS="-I mmtk/api" ~/.cargo/bin/bindgen julia/mmtk_julia_types.h --opaque-type MMTkMutatorContext -o mmtk/src/julia_types.rs
 #include <setjmp.h>	
 #include <stdint.h>
+#include <pthread.h>
+#include "mmtkMutator.h"
 
 typedef __SIZE_TYPE__ size_t;
+typedef int sig_atomic_t;
 
 struct mmtk__jl_taggedvalue_bits {
     uintptr_t gc:2;
     uintptr_t in_image:1;
     uintptr_t unused:1;
-#ifdef _P64
     uintptr_t tag:60;
-#else
-    uintptr_t tag:28;
-#endif
 };
 
 typedef struct mmtk__jl_value_t mmtk_jl_value_t;
@@ -175,6 +175,15 @@ typedef struct {
     void *_space[AL_N_INLINE];
 } mmtk_arraylist_t;
 
+#define SMALL_AL_N_INLINE 6
+
+typedef struct {
+    uint32_t len;
+    uint32_t max;
+    void **items;
+    void *_space[SMALL_AL_N_INLINE];
+} mmtk_small_arraylist_t;
+
 typedef struct {
     uint64_t hi;
     uint64_t lo;
@@ -244,7 +253,6 @@ extern void siglongjmp (sigjmp_buf __env, int __val)
      __THROWNL __attribute__ ((__noreturn__));
 #endif /* Use POSIX.  */
 
-#ifndef _OS_WINDOWS_
 #  define mmtk_jl_jmp_buf sigjmp_buf
 #  if defined(_CPU_ARM_) || defined(_CPU_PPC_) || defined(_CPU_WASM_)
 #    define MAX_ALIGN 8
@@ -257,11 +265,6 @@ extern void siglongjmp (sigjmp_buf __env, int __val)
 #  else
 #    define MAX_ALIGN 4
 #  endif
-#else
-#  include "win32_ucontext.h"
-#  define mmtk_jl_jmp_buf jmp_buf
-#  define MAX_ALIGN 8
-#endif
 
 typedef struct {
     mmtk_jl_jmp_buf uc_mcontext;
@@ -289,6 +292,160 @@ struct mmtk__jl_gcframe_t {
     struct mmtk__jl_gcframe_t *prev;
     // actual roots go here
 };
+
+typedef struct {
+    mmtk_jl_taggedvalue_t *freelist;   // root of list of free objects
+    mmtk_jl_taggedvalue_t *newpages;   // root of list of chunks of free objects
+    uint16_t osize;      // size of objects in this pool
+} mmtk_jl_gc_pool_t;
+
+typedef struct {
+    _Atomic(int64_t) allocd;
+    _Atomic(int64_t) freed;
+    _Atomic(uint64_t) malloc;
+    _Atomic(uint64_t) realloc;
+    _Atomic(uint64_t) poolalloc;
+    _Atomic(uint64_t) bigalloc;
+    _Atomic(uint64_t) freecall;
+} mmtk_jl_thread_gc_num_t;
+
+typedef struct {
+    // variable for tracking weak references
+    mmtk_arraylist_t weak_refs;
+    // live tasks started on this thread
+    // that are holding onto a stack from the pool
+    mmtk_arraylist_t live_tasks;
+
+    // variables for tracking malloc'd arrays
+    struct _mallocarray_t *mallocarrays;
+    struct _mallocarray_t *mafreelist;
+
+    // variables for tracking big objects
+    struct _bigval_t *big_objects;
+
+    // variables for tracking "remembered set"
+    mmtk_arraylist_t _remset[2]; // contains jl_value_t*
+    // lower bound of the number of pointers inside remembered values
+    int remset_nptr;
+    mmtk_arraylist_t *remset;
+    mmtk_arraylist_t *last_remset;
+
+    // variables for allocating objects from pools
+#define JL_GC_N_POOLS 49
+    mmtk_jl_gc_pool_t norm_pools[JL_GC_N_POOLS];
+
+#define JL_N_STACK_POOLS 16
+    mmtk_arraylist_t free_stacks[JL_N_STACK_POOLS];
+} mmtk_jl_thread_heap_t;
+
+// handle to reference an OS thread
+typedef pthread_t mmtk_jl_thread_t;
+
+typedef struct {
+    _Atomic(int64_t) top;
+    _Atomic(int64_t) bottom;
+    _Atomic(void *) array;
+} mmtk_ws_queue_t;
+
+typedef struct {
+    mmtk_ws_queue_t chunk_queue;
+    mmtk_ws_queue_t ptr_queue;
+    mmtk_arraylist_t reclaim_set;
+} mmtk_jl_gc_markqueue_t;
+
+typedef struct {
+    // thread local increment of `perm_scanned_bytes`
+    size_t perm_scanned_bytes;
+    // thread local increment of `scanned_bytes`
+    size_t scanned_bytes;
+    // Number of queued big objects (<= 1024)
+    size_t nbig_obj;
+    // Array of queued big objects to be moved between the young list
+    // and the old list.
+    // A set low bit means that the object should be moved from the old list
+    // to the young list (`mark_reset_age`).
+    // Objects can only be put into this list when the mark bit is flipped to
+    // `1` (atomically). Combining with the sync after marking,
+    // this makes sure that a single objects can only appear once in
+    // the lists (the mark bit cannot be flipped to `0` without sweeping)
+    void *big_obj[1024];
+} mmtk_jl_gc_mark_cache_t;
+
+typedef struct mmtk__jl_tls_states_t {
+    int16_t tid;
+    int8_t threadpoolid;
+    uint64_t rngseed;
+    volatile size_t *safepoint;
+    _Atomic(int8_t) sleep_check_state; // read/write from foreign threads
+    // Whether it is safe to execute GC at the same time.
+#define JL_GC_STATE_WAITING 1
+    // gc_state = 1 means the thread is doing GC or is waiting for the GC to
+    //              finish.
+#define JL_GC_STATE_SAFE 2
+    // gc_state = 2 means the thread is running unmanaged code that can be
+    //              execute at the same time with the GC.
+    _Atomic(int8_t) gc_state; // read from foreign threads
+    // execution of certain certain impure
+    // statements is prohibited from certain
+    // callbacks (such as generated functions)
+    // as it may make compilation undecidable
+    int8_t in_pure_callback;
+    int8_t in_finalizer;
+    int8_t disable_gc;
+    // Counter to disable finalizer **on the current thread**
+    int finalizers_inhibited;
+    mmtk_jl_thread_heap_t heap; // this is very large, and the offset is baked into codegen
+    mmtk_jl_thread_gc_num_t gc_num;
+    volatile sig_atomic_t defer_signal;
+    _Atomic(struct mmtk__jl_task_t*) current_task;
+    struct mmtk__jl_task_t *next_task;
+    struct mmtk__jl_task_t *previous_task;
+    struct mmtk__jl_task_t *root_task;
+    void *timing_stack;
+    void *stackbase;
+    size_t stacksize;
+    union {
+        mmtk__jl_ucontext_t base_ctx; // base context of stack
+        // This hack is needed to support always_copy_stacks:
+        mmtk_jl_stack_context_t copy_stack_ctx;
+    };
+    // Temp storage for exception thrown in signal handler. Not rooted.
+    mmtk_jl_value_t *sig_exception;
+    // Temporary backtrace buffer. Scanned for gc roots when bt_size > 0.
+    struct mmtk__jl_bt_element_t *bt_data; // JL_MAX_BT_SIZE + 1 elements long
+    size_t bt_size;    // Size for backtrace in transit in bt_data
+    // Temporary backtrace buffer used only for allocations profiler.
+    struct mmtk__jl_bt_element_t *profiling_bt_buffer;
+    // Atomically set by the sender, reset by the handler.
+    volatile _Atomic(sig_atomic_t) signal_request; // TODO: no actual reason for this to be _Atomic
+    // Allow the sigint to be raised asynchronously
+    // this is limited to the few places we do synchronous IO
+    // we can make this more general (similar to defer_signal) if necessary
+    volatile sig_atomic_t io_wait;
+    void *signal_stack;
+    mmtk_jl_thread_t system_id;
+    mmtk_arraylist_t finalizers;
+    mmtk_jl_gc_markqueue_t mark_queue;
+    mmtk_jl_gc_mark_cache_t gc_cache;
+    mmtk_arraylist_t sweep_objs;
+    // Saved exception for previous *external* API call or NULL if cleared.
+    // Access via jl_exception_occurred().
+    struct _jl_value_t *previous_exception;
+
+    // currently-held locks, to be released when an exception is thrown
+    mmtk_small_arraylist_t locks;
+
+    // JULIA_DEBUG_SLEEPWAKE(
+    //     uint64_t uv_run_enter;
+    //     uint64_t uv_run_leave;
+    //     uint64_t sleep_enter;
+    //     uint64_t sleep_leave;
+    // )
+    MMTkMutatorContext mmtk_mutator;
+    size_t malloc_sz_since_last_poll;
+
+    // some hidden state (usually just because we don't have the type's size declaration)
+} mmtk_jl_tls_states_t;
 
 #define JL_RNG_SIZE 5 // xoshiro 4 + splitmix 1
 

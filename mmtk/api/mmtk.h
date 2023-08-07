@@ -14,6 +14,17 @@ typedef void* MMTk_TraceLocal;
 typedef void (*ProcessEdgeFn)(void* closure, void* slot);
 typedef void (*ProcessOffsetEdgeFn)(void* closure, void* slot, int offset);
 
+typedef struct {
+    void** ptr;
+    size_t cap;
+} RootsWorkBuffer;
+
+typedef struct {
+    RootsWorkBuffer (*report_edges_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
+    RootsWorkBuffer (*report_nodes_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
+    void* data;
+} RootsWorkClosure;
+
 /**
  * Allocation
  */
@@ -82,6 +93,7 @@ typedef struct {
     void* (* get_marked_finalizers_list)(void);
     void (*arraylist_grow)(void* a, size_t n);
     int* (*get_jl_gc_have_pending_finalizers)(void);
+    void (*scan_vm_specific_roots)(RootsWorkClosure* closure);
 } Julia_Upcalls;
 
 /**

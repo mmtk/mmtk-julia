@@ -1,5 +1,6 @@
 #include "mmtk_julia.h"
 #include "mmtk.h"
+#include "mmtk_julia_types.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include "gc.h"
@@ -271,6 +272,53 @@ static void queue_roots(void)
 
 }
 
+static void add_node_to_roots_buffer(RootsWorkClosure* closure, RootsWorkBuffer* buf, size_t* buf_len, void* root) {
+    if (root == NULL)
+        return;
+
+    buf->ptr[*buf_len] = root;
+    *buf_len += 1;
+    if (*buf_len >= buf->cap) {
+        RootsWorkBuffer new_buf = (closure->report_nodes_func)(buf->ptr, *buf_len, buf->cap, closure->data, true);
+        *buf = new_buf;
+        *buf_len = 0;
+    }
+}
+
+void scan_vm_specific_roots(RootsWorkClosure* closure)
+{
+    // Create a new buf
+    RootsWorkBuffer buf = (closure->report_nodes_func)((void**)0, 0, 0, closure->data, true);
+    size_t len = 0;
+
+    // add module
+    add_node_to_roots_buffer(closure, &buf, &len, jl_main_module);
+
+    // buildin values
+    add_node_to_roots_buffer(closure, &buf, &len, jl_an_empty_vec_any);
+    add_node_to_roots_buffer(closure, &buf, &len, jl_module_init_order);
+    for (size_t i = 0; i < jl_current_modules.size; i += 2) {
+        if (jl_current_modules.table[i + 1] != HT_NOTFOUND) {
+            add_node_to_roots_buffer(closure, &buf, &len, jl_current_modules.table[i]);
+        }
+    }
+    add_node_to_roots_buffer(closure, &buf, &len, jl_anytuple_type_type);
+    for (size_t i = 0; i < N_CALL_CACHE; i++) {
+         jl_typemap_entry_t *v = jl_atomic_load_relaxed(&call_cache[i]);
+        add_node_to_roots_buffer(closure, &buf, &len, v);
+    }
+    add_node_to_roots_buffer(closure, &buf, &len, jl_all_methods);
+    add_node_to_roots_buffer(closure, &buf, &len, _jl_debug_method_invalidation);
+
+    // constants
+    add_node_to_roots_buffer(closure, &buf, &len, jl_emptytuple_type);
+    add_node_to_roots_buffer(closure, &buf, &len, cmpswap_names);
+    add_node_to_roots_buffer(closure, &buf, &len, jl_global_roots_table);
+
+    // Push the result of the work.
+    (closure->report_nodes_func)(buf.ptr, len, buf.cap, closure->data, false);
+}
+
 // Handle the case where the stack is only partially copied.
 static inline uintptr_t mmtk_gc_get_stack_addr(void *_addr, uintptr_t offset,
                                           uintptr_t lb, uintptr_t ub)
@@ -445,27 +493,33 @@ static void jl_gc_queue_remset_mmtk(jl_ptls_t ptls2)
     size_t len = ptls2->heap.last_remset->len;
     void **items = ptls2->heap.last_remset->items;
     for (size_t i = 0; i < len; i++) {
+        printf("We have object in remset\n");
+        exit(1);
         mmtk_add_object_to_mmtk_roots(items[i]);
     }
 }
 
 void calculate_roots(void* ptls_raw)
 {
-    for (int t_i = 0; t_i < gc_n_threads; t_i++)
-        gc_premark(gc_all_tls_states[t_i]);
+    // for (int t_i = 0; t_i < gc_n_threads; t_i++)
+    //     gc_premark(gc_all_tls_states[t_i]);
 
-    for (int t_i = 0; t_i < gc_n_threads; t_i++) {
-        jl_ptls_t ptls2 = gc_all_tls_states[t_i];
-        // 2.1. mark every thread local root
-        jl_gc_queue_thread_local_mmtk(ptls2);
-        // 2.2. mark any managed objects in the backtrace buffer
-        jl_gc_queue_bt_buf_mmtk(ptls2);
-        // 2.3. mark any managed objects in the backtrace buffer
-        // TODO: treat these as roots for gc_heap_snapshot_record
-        jl_gc_queue_remset_mmtk(ptls2);
-    }
+    // for (int t_i = 0; t_i < gc_n_threads; t_i++) {
+    //     jl_ptls_t ptls2 = gc_all_tls_states[t_i];
+    //     // 2.1. mark every thread local root
+    //     jl_gc_queue_thread_local_mmtk(ptls2);
+    //     // 2.2. mark any managed objects in the backtrace buffer
+    //     jl_gc_queue_bt_buf_mmtk(ptls2);
+    //     // 2.3. mark any managed objects in the backtrace buffer
+    //     // TODO: treat these as roots for gc_heap_snapshot_record
+    //     jl_gc_queue_remset_mmtk(ptls2);
+    // }
 
     queue_roots();
+}
+
+void mutator_scan_stack_roots(jl_ptls_t ptls, RootsWorkClosure* closure) {
+    
 }
 
 JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn process_edge) {
@@ -523,8 +577,65 @@ void update_gc_time(uint64_t inc) {
     gc_num.total_time += inc;
 }
 
+#define assert_size(ty_a, ty_b) \
+    if(sizeof(ty_a) != sizeof(ty_b)) {\
+        printf("%s size = %ld, %s size = %ld. Need to update our type definition.\n", #ty_a, sizeof(ty_a), #ty_b, sizeof(ty_b));\
+        exit(1); \
+    }
+
+#define PRINT_STRUCT_SIZE false
+#define print_sizeof(type) (PRINT_STRUCT_SIZE ? (printf("C " #type " = %zu bytes\n", sizeof(type)), sizeof(type)) : sizeof(type))
+
 uintptr_t get_abi_structs_checksum_c(void) {
-    return sizeof(MMTkMutatorContext);
+    assert_size(struct mmtk__jl_taggedvalue_bits, struct _jl_taggedvalue_bits);
+    assert_size(mmtk_jl_taggedvalue_t, jl_taggedvalue_t);
+    assert_size(mmtk_jl_array_flags_t, jl_array_flags_t);
+    assert_size(mmtk_jl_datatype_layout_t, jl_datatype_layout_t);
+    assert_size(mmtk_jl_typename_t, jl_typename_t);
+    assert_size(mmtk_jl_svec_t, jl_svec_t);
+    assert_size(mmtk_jl_datatype_t, jl_datatype_t);
+    assert_size(mmtk_jl_array_t, jl_array_t);
+    assert_size(mmtk_jl_sym_t, jl_sym_t);
+    assert_size(mmtk_jl_binding_t, jl_binding_t);
+    assert_size(mmtk_htable_t, htable_t);
+    assert_size(mmtk_arraylist_t, arraylist_t);
+    assert_size(mmtk_jl_uuid_t, jl_uuid_t);
+    assert_size(mmtk_jl_mutex_t, jl_mutex_t);
+    assert_size(mmtk_jl_module_t, jl_module_t);
+    assert_size(mmtk_jl_excstack_t, jl_excstack_t);
+    assert_size(mmtk_jl_bt_element_t, jl_bt_element_t);
+    assert_size(mmtk_jl_stack_context_t, jl_stack_context_t);
+    assert_size(mmtk_jl_ucontext_t, jl_ucontext_t);
+    assert_size(struct mmtk__jl_gcframe_t, struct _jl_gcframe_t);
+    assert_size(mmtk_jl_task_t, jl_task_t);
+    assert_size(mmtk_jl_weakref_t, jl_weakref_t);
+
+    return print_sizeof(MMTkMutatorContext)
+        ^ print_sizeof(struct mmtk__jl_taggedvalue_bits)
+        ^ print_sizeof(mmtk_jl_taggedvalue_t)
+        ^ print_sizeof(mmtk_jl_array_flags_t)
+        ^ print_sizeof(mmtk_jl_datatype_layout_t)
+        ^ print_sizeof(mmtk_jl_typename_t)
+        ^ print_sizeof(mmtk_jl_svec_t)
+        ^ print_sizeof(mmtk_jl_datatype_t)
+        ^ print_sizeof(mmtk_jl_array_t)
+        ^ print_sizeof(mmtk_jl_sym_t)
+        ^ print_sizeof(mmtk_jl_binding_t)
+        ^ print_sizeof(mmtk_htable_t)
+        ^ print_sizeof(mmtk_arraylist_t)
+        ^ print_sizeof(mmtk_jl_uuid_t)
+        ^ print_sizeof(mmtk_jl_mutex_t)
+        ^ print_sizeof(mmtk_jl_module_t)
+        ^ print_sizeof(mmtk_jl_excstack_t)
+        ^ print_sizeof(mmtk_jl_bt_element_t)
+        ^ print_sizeof(mmtk_jl_stack_context_t)
+        ^ print_sizeof(mmtk_jl_ucontext_t)
+        ^ print_sizeof(struct mmtk__jl_gcframe_t)
+        ^ print_sizeof(mmtk_jl_task_t)
+        ^ print_sizeof(mmtk_jl_weakref_t)
+        ^ print_sizeof(mmtk_jl_tls_states_t)
+        ^ print_sizeof(mmtk_jl_thread_heap_t)
+        ^ print_sizeof(mmtk_jl_thread_gc_num_t);
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
@@ -551,4 +662,5 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .get_marked_finalizers_list = get_marked_finalizers_list,
     .arraylist_grow = (void (*)(void*, long unsigned int))arraylist_grow,
     .get_jl_gc_have_pending_finalizers = get_jl_gc_have_pending_finalizers,
+    .scan_vm_specific_roots = scan_vm_specific_roots,
 };

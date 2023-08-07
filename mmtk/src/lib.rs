@@ -122,6 +122,7 @@ pub struct Julia_Upcalls {
     pub get_marked_finalizers_list: extern "C" fn() -> Address,
     pub arraylist_grow: extern "C" fn(Address, usize),
     pub get_jl_gc_have_pending_finalizers: extern "C" fn() -> *mut i32,
+    pub scan_vm_specific_roots: extern "C" fn(closure: *mut crate::edges::RootsWorkClosure),
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();
