@@ -41,9 +41,6 @@ extern void* mmtk_alloc_large(MMTk_Mutator mutator, size_t size,
 extern void mmtk_post_alloc(MMTk_Mutator mutator, void* refer,
     size_t bytes, int allocator);
 
-extern void mmtk_add_object_to_mmtk_roots(void *obj);
-extern void mmtk_process_root_edges(void* c, void* slot);
-
 extern bool mmtk_is_live_object(void* ref);
 extern bool mmtk_is_mapped_object(void* ref);
 extern bool mmtk_is_mapped_address(void* addr);
@@ -73,7 +70,6 @@ extern uintptr_t JULIA_MALLOC_BYTES;
 typedef struct {
     void (* scan_julia_exc_obj) (void* obj, void* closure, ProcessEdgeFn process_edge);
     void* (* get_stackbase) (int16_t tid);
-    void (* calculate_roots) (void* tls);
     int (* get_jl_last_err) (void);
     void (* set_jl_last_err) (int e);
     void (* wait_for_the_world) (void);

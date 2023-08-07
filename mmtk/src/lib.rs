@@ -12,7 +12,6 @@ use mmtk::MMTKBuilder;
 use mmtk::MMTK;
 
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
@@ -85,8 +84,6 @@ lazy_static! {
         Arc::new((Mutex::new(0), Condvar::new()));
     pub static ref STOP_MUTATORS: Arc<(Mutex<usize>, Condvar)> =
         Arc::new((Mutex::new(0), Condvar::new()));
-    pub static ref ROOT_NODES: Mutex<HashSet<ObjectReference>> = Mutex::new(HashSet::new());
-    pub static ref ROOT_EDGES: Mutex<HashSet<Address>> = Mutex::new(HashSet::new());
 
     // We create a boxed mutator with MMTk core, and we mem copy its content to jl_tls_state_t (shallow copy).
     // This map stores the pair of the mutator address in jl_tls_state_t and the original boxed mutator.
@@ -102,7 +99,6 @@ pub struct Julia_Upcalls {
     pub scan_julia_exc_obj:
         extern "C" fn(obj: Address, closure: Address, process_edge: ProcessEdgeFn),
     pub get_stackbase: extern "C" fn(tid: u16) -> usize,
-    pub calculate_roots: extern "C" fn(tls: OpaquePointer),
     pub get_jl_last_err: extern "C" fn() -> u32,
     pub set_jl_last_err: extern "C" fn(errno: u32),
     pub wait_for_the_world: extern "C" fn(),

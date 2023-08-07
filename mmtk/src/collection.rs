@@ -5,7 +5,6 @@ use mmtk::util::alloc::AllocationError;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::Mutator;
-use mmtk::MutatorContext;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
@@ -84,10 +83,6 @@ impl Collection<JuliaVM> for VMCollection {
         unsafe { ((*UPCALLS).wait_for_the_world)() };
 
         let last_err = unsafe { ((*UPCALLS).get_jl_last_err)() };
-
-        unsafe {
-            ((*UPCALLS).calculate_roots)(tls_ptr);
-        }
 
         {
             let &(ref lock, ref cvar) = &*STW_COND.clone();

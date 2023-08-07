@@ -1,5 +1,5 @@
 use crate::edges::JuliaVMEdge;
-use crate::{ROOT_EDGES, ROOT_NODES, SINGLETON, UPCALLS};
+use crate::{SINGLETON, UPCALLS};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::opaque_pointer::*;
@@ -13,9 +13,6 @@ use mmtk::Mutator;
 use mmtk::MMTK;
 
 use crate::JuliaVM;
-use log::info;
-use std::collections::HashSet;
-use std::sync::MutexGuard;
 
 pub struct VMScanning {}
 
@@ -25,6 +22,7 @@ impl Scanning<JuliaVM> for VMScanning {
         mutator: &'static mut Mutator<JuliaVM>,
         mut factory: impl RootsWorkFactory<JuliaVMEdge>,
     ) {
+        // This allows us to reuse mmtk_scan_gcstack which expectes an EdgeVisitor
         struct EdgeBuffer {
             pub buffer: Vec<JuliaVMEdge>,
         }
@@ -34,18 +32,20 @@ impl Scanning<JuliaVM> for VMScanning {
             }
         }
 
-        use crate::julia_types::*;
         use crate::julia_scanning::*;
+        use crate::julia_types::*;
         use mmtk::util::Address;
 
         let ptls: &mut mmtk__jl_tls_states_t = unsafe { std::mem::transmute(mutator.mutator_tls) };
         let mut edge_buffer = EdgeBuffer { buffer: vec![] };
         let mut node_buffer = vec![];
 
-        // Scan thread local from ptls
+        // Scan thread local from ptls: See gc_queue_thread_local in gc.c
         let mut root_scan_task = |task: *const mmtk__jl_task_t| {
             if !task.is_null() {
-                unsafe { crate::julia_scanning::mmtk_scan_gcstack(task, &mut edge_buffer); }
+                unsafe {
+                    crate::julia_scanning::mmtk_scan_gcstack(task, &mut edge_buffer);
+                }
                 node_buffer.push(ObjectReference::from_raw_address(Address::from_ptr(task)));
             }
         };
@@ -54,10 +54,12 @@ impl Scanning<JuliaVM> for VMScanning {
         root_scan_task(ptls.next_task);
         root_scan_task(ptls.previous_task);
         if !ptls.previous_exception.is_null() {
-            node_buffer.push(ObjectReference::from_raw_address(Address::from_mut_ptr(ptls.previous_exception)));
+            node_buffer.push(ObjectReference::from_raw_address(Address::from_mut_ptr(
+                ptls.previous_exception,
+            )));
         }
 
-        // Scan backtrace buffer
+        // Scan backtrace buffer: See gc_queue_bt_buf in gc.c
         let mut i = 0;
         while i < ptls.bt_size {
             let bt_entry = unsafe { ptls.bt_data.add(i) };
@@ -74,9 +76,15 @@ impl Scanning<JuliaVM> for VMScanning {
             i += bt_entry_size;
         }
 
+        // We do not need gc_queue_remset from gc.c (we are not using remset in the thread)
+
         // Push work
         const CAPACITY_PER_PACKET: usize = 4096;
-        for edges in edge_buffer.buffer.chunks(CAPACITY_PER_PACKET).map(|c| c.to_vec()) {
+        for edges in edge_buffer
+            .buffer
+            .chunks(CAPACITY_PER_PACKET)
+            .map(|c| c.to_vec())
+        {
             factory.create_process_edge_roots_work(edges);
         }
         for nodes in node_buffer.chunks(CAPACITY_PER_PACKET).map(|c| c.to_vec()) {
@@ -88,24 +96,6 @@ impl Scanning<JuliaVM> for VMScanning {
         _tls: VMWorkerThread,
         mut factory: impl RootsWorkFactory<JuliaVMEdge>,
     ) {
-        // let mut roots: MutexGuard<HashSet<ObjectReference>> = ROOT_NODES.lock().unwrap();
-        // info!("{} thread root nodes", roots.len());
-
-        // let mut roots_to_scan = vec![];
-
-        // for obj in roots.drain() {
-        //     roots_to_scan.push(obj);
-        // }
-        // factory.create_process_node_roots_work(roots_to_scan);
-
-        // let roots: Vec<JuliaVMEdge> = ROOT_EDGES
-        //     .lock()
-        //     .unwrap()
-        //     .drain()
-        //     .map(|e| JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(e)))
-        //     .collect();
-        // info!("{} thread root edges", roots.len());
-        // factory.create_process_edge_roots_work(roots);
         use crate::edges::RootsWorkClosure;
         let mut roots_closure = RootsWorkClosure::from_roots_work_factory(&mut factory);
         unsafe {
