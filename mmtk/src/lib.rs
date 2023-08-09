@@ -6,7 +6,6 @@ extern crate lazy_static;
 
 use mmtk::util::opaque_pointer::*;
 use mmtk::util::Address;
-use mmtk::util::ObjectReference;
 use mmtk::vm::VMBinding;
 use mmtk::MMTKBuilder;
 use mmtk::MMTK;
