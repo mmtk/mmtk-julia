@@ -60,8 +60,6 @@ impl Collection<JuliaVM> for VMCollection {
             crate::api::mmtk_total_bytes()
         );
 
-        // std::fs::remove_file("/home/eduardo/mmtk-julia/scanned_objs.log").expect("File delete failed");
-        // std::fs::remove_file("/home/eduardo/mmtk-julia/copied_objs.log").expect("File delete failed");
         trace!("Resuming mutators.");
     }
 
