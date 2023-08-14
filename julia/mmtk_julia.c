@@ -1,5 +1,6 @@
 #include "mmtk_julia.h"
 #include "mmtk.h"
+#include "mmtk_julia_types.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include "gc.h"
@@ -233,239 +234,51 @@ int* get_jl_gc_have_pending_finalizers(void) {
     return (int*)&jl_gc_have_pending_finalizers;
 }
 
-// add the initial root set to mmtk roots
-static void queue_roots(void)
-{
-    // modules
-    mmtk_add_object_to_mmtk_roots(jl_main_module);
+static void add_node_to_roots_buffer(RootsWorkClosure* closure, RootsWorkBuffer* buf, size_t* buf_len, void* root) {
+    if (root == NULL)
+        return;
 
-    // invisible builtin values
-    if (jl_an_empty_vec_any != NULL)
-        mmtk_add_object_to_mmtk_roots(jl_an_empty_vec_any);
-    if (jl_module_init_order != NULL)
-        mmtk_add_object_to_mmtk_roots(jl_module_init_order);
+    buf->ptr[*buf_len] = root;
+    *buf_len += 1;
+    if (*buf_len >= buf->cap) {
+        RootsWorkBuffer new_buf = (closure->report_nodes_func)(buf->ptr, *buf_len, buf->cap, closure->data, true);
+        *buf = new_buf;
+        *buf_len = 0;
+    }
+}
+
+void scan_vm_specific_roots(RootsWorkClosure* closure)
+{
+    // Create a new buf
+    RootsWorkBuffer buf = (closure->report_nodes_func)((void**)0, 0, 0, closure->data, true);
+    size_t len = 0;
+
+    // add module
+    add_node_to_roots_buffer(closure, &buf, &len, jl_main_module);
+
+    // buildin values
+    add_node_to_roots_buffer(closure, &buf, &len, jl_an_empty_vec_any);
+    add_node_to_roots_buffer(closure, &buf, &len, jl_module_init_order);
     for (size_t i = 0; i < jl_current_modules.size; i += 2) {
         if (jl_current_modules.table[i + 1] != HT_NOTFOUND) {
-            mmtk_add_object_to_mmtk_roots(jl_current_modules.table[i]);
+            add_node_to_roots_buffer(closure, &buf, &len, jl_current_modules.table[i]);
         }
     }
-    mmtk_add_object_to_mmtk_roots(jl_anytuple_type_type);
+    add_node_to_roots_buffer(closure, &buf, &len, jl_anytuple_type_type);
     for (size_t i = 0; i < N_CALL_CACHE; i++) {
          jl_typemap_entry_t *v = jl_atomic_load_relaxed(&call_cache[i]);
-         if (v != NULL)
-             mmtk_add_object_to_mmtk_roots(v);
+        add_node_to_roots_buffer(closure, &buf, &len, v);
     }
-    if (jl_all_methods != NULL)
-        mmtk_add_object_to_mmtk_roots(jl_all_methods);
-
-    if (_jl_debug_method_invalidation != NULL)
-        mmtk_add_object_to_mmtk_roots(_jl_debug_method_invalidation);
-    // if (jl_build_ids != NULL)
-    //     add_object_to_mmtk_roots(jl_build_ids);
+    add_node_to_roots_buffer(closure, &buf, &len, jl_all_methods);
+    add_node_to_roots_buffer(closure, &buf, &len, _jl_debug_method_invalidation);
 
     // constants
-    mmtk_add_object_to_mmtk_roots(jl_emptytuple_type);
-    if (cmpswap_names != NULL)
-        mmtk_add_object_to_mmtk_roots(cmpswap_names);
-    mmtk_add_object_to_mmtk_roots(jl_global_roots_table);
+    add_node_to_roots_buffer(closure, &buf, &len, jl_emptytuple_type);
+    add_node_to_roots_buffer(closure, &buf, &len, cmpswap_names);
+    add_node_to_roots_buffer(closure, &buf, &len, jl_global_roots_table);
 
-}
-
-// Handle the case where the stack is only partially copied.
-static inline uintptr_t mmtk_gc_get_stack_addr(void *_addr, uintptr_t offset,
-                                          uintptr_t lb, uintptr_t ub)
-{
-    uintptr_t addr = (uintptr_t)_addr;
-    if (addr >= lb && addr < ub)
-        return addr + offset;
-    return addr;
-}
-
-static inline uintptr_t mmtk_gc_read_stack(void *_addr, uintptr_t offset,
-                                      uintptr_t lb, uintptr_t ub)
-{
-    uintptr_t real_addr = mmtk_gc_get_stack_addr(_addr, offset, lb, ub);
-    return *(uintptr_t*)real_addr;
-}
-
-void scan_gcstack(jl_task_t *ta, void* closure, ProcessEdgeFn process_edge)
-{
-    void *stkbuf = ta->stkbuf;
-#ifdef COPY_STACKS
-    if (stkbuf && ta->copy_stack && mmtk_object_is_managed_by_mmtk(ta->stkbuf)) {
-        // printf("-copystack: %p\n", &ta->stkbuf);fflush(stdout);
-        process_edge(closure, &ta->stkbuf);
-    }
-#endif
-    jl_gcframe_t *s = ta->gcstack;
-    size_t nroots;
-    uintptr_t offset = 0;
-    uintptr_t lb = 0;
-    uintptr_t ub = (uintptr_t)-1;
-#ifdef COPY_STACKS
-    if (stkbuf && ta->copy_stack && ta->ptls == NULL) {
-        assert(ta->tid >= 0);
-        jl_ptls_t ptls2 = jl_all_tls_states[ta->tid];
-        ub = (uintptr_t)ptls2->stackbase;
-        lb = ub - ta->copy_stack;
-        offset = (uintptr_t)stkbuf - lb;
-    }
-#endif
-    if (s) { // gc_mark_stack()
-        nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
-        assert(nroots <= UINT32_MAX);
-
-        uint32_t nr = nroots >> 2;
-
-        while (1) {
-            jl_value_t ***rts = (jl_value_t***)(((void**)s) + 2);
-            for (uint32_t i = 0; i < nr; i++) {
-                if (nroots & 1) {
-                    void **slot = (void**)mmtk_gc_read_stack(&rts[i], offset, lb, ub);
-                    uintptr_t real_addr = mmtk_gc_get_stack_addr(slot, offset, lb, ub);
-                    // printf("-nroots&1 i = %d/%d: %p\n", i, nr, real_addr);fflush(stdout);
-                    process_edge(closure, (void*)real_addr);
-                }
-                else {
-                    uintptr_t real_addr = mmtk_gc_get_stack_addr(&rts[i], offset, lb, ub);
-                    // printf("-nroots i = %d/%d: %p\n", i, nr, real_addr);fflush(stdout);
-                    process_edge(closure, (void*)real_addr);
-                }
-            }
-
-            jl_gcframe_t *sprev = (jl_gcframe_t*)mmtk_gc_read_stack(&s->prev, offset, lb, ub);
-            if (sprev == NULL)
-                break;
-
-            s = sprev;
-            uintptr_t new_nroots = mmtk_gc_read_stack(&s->nroots, offset, lb, ub);
-            assert(new_nroots <= UINT32_MAX);
-            nroots = (uint32_t)new_nroots;
-            nr = nroots >> 2;
-            continue;
-        }
-    }
-    if (ta->excstack) { // inlining label `excstack` from mark_loop
-        // if it is not managed by MMTk, nothing needs to be done because the object does not need to be scanned
-        if (mmtk_object_is_managed_by_mmtk(ta->excstack)) {
-            // printf("-excstack: %p\n", &ta->excstack);fflush(stdout);
-            process_edge(closure, &ta->excstack);
-        }
-        jl_excstack_t *excstack = ta->excstack;
-        size_t itr = ta->excstack->top;
-        size_t bt_index = 0;
-        size_t jlval_index = 0;
-        while (itr > 0) {
-            size_t bt_size = jl_excstack_bt_size(excstack, itr);
-            jl_bt_element_t *bt_data = jl_excstack_bt_data(excstack, itr);
-            for (; bt_index < bt_size; bt_index += jl_bt_entry_size(bt_data + bt_index)) {
-                jl_bt_element_t *bt_entry = bt_data + bt_index;
-                if (jl_bt_is_native(bt_entry))
-                    continue;
-                // Found an extended backtrace entry: iterate over any
-                // GC-managed values inside.
-                size_t njlvals = jl_bt_num_jlvals(bt_entry);
-                while (jlval_index < njlvals) {
-                    jl_value_t** new_obj_edge = &bt_entry[2 + jlval_index].jlvalue;
-                    jlval_index += 1;
-                    process_edge(closure, new_obj_edge);
-                }
-                jlval_index = 0;
-            }
-
-            jl_bt_element_t *stack_raw = (jl_bt_element_t *)(excstack+1);
-            jl_value_t** stack_obj_edge = &stack_raw[itr-1].jlvalue;
-
-            itr = jl_excstack_next(excstack, itr);
-            bt_index = 0;
-            jlval_index = 0;
-            process_edge(closure, stack_obj_edge);
-        }
-    }
-}
-
-void root_scan_task(jl_ptls_t ptls, jl_task_t* task)
-{
-    // This is never accessed so just leave it NULL.
-    void* c = NULL;
-
-    // Scan the stack
-    scan_gcstack(task, c, mmtk_process_root_edges);
-    // And add the task itself
-    mmtk_add_object_to_mmtk_roots(task);
-}
-
-static void jl_gc_queue_bt_buf_mmtk(jl_ptls_t ptls2)
-{
-    jl_bt_element_t *bt_data = ptls2->bt_data;
-    jl_value_t* bt_entry_value;
-    size_t bt_size = ptls2->bt_size;
-    for (size_t i = 0; i < bt_size; i += jl_bt_entry_size(bt_data + i)) {
-        jl_bt_element_t *bt_entry = bt_data + i;
-        if (jl_bt_is_native(bt_entry))
-            continue;
-        size_t njlvals = jl_bt_num_jlvals(bt_entry);
-        for (size_t j = 0; j < njlvals; j++) {
-            bt_entry_value = jl_bt_entry_jlvalue(bt_entry, j);
-            mmtk_add_object_to_mmtk_roots(bt_entry_value);
-        }
-    }
-}
-
-static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls2)
-{
-    jl_task_t * task;
-    task = ptls2->root_task;
-    if (task != NULL) {
-        root_scan_task(ptls2, task);
-    }
-
-    task = jl_atomic_load_relaxed(&ptls2->current_task);
-    if (task != NULL) {
-        root_scan_task(ptls2, task);
-    }
-
-    task = ptls2->next_task;
-    if (task != NULL) {
-        root_scan_task(ptls2, task);
-    }
-
-    task = ptls2->previous_task;
-    if (task != NULL) {
-        root_scan_task(ptls2, task);
-    }
-
-    if (ptls2->previous_exception) {
-        mmtk_add_object_to_mmtk_roots(ptls2->previous_exception);
-    }
-}
-
-static void jl_gc_queue_remset_mmtk(jl_ptls_t ptls2)
-{
-    size_t len = ptls2->heap.last_remset->len;
-    void **items = ptls2->heap.last_remset->items;
-    for (size_t i = 0; i < len; i++) {
-        mmtk_add_object_to_mmtk_roots(items[i]);
-    }
-}
-
-void calculate_roots(void* ptls_raw)
-{
-    for (int t_i = 0; t_i < gc_n_threads; t_i++)
-        gc_premark(gc_all_tls_states[t_i]);
-
-    for (int t_i = 0; t_i < gc_n_threads; t_i++) {
-        jl_ptls_t ptls2 = gc_all_tls_states[t_i];
-        // 2.1. mark every thread local root
-        jl_gc_queue_thread_local_mmtk(ptls2);
-        // 2.2. mark any managed objects in the backtrace buffer
-        jl_gc_queue_bt_buf_mmtk(ptls2);
-        // 2.3. mark any managed objects in the backtrace buffer
-        // TODO: treat these as roots for gc_heap_snapshot_record
-        jl_gc_queue_remset_mmtk(ptls2);
-    }
-
-    queue_roots();
+    // Push the result of the work.
+    (closure->report_nodes_func)(buf.ptr, len, buf.cap, closure->data, false);
 }
 
 JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn process_edge) {
@@ -523,14 +336,70 @@ void update_gc_time(uint64_t inc) {
     gc_num.total_time += inc;
 }
 
+#define assert_size(ty_a, ty_b) \
+    if(sizeof(ty_a) != sizeof(ty_b)) {\
+        printf("%s size = %ld, %s size = %ld. Need to update our type definition.\n", #ty_a, sizeof(ty_a), #ty_b, sizeof(ty_b));\
+        exit(1); \
+    }
+
+#define PRINT_STRUCT_SIZE false
+#define print_sizeof(type) (PRINT_STRUCT_SIZE ? (printf("C " #type " = %zu bytes\n", sizeof(type)), sizeof(type)) : sizeof(type))
+
 uintptr_t get_abi_structs_checksum_c(void) {
-    return sizeof(MMTkMutatorContext);
+    assert_size(struct mmtk__jl_taggedvalue_bits, struct _jl_taggedvalue_bits);
+    assert_size(mmtk_jl_taggedvalue_t, jl_taggedvalue_t);
+    assert_size(mmtk_jl_array_flags_t, jl_array_flags_t);
+    assert_size(mmtk_jl_datatype_layout_t, jl_datatype_layout_t);
+    assert_size(mmtk_jl_typename_t, jl_typename_t);
+    assert_size(mmtk_jl_svec_t, jl_svec_t);
+    assert_size(mmtk_jl_datatype_t, jl_datatype_t);
+    assert_size(mmtk_jl_array_t, jl_array_t);
+    assert_size(mmtk_jl_sym_t, jl_sym_t);
+    assert_size(mmtk_jl_binding_t, jl_binding_t);
+    assert_size(mmtk_htable_t, htable_t);
+    assert_size(mmtk_arraylist_t, arraylist_t);
+    assert_size(mmtk_jl_uuid_t, jl_uuid_t);
+    assert_size(mmtk_jl_mutex_t, jl_mutex_t);
+    assert_size(mmtk_jl_module_t, jl_module_t);
+    assert_size(mmtk_jl_excstack_t, jl_excstack_t);
+    assert_size(mmtk_jl_bt_element_t, jl_bt_element_t);
+    assert_size(mmtk_jl_stack_context_t, jl_stack_context_t);
+    assert_size(mmtk_jl_ucontext_t, jl_ucontext_t);
+    assert_size(struct mmtk__jl_gcframe_t, struct _jl_gcframe_t);
+    assert_size(mmtk_jl_task_t, jl_task_t);
+    assert_size(mmtk_jl_weakref_t, jl_weakref_t);
+
+    return print_sizeof(MMTkMutatorContext)
+        ^ print_sizeof(struct mmtk__jl_taggedvalue_bits)
+        ^ print_sizeof(mmtk_jl_taggedvalue_t)
+        ^ print_sizeof(mmtk_jl_array_flags_t)
+        ^ print_sizeof(mmtk_jl_datatype_layout_t)
+        ^ print_sizeof(mmtk_jl_typename_t)
+        ^ print_sizeof(mmtk_jl_svec_t)
+        ^ print_sizeof(mmtk_jl_datatype_t)
+        ^ print_sizeof(mmtk_jl_array_t)
+        ^ print_sizeof(mmtk_jl_sym_t)
+        ^ print_sizeof(mmtk_jl_binding_t)
+        ^ print_sizeof(mmtk_htable_t)
+        ^ print_sizeof(mmtk_arraylist_t)
+        ^ print_sizeof(mmtk_jl_uuid_t)
+        ^ print_sizeof(mmtk_jl_mutex_t)
+        ^ print_sizeof(mmtk_jl_module_t)
+        ^ print_sizeof(mmtk_jl_excstack_t)
+        ^ print_sizeof(mmtk_jl_bt_element_t)
+        ^ print_sizeof(mmtk_jl_stack_context_t)
+        ^ print_sizeof(mmtk_jl_ucontext_t)
+        ^ print_sizeof(struct mmtk__jl_gcframe_t)
+        ^ print_sizeof(mmtk_jl_task_t)
+        ^ print_sizeof(mmtk_jl_weakref_t)
+        ^ print_sizeof(mmtk_jl_tls_states_t)
+        ^ print_sizeof(mmtk_jl_thread_heap_t)
+        ^ print_sizeof(mmtk_jl_thread_gc_num_t);
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
-    .calculate_roots = calculate_roots,
     // .run_finalizer_function = run_finalizer_function,
     .get_jl_last_err = get_jl_last_err,
     .set_jl_last_err = set_jl_last_err,
@@ -551,4 +420,5 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .get_marked_finalizers_list = get_marked_finalizers_list,
     .arraylist_grow = (void (*)(void*, long unsigned int))arraylist_grow,
     .get_jl_gc_have_pending_finalizers = get_jl_gc_have_pending_finalizers,
+    .scan_vm_specific_roots = scan_vm_specific_roots,
 };
