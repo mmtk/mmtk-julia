@@ -1,19 +1,13 @@
 // All functions here are extern function. There is no point for marking them as unsafe.
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
-use crate::reference_glue::JuliaFinalizableObject;
 use crate::JuliaVM;
 use crate::Julia_Upcalls;
 use crate::BLOCK_FOR_GC;
-use crate::FINALIZER_ROOTS;
 use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
 use crate::UPCALLS;
-use crate::{
-    set_julia_obj_header_size, BUILDER, DISABLED_GC, FINALIZERS_RUNNING, MUTATORS,
-    USER_TRIGGERED_GC,
-};
-use crate::{ROOT_EDGES, ROOT_NODES};
+use crate::{BUILDER, DISABLED_GC, MUTATORS, USER_TRIGGERED_GC};
 
 use libc::c_char;
 use log::*;
@@ -25,7 +19,7 @@ use mmtk::util::{Address, ObjectReference, OpaquePointer};
 use mmtk::AllocationSemantics;
 use mmtk::Mutator;
 use std::ffi::CStr;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 #[no_mangle]
 pub extern "C" fn mmtk_gc_init(
@@ -34,10 +28,12 @@ pub extern "C" fn mmtk_gc_init(
     n_gcthreads: usize,
     calls: *const Julia_Upcalls,
     header_size: usize,
+    buffer_tag: usize,
 ) {
     unsafe {
         UPCALLS = calls;
-        set_julia_obj_header_size(header_size);
+        crate::JULIA_HEADER_SIZE = header_size;
+        crate::JULIA_BUFF_TAG = buffer_tag;
     };
 
     // Assert to make sure our ABI is correct
@@ -109,6 +105,30 @@ pub extern "C" fn mmtk_gc_init(
     assert!(!crate::MMTK_INITIALIZED.load(Ordering::SeqCst));
     // Make sure we initialize MMTk here
     lazy_static::initialize(&SINGLETON);
+
+    // Assert to make sure our fastpath allocation is correct.
+    {
+        // If the assertion failed, check the allocation fastpath in Julia
+        // - runtime fastpath: mmtk_immix_alloc_fast and mmtk_immortal_alloc_fast in julia.h
+        // - compiler inserted fastpath: llvm-final-gc-lowering.cpp
+        use mmtk::util::alloc::AllocatorSelector;
+        let default_allocator = memory_manager::get_allocator_mapping::<JuliaVM>(
+            &SINGLETON,
+            AllocationSemantics::Default,
+        );
+        assert_eq!(default_allocator, AllocatorSelector::Immix(0));
+        let immortal_allocator = memory_manager::get_allocator_mapping::<JuliaVM>(
+            &SINGLETON,
+            AllocationSemantics::Immortal,
+        );
+        assert_eq!(immortal_allocator, AllocatorSelector::BumpPointer(0));
+    }
+
+    // Assert to make sure alignment used in C is correct
+    {
+        // If the assertion failed, check MMTK_MIN_ALIGNMENT in julia.h
+        assert_eq!(<JuliaVM as mmtk::vm::VMBinding>::MIN_ALIGNMENT, 4);
+    }
 }
 
 #[no_mangle]
@@ -322,51 +342,6 @@ pub extern "C" fn mmtk_harness_end(_tls: OpaquePointer) {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_register_finalizer(
-    obj: ObjectReference,
-    finalizer_fn: Address,
-    is_obj_ptr: bool,
-) {
-    memory_manager::add_finalizer(
-        &SINGLETON,
-        JuliaFinalizableObject(obj, finalizer_fn, is_obj_ptr),
-    );
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_run_finalizers_for_obj(obj: ObjectReference) {
-    let finalizers_running = AtomicBool::load(&FINALIZERS_RUNNING, Ordering::SeqCst);
-
-    if !finalizers_running {
-        AtomicBool::store(&FINALIZERS_RUNNING, true, Ordering::SeqCst);
-    }
-
-    let finalizable_objs = memory_manager::get_finalizers_for(&SINGLETON, obj);
-
-    for obj in finalizable_objs.iter() {
-        // if the finalizer function triggers GC you don't want the object to be GC-ed
-        {
-            let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-            let inserted = fin_roots.insert(*obj);
-            assert!(inserted);
-        }
-    }
-
-    for obj in finalizable_objs {
-        unsafe { ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2) }
-        {
-            let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-            let removed = fin_roots.remove(&obj);
-            assert!(removed);
-        }
-    }
-
-    if !finalizers_running {
-        AtomicBool::store(&FINALIZERS_RUNNING, false, Ordering::SeqCst);
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn mmtk_process(name: *const c_char, value: *const c_char) -> bool {
     let name_str: &CStr = unsafe { CStr::from_ptr(name) };
     let value_str: &CStr = unsafe { CStr::from_ptr(value) };
@@ -388,85 +363,9 @@ pub extern "C" fn mmtk_last_heap_address() -> Address {
     memory_manager::last_heap_address()
 }
 
+// Accessed from C to count the bytes we allocated with jl_gc_counted_malloc etc.
 #[no_mangle]
-pub extern "C" fn mmtk_counted_malloc(size: usize) -> Address {
-    memory_manager::counted_malloc::<JuliaVM>(&SINGLETON, size)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_malloc(size: usize) -> Address {
-    memory_manager::malloc(size)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_malloc_aligned(size: usize, align: usize) -> Address {
-    // allocate extra bytes to account for original memory that needs to be allocated and its size
-    let ptr_size = std::mem::size_of::<Address>();
-    let size_size = std::mem::size_of::<usize>();
-    assert!(align % ptr_size == 0 && align != 0 && (align / ptr_size).is_power_of_two());
-
-    let extra = (align - 1) + ptr_size + size_size;
-    let mem = memory_manager::counted_malloc(&SINGLETON, size + extra);
-
-    let result = (mem + extra) & !(align - 1);
-    let result = unsafe { Address::from_usize(result) };
-
-    unsafe {
-        (result - ptr_size).store::<Address>(mem);
-        (result - ptr_size - size_size).store::<usize>(size + extra);
-    }
-
-    return result;
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_counted_calloc(num: usize, size: usize) -> Address {
-    memory_manager::counted_calloc::<JuliaVM>(&SINGLETON, num, size)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_calloc(num: usize, size: usize) -> Address {
-    memory_manager::calloc(num, size)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_realloc_with_old_size(
-    addr: Address,
-    size: usize,
-    old_size: usize,
-) -> Address {
-    memory_manager::realloc_with_old_size::<JuliaVM>(&SINGLETON, addr, size, old_size)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_realloc(addr: Address, size: usize) -> Address {
-    memory_manager::realloc(addr, size)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_free_with_size(addr: Address, old_size: usize) {
-    memory_manager::free_with_size::<JuliaVM>(&SINGLETON, addr, old_size)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_free(addr: Address) {
-    memory_manager::free(addr)
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_free_aligned(addr: Address) {
-    let ptr_size = std::mem::size_of::<Address>();
-    let size_size = std::mem::size_of::<usize>();
-
-    let (addr, old_size) = unsafe {
-        (
-            (addr - ptr_size).load::<Address>(),
-            (addr - ptr_size - size_size).load::<usize>(),
-        )
-    };
-
-    memory_manager::free_with_size::<JuliaVM>(&SINGLETON, addr, old_size);
-}
+pub static JULIA_MALLOC_BYTES: AtomicUsize = AtomicUsize::new(0);
 
 #[no_mangle]
 pub extern "C" fn mmtk_gc_poll(tls: VMMutatorThread) {
@@ -574,79 +473,6 @@ pub static MMTK_SIDE_LOG_BIT_BASE_ADDRESS: Address =
     mmtk::util::metadata::side_metadata::GLOBAL_SIDE_METADATA_VM_BASE_ADDRESS;
 
 #[no_mangle]
-pub static MMTK_NO_BARRIER: u8 = 0;
-#[no_mangle]
-pub static MMTK_OBJECT_BARRIER: u8 = 1;
-
-#[no_mangle]
-#[cfg(feature = "immix")]
-pub static MMTK_NEEDS_WRITE_BARRIER: u8 = 0;
-
-#[no_mangle]
-#[cfg(feature = "stickyimmix")]
-pub static MMTK_NEEDS_WRITE_BARRIER: u8 = 1;
-
-#[no_mangle]
-pub extern "C" fn mmtk_run_finalizers(at_exit: bool) {
-    AtomicBool::store(&FINALIZERS_RUNNING, true, Ordering::SeqCst);
-
-    if at_exit {
-        let mut all_finalizable = memory_manager::get_all_finalizers(&SINGLETON);
-
-        {
-            // if the finalizer function triggers GC you don't want the objects to be GC-ed
-            let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-
-            for obj in all_finalizable.iter() {
-                let inserted = fin_roots.insert(*obj);
-                assert!(inserted);
-            }
-        }
-
-        loop {
-            let to_be_finalized = all_finalizable.pop();
-
-            match to_be_finalized {
-                Some(obj) => unsafe {
-                    ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2);
-                    {
-                        let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-                        let removed = fin_roots.remove(&obj);
-                        assert!(removed);
-                    }
-                },
-                None => break,
-            }
-        }
-    } else {
-        loop {
-            let to_be_finalized = memory_manager::get_finalized_object(&SINGLETON);
-
-            match to_be_finalized {
-                Some(obj) => {
-                    {
-                        // if the finalizer function triggers GC you don't want the objects to be GC-ed
-                        let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-
-                        let inserted = fin_roots.insert(obj);
-                        assert!(inserted);
-                    }
-                    unsafe { ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2) }
-                    {
-                        let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
-                        let removed = fin_roots.remove(&obj);
-                        assert!(removed);
-                    }
-                }
-                None => break,
-            }
-        }
-    }
-
-    AtomicBool::store(&FINALIZERS_RUNNING, false, Ordering::SeqCst);
-}
-
-#[no_mangle]
 pub extern "C" fn mmtk_object_is_managed_by_mmtk(addr: usize) -> bool {
     crate::api::mmtk_is_mapped_address(unsafe { Address::from_usize(addr) })
 }
@@ -665,25 +491,6 @@ pub extern "C" fn mmtk_start_spawned_controller_thread(
     ctx: *mut GCController<JuliaVM>,
 ) {
     mmtk_start_control_collector(tls, ctx);
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_add_object_to_mmtk_roots(obj: ObjectReference) {
-    // if object is not managed by mmtk it needs to be processed to look for pointers to managed objects (i.e. roots)
-    ROOT_NODES.lock().unwrap().insert(obj);
-}
-
-use crate::JuliaVMEdge;
-use mmtk::vm::EdgeVisitor;
-
-// Pass this as 'process_edge' so we can reuse scan_julia_task_obj.
-#[no_mangle]
-#[allow(improper_ctypes_definitions)] // closure is a fat pointer, we propelry define its type in C header.
-pub extern "C" fn mmtk_process_root_edges(
-    _closure: &mut dyn EdgeVisitor<JuliaVMEdge>,
-    addr: Address,
-) {
-    ROOT_EDGES.lock().unwrap().insert(addr);
 }
 
 #[inline(always)]

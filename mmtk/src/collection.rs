@@ -1,24 +1,20 @@
-use crate::{spawn_collector_thread, UPCALLS};
 use crate::{JuliaVM, USER_TRIGGERED_GC};
+use crate::{SINGLETON, UPCALLS};
 use log::{info, trace};
 use mmtk::util::alloc::AllocationError;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::Mutator;
-use mmtk::MutatorContext;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
-
-const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
-const GC_THREAD_KIND_WORKER: libc::c_int = 1;
 
 static GC_START: AtomicU64 = AtomicU64::new(0);
 
 pub struct VMCollection {}
 
 impl Collection<JuliaVM> for VMCollection {
-    fn stop_all_mutators<F>(_tls: VMWorkerThread, _mutator_visitor: F)
+    fn stop_all_mutators<F>(_tls: VMWorkerThread, mut mutator_visitor: F)
     where
         F: FnMut(&'static mut Mutator<JuliaVM>),
     {
@@ -29,6 +25,15 @@ impl Collection<JuliaVM> for VMCollection {
         }
 
         trace!("Stopped the world!");
+
+        // Tell MMTk the stacks are ready.
+        {
+            use mmtk::vm::ActivePlan;
+            for mutator in crate::active_plan::VMActivePlan::mutators() {
+                info!("stop_all_mutators: visiting {:?}", mutator.mutator_tls);
+                mutator_visitor(mutator);
+            }
+        }
 
         // Record the start time of the GC
         let now = unsafe { ((*UPCALLS).jl_hrtime)() };
@@ -54,6 +59,7 @@ impl Collection<JuliaVM> for VMCollection {
             crate::api::mmtk_used_bytes(),
             crate::api::mmtk_total_bytes()
         );
+
         trace!("Resuming mutators.");
     }
 
@@ -78,10 +84,6 @@ impl Collection<JuliaVM> for VMCollection {
         unsafe { ((*UPCALLS).wait_for_the_world)() };
 
         let last_err = unsafe { ((*UPCALLS).get_jl_last_err)() };
-
-        unsafe {
-            ((*UPCALLS).calculate_roots)(tls_ptr);
-        }
 
         {
             let &(ref lock, ref cvar) = &*STW_COND.clone();
@@ -110,20 +112,23 @@ impl Collection<JuliaVM> for VMCollection {
         info!("Finished blocking mutator for GC!");
     }
 
-    fn spawn_gc_thread(tls: VMThread, ctx: GCThreadContext<JuliaVM>) {
-        let (ctx_ptr, kind) = match ctx {
-            GCThreadContext::Controller(c) => (
-                Box::into_raw(c) as *mut libc::c_void,
-                GC_THREAD_KIND_CONTROLLER,
-            ),
-            GCThreadContext::Worker(w) => {
-                (Box::into_raw(w) as *mut libc::c_void, GC_THREAD_KIND_WORKER)
+    fn spawn_gc_thread(_tls: VMThread, ctx: GCThreadContext<JuliaVM>) {
+        // Just drop the join handle. The thread will run until the process quits.
+        let _ = std::thread::spawn(move || {
+            use mmtk::util::opaque_pointer::*;
+            use mmtk::util::Address;
+            let worker_tls = VMWorkerThread(VMThread(OpaquePointer::from_address(unsafe {
+                Address::from_usize(thread_id::get())
+            })));
+            match ctx {
+                GCThreadContext::Controller(mut c) => {
+                    mmtk::memory_manager::start_control_collector(&SINGLETON, worker_tls, &mut c)
+                }
+                GCThreadContext::Worker(mut w) => {
+                    mmtk::memory_manager::start_worker(&SINGLETON, worker_tls, &mut w)
+                }
             }
-        };
-
-        unsafe {
-            spawn_collector_thread(tls, ctx_ptr as usize as _, kind);
-        }
+        });
     }
 
     fn schedule_finalization(_tls: VMWorkerThread) {}
@@ -133,10 +138,14 @@ impl Collection<JuliaVM> for VMCollection {
         unsafe { ((*UPCALLS).jl_throw_out_of_memory_error)() };
     }
 
-    fn prepare_mutator<T: MutatorContext<JuliaVM>>(
-        _tls_w: VMWorkerThread,
-        _tls_m: VMMutatorThread,
-        _mutator: &T,
-    ) {
+    fn vm_live_bytes() -> usize {
+        crate::api::JULIA_MALLOC_BYTES.load(Ordering::SeqCst)
+    }
+}
+
+pub fn is_current_gc_nursery() -> bool {
+    match crate::SINGLETON.get_plan().generational() {
+        Some(gen) => gen.is_current_gc_nursery(),
+        None => false,
     }
 }

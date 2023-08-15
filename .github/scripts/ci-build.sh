@@ -22,8 +22,10 @@ if [ "$build_type" == "release" ]; then
     build_args=$build_args" --release"
 fi
 
+plan_feature=${plan,,}
+
 cd $MMTK_JULIA_DIR/mmtk
-cargo build --features $plan $build_args
+cargo build --features $plan_feature $build_args
 
 cd $JULIA_PATH
 
@@ -31,6 +33,6 @@ cd $JULIA_PATH
 make cleanall
 # Build
 cp $BINDING_PATH/.github/scripts/Make.user $JULIA_PATH/
-MMTK_BUILD=$build_type make
+MMTK_PLAN=$plan MMTK_BUILD=$build_type make
 # Run hello world
 $JULIA_PATH/julia $HELLO_WORLD_JL

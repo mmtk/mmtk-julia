@@ -9,15 +9,21 @@
 extern "C" {
 #endif
 
-
-typedef struct {
-    void* a;
-    void* b;
-} closure_pointer;
 typedef void* MMTk_Mutator;
 typedef void* MMTk_TraceLocal;
-typedef void (*ProcessEdgeFn)(closure_pointer closure, void* slot);
-typedef void (*ProcessOffsetEdgeFn)(closure_pointer closure, void* slot, int offset);
+typedef void (*ProcessEdgeFn)(void* closure, void* slot);
+typedef void (*ProcessOffsetEdgeFn)(void* closure, void* slot, int offset);
+
+typedef struct {
+    void** ptr;
+    size_t cap;
+} RootsWorkBuffer;
+
+typedef struct {
+    RootsWorkBuffer (*report_edges_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
+    RootsWorkBuffer (*report_nodes_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
+    void* data;
+} RootsWorkClosure;
 
 /**
  * Allocation
@@ -35,20 +41,6 @@ extern void* mmtk_alloc_large(MMTk_Mutator mutator, size_t size,
 extern void mmtk_post_alloc(MMTk_Mutator mutator, void* refer,
     size_t bytes, int allocator);
 
-extern void mmtk_add_object_to_mmtk_roots(void *obj);
-extern void mmtk_process_root_edges(closure_pointer c, void* slot);
-
-extern void* mmtk_counted_malloc(size_t size);
-extern void* mmtk_malloc(size_t size);
-extern void* mmtk_counted_calloc(size_t n, size_t size);
-extern void* mmtk_calloc(size_t n, size_t size);
-extern void* mmtk_realloc(void* addr, size_t size);
-extern void* mmtk_realloc_with_old_size(void* addr, size_t size, size_t old_size);
-extern void mmtk_free_with_size(void* addr, size_t old_size);
-extern void mmtk_free(void* addr);
-extern void* mmtk_malloc_aligned(size_t size, size_t alignment);
-extern void mmtk_free_aligned(void* addr);
-
 extern bool mmtk_is_live_object(void* ref);
 extern bool mmtk_is_mapped_object(void* ref);
 extern bool mmtk_is_mapped_address(void* addr);
@@ -64,10 +56,9 @@ extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
 extern void mmtk_memory_region_copy(MMTk_Mutator mutator, void* src_obj, void* src_addr, void* dst_obj, void* dst_addr, size_t size);
 extern void mmtk_object_reference_write_post(MMTk_Mutator mutator, const void* src, const void* target);
 extern void mmtk_object_reference_write_slow(MMTk_Mutator mutator, const void* src, const void* target);
-extern const uint8_t MMTK_NEEDS_WRITE_BARRIER;
-extern const uint8_t MMTK_NO_BARRIER;
-extern const uint8_t MMTK_OBJECT_BARRIER;
 extern const void* MMTK_SIDE_LOG_BIT_BASE_ADDRESS;
+
+extern uintptr_t JULIA_MALLOC_BYTES;
 
 /**
  * Julia-specific
@@ -77,36 +68,34 @@ extern const void* MMTK_SIDE_LOG_BIT_BASE_ADDRESS;
 // * int is 4 bytes
 // * size_t is 8 bytes
 typedef struct {
-    void (* scan_julia_obj) (void* obj, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge);
-    void (* scan_julia_exc_obj) (void* obj, closure_pointer closure, ProcessEdgeFn process_edge);
+    void (* scan_julia_exc_obj) (void* obj, void* closure, ProcessEdgeFn process_edge);
     void* (* get_stackbase) (int16_t tid);
-    void (* calculate_roots) (void* tls);
-    void (* run_finalizer_function) (void* obj, void* function, bool is_ptr);
     int (* get_jl_last_err) (void);
     void (* set_jl_last_err) (int e);
-    size_t (* get_lo_size) (void* obj);
-    size_t (* get_so_size) (void* obj);
-    void* (* get_obj_start_ref) (void* obj);
     void (* wait_for_the_world) (void);
     int8_t (* set_gc_initial_state) (void* tls);
     void (* set_gc_final_state) (int8_t old_state);
     void (* set_gc_old_state) (int8_t old_state);
     void (* mmtk_jl_run_finalizers) (void* tls);
     void (* jl_throw_out_of_memory_error) (void);
-    void (* mark_object_as_scanned) (void* obj);
-    int8_t (* object_has_been_scanned) (void* obj);
     void (* sweep_malloced_array) (void);
     void (* wait_in_a_safepoint) (void);
     void (* exit_from_safepoint) (int8_t old_state);
     uint64_t (* jl_hrtime) (void);
     void (* update_gc_time) (uint64_t);
     uintptr_t (* get_abi_structs_checksum_c) (void);
+    void* (* get_thread_finalizer_list) (void* tls);
+    void* (* get_to_finalize_list)(void);
+    void* (* get_marked_finalizers_list)(void);
+    void (*arraylist_grow)(void* a, size_t n);
+    int* (*get_jl_gc_have_pending_finalizers)(void);
+    void (*scan_vm_specific_roots)(RootsWorkClosure* closure);
 } Julia_Upcalls;
 
 /**
  * Misc
  */
-extern void mmtk_gc_init(uintptr_t min_heap_size, uintptr_t max_heap_size, uintptr_t n_gcthreads, Julia_Upcalls *calls, uintptr_t header_size);
+extern void mmtk_gc_init(uintptr_t min_heap_size, uintptr_t max_heap_size, uintptr_t n_gcthreads, Julia_Upcalls *calls, uintptr_t header_size, uintptr_t tag);
 extern bool mmtk_will_never_move(void* object);
 extern bool mmtk_process(char* name, char* value);
 extern void mmtk_scan_region(void);
@@ -121,6 +110,7 @@ extern void mmtk_register_finalizer(void* obj, void* function, bool is_ptr);
 extern void mmtk_run_finalizers_for_obj(void* obj);
 extern void mmtk_run_finalizers(bool at_exit);
 extern void mmtk_gc_poll(void *tls);
+extern void mmtk_julia_copy_stack_check(int copy_stack);
 
 /**
  * VM Accounting

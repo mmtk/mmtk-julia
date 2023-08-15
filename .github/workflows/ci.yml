@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gc_plan: [immix, stickyimmix]
+        gc_plan: [Immix, StickyImmix]
     uses: ./.github/workflows/binding-tests.yml
     with:
       gc_plan: ${{ matrix.gc_plan }}
