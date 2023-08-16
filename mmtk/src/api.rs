@@ -516,3 +516,27 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
         addr_size.load::<u64>() as usize
     }
 }
+
+#[cfg(feature = "object_pinning")]
+#[no_mangle]
+pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
+    if !mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
+        return false;
+    }
+    memory_manager::pin_object::<JuliaVM>(object)
+}
+
+#[cfg(feature = "object_pinning")]
+#[no_mangle]
+pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
+    if !mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
+        return false;
+    }
+    memory_manager::unpin_object::<JuliaVM>(object)
+}
+
+#[cfg(feature = "object_pinning")]
+#[no_mangle]
+pub extern "C" fn mmtk_is_pinned(object: ObjectReference) -> bool {
+    memory_manager::is_pinned::<JuliaVM>(object)
+}
