@@ -34,11 +34,12 @@ lazy_static = "1.1"
 # mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "04a47feb4598b2120598453c2cceec83986c2122" }
 # Uncomment the following to build locally
 mmtk = { path = "../../mmtk-core" }
-log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
+log = {version = "0.4", features = ["max_level_debug", "release_max_level_off"] }
 enum-map = ">=2.1"
 atomic = "0.4.6"
 chrono = "*"
 thread-id = "*"
+memoffset = "*"
 
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 

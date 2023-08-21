@@ -111,6 +111,8 @@ static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
                 continue;
             }
             if (mmtk_is_live_object(ma->a)) {
+                jl_array_t *maybe_forwarded = (jl_array_t*)mmtk_get_possibly_forwared(ma->a);
+                ma->a = maybe_forwarded;
                 pma = &ma->next;
             }
             else {
@@ -359,7 +361,7 @@ void update_inlined_array(void* from, void* to) {
         jl_array_t *a = (jl_array_t*)jl_from;
         jl_array_t *b = (jl_array_t*)jl_to;
         if (a->flags.how == 0) {
-            assert(object_is_managed_by_mmtk(a->data));
+            assert(mmtk_object_is_managed_by_mmtk(a->data));
             size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
             if (pre_data_bytes > 0 && pre_data_bytes <= ARRAY_INLINE_NBYTES) {
                 b->data = (void*)((size_t) b + pre_data_bytes);
@@ -412,8 +414,11 @@ void mmtk_sweep_stack_pools(void)
             continue;
         while (1) {
             jl_task_t *t = (jl_task_t*)lst[n];
-            assert(jl_is_task(t));
             if (mmtk_is_live_object(t)) {
+                jl_task_t *maybe_forwarded = (jl_task_t*)mmtk_get_possibly_forwared(t);
+                live_tasks->items[n] = maybe_forwarded;
+                t = maybe_forwarded;
+                assert(jl_is_task(t));
                 if (t->stkbuf == NULL)
                     ndel++; // jl_release_task_stack called
                 else

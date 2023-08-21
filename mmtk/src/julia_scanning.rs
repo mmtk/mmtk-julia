@@ -1,9 +1,12 @@
+use crate::api::mmtk_object_is_managed_by_mmtk;
 use crate::edges::JuliaVMEdge;
 use crate::edges::OffsetEdge;
 use crate::julia_types::*;
 use crate::object_model::mmtk_jl_array_ndims;
+use crate::util::mmtk_get_possibly_forwared;
 use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
+use memoffset::offset_of;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::edge_shape::SimpleEdge;
 use mmtk::vm::EdgeVisitor;
@@ -11,6 +14,8 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 const JL_MAX_TAGS: usize = 64; // from vm/julia/src/jl_exports.h
+const OFFSET_OF_INLINED_SPACE_IN_MODULE: usize =
+    offset_of!(mmtk_jl_module_t, usings) + offset_of!(mmtk_arraylist_t, _space);
 
 extern "C" {
     pub static jl_simplevector_type: *const mmtk_jl_datatype_t;
@@ -96,7 +101,64 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         } else if flags.how_custom() == 3 {
             // has a pointer to the object that owns the data
             let owner_addr = mmtk_jl_array_data_owner_addr(array);
+
+            if mmtk_object_is_managed_by_mmtk((*array).data as usize) {
+                let data_owner = owner_addr.load::<ObjectReference>();
+                // if the owner moves and a->data points to it, it needs to be updated as well
+                // first check if it has moved already (as we need to query type info from it)
+                let owner =
+                    if mmtk_object_is_managed_by_mmtk(data_owner.to_raw_address().as_usize()) {
+                        mmtk_get_possibly_forwared(data_owner)
+                    } else {
+                        data_owner
+                    };
+
+                // owner may be either a string or another array
+                let owner_type = mmtk_jl_typeof(owner.to_raw_address());
+                if owner_type == jl_string_type {
+                    // if it is a string, a->data will point into the string object (not always the beginning of the string!!!)
+                    // see (#define jl_string_data(s) ((char*)s + sizeof(void*)) from julia.h
+                    let offset = std::mem::size_of::<*const ::std::os::raw::c_void>()
+                        + ((*array).offset as usize * (*array).elsize as usize);
+                    let data_addr = ::std::ptr::addr_of!((*array).data);
+                    process_offset_edge(closure, Address::from_ptr(data_addr), offset);
+                } else if (*owner_type).name == jl_array_typename {
+                    // if it is an array we need to check with type of array it is to update the a->data accordingly
+                    let array_owner = owner.to_raw_address().to_ptr::<mmtk_jl_array_t>();
+                    let owner_flags = (*array_owner).flags;
+                    if owner_flags.how_custom() == 0 {
+                        let offset_isize = (*array_owner).data as isize - array_owner as isize;
+                        assert!(
+                            offset_isize >= 0 && offset_isize <= 2032,
+                            "Offset is larger than small object size"
+                        ); // FIXME: might not hold after removing Julia's size classes
+                        assert!(
+                            ((*array_owner).offset == 0 && (*array).offset == 0)
+                                || (*array).offset == (*array_owner).offset
+                        );
+                        // owner has inlined data => a->data is an internal pointer into owner (not always the beginning of owner.data!!)
+                        let offset = offset_isize as usize
+                            + ((*array).offset as usize * (*array).elsize as usize);
+                        let data_addr = ::std::ptr::addr_of!((*array).data);
+                        process_offset_edge(closure, Address::from_ptr(data_addr), offset);
+                    } else if owner_flags.how_custom() == 1 {
+                        // the data inside the owner array is a julia allocated buffer (which at least currently is always pinned)
+                        // FIXME: if buffers may move a->data needs to be updated!
+                    } else if owner_flags.how_custom() == 2 {
+                        // the data inside the owner array is malloc-allocated
+                        // don't need to do anything because the malloc-allocated data won't move
+                    } else if owner_flags.how_custom() == 3 {
+                        // owner itself has a pointer to another owner
+                        println!("owner_flags.how = 3");
+                        unreachable!() // FIXME: is this even possible?
+                    }
+                } else {
+                    unreachable!()
+                }
+            }
+
             process_edge(closure, owner_addr);
+
             return;
         }
 
@@ -175,25 +237,6 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         }
 
         let m = obj.to_ptr::<mmtk_jl_module_t>();
-        let bindings = (*m).bindings;
-        let table = mmtk_jl_svec_data(Address::from_mut_ptr(bindings));
-        let bsize = mmtk_jl_svec_len(Address::from_mut_ptr(bindings));
-        let mut begin = table.shift::<Address>(1);
-        let end = table.shift::<Address>(bsize as isize);
-
-        while begin < end {
-            let b: *mut mmtk_jl_binding_t = begin.load::<*mut mmtk_jl_binding_t>();
-            if b == crate::reference_glue::jl_nothing as *mut mmtk_jl_binding_t {
-                begin = begin.shift::<Address>(1);
-                continue;
-            }
-            if PRINT_OBJ_TYPE {
-                println!(" - scan table: {}\n", obj);
-            }
-
-            process_edge(closure, begin);
-            begin = begin.shift::<Address>(1);
-        }
 
         let parent_edge = ::std::ptr::addr_of!((*m).parent);
         if PRINT_OBJ_TYPE {
@@ -212,6 +255,16 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
             println!(" - scan bindings: {:?}\n", bindings_edge);
         }
         process_edge(closure, Address::from_ptr(bindings_edge));
+
+        // m.usings.items may be inlined in the module when the array list size <= AL_N_INLINE (cf. arraylist_new)
+        // In that case it may be an mmtk object and not a malloced address.
+        // If it is an mmtk object, (*m).usings.items will then be an internal pointer to the module
+        // which means we will need to trace and update it if the module moves
+        if mmtk_object_is_managed_by_mmtk((*m).usings.items as usize) {
+            let offset = OFFSET_OF_INLINED_SPACE_IN_MODULE;
+            let slot = Address::from_ptr(::std::ptr::addr_of!((*m).usings.items));
+            process_offset_edge(closure, slot, offset);
+        }
 
         let nusings = (*m).usings.len;
         if nusings != 0 {
@@ -412,6 +465,17 @@ pub fn process_edge<EV: EdgeVisitor<JuliaVMEdge>>(closure: &mut EV, slot: Addres
         simple_edge.load(),
         simple_edge
     );
+
+    let obj = simple_edge.load().to_raw_address().as_usize();
+
+    // captures wrong edges before creating the work
+    debug_assert!(
+        obj % 16 == 0 || obj % 8 == 0,
+        "Object {:?} in slot {:?} is not aligned to 8 or 16", 
+        simple_edge.load(),
+        simple_edge
+    );
+
     closure.visit_edge(JuliaVMEdge::Simple(simple_edge));
 }
 

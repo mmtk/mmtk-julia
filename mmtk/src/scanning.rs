@@ -98,7 +98,7 @@ impl Scanning<JuliaVM> for VMScanning {
             .chunks(CAPACITY_PER_PACKET)
             .map(|c| c.to_vec())
         {
-            factory.create_immovable_process_edge_roots_work(edges);
+            factory.create_process_tp_edge_roots_work(edges);
         }
         for nodes in node_buffer.chunks(CAPACITY_PER_PACKET).map(|c| c.to_vec()) {
             factory.create_process_node_roots_work(nodes);
