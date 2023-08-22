@@ -47,6 +47,14 @@ impl Scanning<JuliaVM> for VMScanning {
                     crate::julia_scanning::mmtk_scan_gcstack(task, &mut edge_buffer);
                 }
                 if queue_task {
+                    // captures wrong root nodes before creating the work
+                    debug_assert!(
+                        Address::from_ptr(task).as_usize() % 16 == 0
+                            || Address::from_ptr(task).as_usize() % 8 == 0,
+                        "root node {:?} is not aligned to 8 or 16",
+                        Address::from_ptr(task)
+                    );
+
                     node_buffer.push(ObjectReference::from_raw_address(Address::from_ptr(task)));
                 }
             }
@@ -84,6 +92,15 @@ impl Scanning<JuliaVM> for VMScanning {
             let njlvals = mmtk_jl_bt_num_jlvals(bt_entry);
             for j in 0..njlvals {
                 let bt_entry_value = mmtk_jl_bt_entry_jlvalue(bt_entry, j);
+
+                // captures wrong root nodes before creating the work
+                debug_assert!(
+                    bt_entry_value.to_raw_address().as_usize() % 16 == 0
+                        || bt_entry_value.to_raw_address().as_usize() % 8 == 0,
+                    "root node {:?} is not aligned to 8 or 16",
+                    bt_entry_value
+                );
+
                 node_buffer.push(bt_entry_value);
             }
             i += bt_entry_size;

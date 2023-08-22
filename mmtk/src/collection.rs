@@ -1,6 +1,6 @@
 use crate::{JuliaVM, USER_TRIGGERED_GC};
 use crate::{SINGLETON, UPCALLS};
-use log::{info, trace, warn};
+use log::{info, trace};
 use mmtk::util::alloc::AllocationError;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::{Collection, GCThreadContext};
@@ -64,7 +64,7 @@ impl Collection<JuliaVM> for VMCollection {
     }
 
     fn block_for_gc(tls: VMMutatorThread) {
-        warn!("Triggered GC!");
+        info!("Triggered GC!");
 
         AtomicBool::store(&BLOCK_FOR_GC, true, Ordering::SeqCst);
 
@@ -109,7 +109,7 @@ impl Collection<JuliaVM> for VMCollection {
         unsafe { ((*UPCALLS).mmtk_jl_run_finalizers)(tls_ptr) };
 
         unsafe { ((*UPCALLS).set_jl_last_err)(last_err) };
-        warn!("Finished blocking mutator for GC!");
+        info!("Finished blocking mutator for GC!");
     }
 
     fn spawn_gc_thread(_tls: VMThread, ctx: GCThreadContext<JuliaVM>) {
