@@ -111,6 +111,7 @@ static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
                 continue;
             }
             if (mmtk_is_live_object(ma->a)) {
+                // if the array has been forwarded, the reference needs to be updated
                 jl_array_t *maybe_forwarded = (jl_array_t*)mmtk_get_possibly_forwared(ma->a);
                 ma->a = maybe_forwarded;
                 pma = &ma->next;
@@ -264,9 +265,6 @@ static void add_node_to_tpinned_roots_buffer(RootsWorkClosure* closure, RootsWor
 
 void scan_vm_specific_roots(RootsWorkClosure* closure)
 {
-
-
-
     // Create a new buf
     RootsWorkBuffer buf = (closure->report_nodes_func)((void**)0, 0, 0, closure->data, true);
     size_t len = 0;
@@ -294,8 +292,7 @@ void scan_vm_specific_roots(RootsWorkClosure* closure)
     add_node_to_roots_buffer(closure, &buf, &len, jl_emptytuple_type);
     add_node_to_roots_buffer(closure, &buf, &len, cmpswap_names);
 
-
-    // jl_global_roots_table must be tpinned 
+    // jl_global_roots_table must be transitively pinned 
     RootsWorkBuffer tpinned_buf = (closure->report_tpinned_nodes_func)((void**)0, 0, 0, closure->data, true);
     size_t tpinned_len = 0;
     add_node_to_tpinned_roots_buffer(closure, &tpinned_buf, &tpinned_len, jl_global_roots_table);

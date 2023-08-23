@@ -128,11 +128,12 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                     let owner_flags = (*array_owner).flags;
                     if owner_flags.how_custom() == 0 {
                         let offset_isize = (*array_owner).data as isize - array_owner as isize;
-                        assert!(
+                        debug_assert!(
+                            // FIXME: might not hold after removing Julia's size classes
                             offset_isize >= 0 && offset_isize <= 2032,
                             "Offset is larger than small object size"
-                        ); // FIXME: might not hold after removing Julia's size classes
-                        assert!(
+                        );
+                        debug_assert!(
                             ((*array_owner).offset == 0 && (*array).offset == 0)
                                 || (*array).offset == (*array_owner).offset
                         );
@@ -158,7 +159,6 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
             }
 
             process_edge(closure, owner_addr);
-
             return;
         }
 
@@ -466,11 +466,10 @@ pub fn process_edge<EV: EdgeVisitor<JuliaVMEdge>>(closure: &mut EV, slot: Addres
         simple_edge
     );
 
-    let obj = simple_edge.load().to_raw_address().as_usize();
-
     // captures wrong edges before creating the work
     debug_assert!(
-        obj % 16 == 0 || obj % 8 == 0,
+        simple_edge.load().to_raw_address().as_usize() % 16 == 0
+            || simple_edge.load().to_raw_address().as_usize() % 8 == 0,
         "Object {:?} in slot {:?} is not aligned to 8 or 16",
         simple_edge.load(),
         simple_edge

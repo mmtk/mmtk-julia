@@ -6,7 +6,6 @@ use crate::julia_scanning::{
 };
 use crate::{julia_types::*, UPCALLS};
 use crate::{JuliaVM, JULIA_BUFF_TAG, JULIA_HEADER_SIZE};
-use atomic::Ordering;
 use log::info;
 use mmtk::util::copy::*;
 use mmtk::util::{Address, ObjectReference};
@@ -77,20 +76,6 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         }
         let to_obj = ObjectReference::from_raw_address(dst + header_offset);
 
-        // use std::fs::OpenOptions;
-        // use std::io::Write;
-
-        // let mut file = OpenOptions::new()
-        //                 .write(true)
-        //                 .append(true)
-        //                 .create(true)
-        //                 .open("/home/eduardo/mmtk-julia/copied_objs.log")
-        //                 .unwrap();
-
-        // if let Err(e) = writeln!(file, "Copying object from {} to {}", from, to_obj) {
-        //     eprintln!("Couldn't write to file: {}", e);
-        // }
-
         info!("Copying object from {} to {}", from, to_obj);
 
         copy_context.post_copy(to_obj, bytes, semantics);
@@ -103,17 +88,21 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             }
         }
 
-        // zero from_obj
-        unsafe {
-            libc::memset(from_start_ref.to_raw_address().to_mut_ptr(), 0, bytes);
-        }
+        // zero from_obj (for debugging purposes)
+        #[cfg(debug_assertions)]
+        {
+            use atomic::Ordering;
+            unsafe {
+                libc::memset(from_start_ref.to_raw_address().to_mut_ptr(), 0, bytes);
+            }
 
-        Self::LOCAL_FORWARDING_BITS_SPEC.store_atomic::<JuliaVM, u8>(
-            from,
-            0b10 as u8, // BEING_FORWARDED
-            None,
-            Ordering::SeqCst,
-        );
+            Self::LOCAL_FORWARDING_BITS_SPEC.store_atomic::<JuliaVM, u8>(
+                from,
+                0b10 as u8, // BEING_FORWARDED
+                None,
+                Ordering::SeqCst,
+            );
+        }
 
         to_obj
     }

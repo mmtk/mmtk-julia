@@ -41,12 +41,12 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut node_buffer = vec![];
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
-        let mut root_scan_task = |task: *const mmtk__jl_task_t, queue_task: bool| {
+        let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
             if !task.is_null() {
                 unsafe {
                     crate::julia_scanning::mmtk_scan_gcstack(task, &mut edge_buffer);
                 }
-                if queue_task {
+                if task_is_root {
                     // captures wrong root nodes before creating the work
                     debug_assert!(
                         Address::from_ptr(task).as_usize() % 16 == 0
@@ -62,6 +62,7 @@ impl Scanning<JuliaVM> for VMScanning {
         root_scan_task(ptls.root_task, true);
 
         // need to iterate over live tasks as well to process their shadow stacks
+        // we should not set the task themselves as roots as we will know which ones are still alive after GC
         let mut i = 0;
         while i < ptls.heap.live_tasks.len {
             let mut task_address = Address::from_ptr(ptls.heap.live_tasks.items);
