@@ -90,7 +90,13 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         let array = obj.to_ptr::<mmtk_jl_array_t>();
         let flags = (*array).flags;
 
-        if flags.how_custom() == 1 {
+        if flags.how_custom() == 0 {
+            // data is inlined, or a foreign pointer we don't manage
+            // if data is inlined (i.e. it is an internal pointer) and the array moves,
+            // a->data is currently updated when copying the array since there may be other hidden
+            // fields before the inlined data affecting the offset in which a->data points to
+            // see jl_array_t in julia.h
+        } else if flags.how_custom() == 1 {
             // julia-allocated buffer that needs to be marked
             let offset = (*array).offset as usize * (*array).elsize as usize;
             let data_addr = ::std::ptr::addr_of!((*array).data);

@@ -21,6 +21,8 @@ extern void mmtk_store_obj_size_c(void* obj, size_t size);
 extern void jl_gc_free_array(jl_array_t *a);
 extern size_t mmtk_get_obj_size(void* obj);
 extern void jl_rng_split(uint64_t to[JL_RNG_SIZE], uint64_t from[JL_RNG_SIZE]);
+extern void _jl_free_stack(jl_ptls_t ptls, void *stkbuf, size_t bufsz);
+extern void free_stack(void *stkbuf, size_t bufsz);
 
 extern void* new_mutator_iterator(void);
 extern jl_ptls_t get_next_mutator_tls(void*);
@@ -358,9 +360,9 @@ void update_inlined_array(void* from, void* to) {
         jl_array_t *a = (jl_array_t*)jl_from;
         jl_array_t *b = (jl_array_t*)jl_to;
         if (a->flags.how == 0 && mmtk_object_is_managed_by_mmtk(a->data)) { // a is inlined (a->data is an mmtk object)
-            size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
-            if (pre_data_bytes > 0 && pre_data_bytes <= ARRAY_INLINE_NBYTES) {
-                b->data = (void*)((size_t) b + pre_data_bytes);
+            size_t offset_of_data = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
+            if (offset_of_data > 0 && offset_of_data <= ARRAY_INLINE_NBYTES) {
+                b->data = (void*)((size_t) b + offset_of_data);
             }
         }
     }
