@@ -16,6 +16,17 @@ declare -a tests_to_skip=(
 
     # This test checks GC logging
     '@test occursin("GC: pause", read(tmppath, String))' "$JULIA_PATH/test/misc.jl"
+
+    # These tests check for the number of stock GC threads (which we set to 0 with mmtk)
+    '@test (cpu_threads == 1 ? "1" : string(div(cpu_threads, 2))) ==
+          read(`$exename --threads auto -e $code`, String) ==
+          read(`$exename --threads=auto -e $code`, String) ==
+          read(`$exename -tauto -e $code`, String) ==
+          read(`$exename -t auto -e $code`, String)' "$JULIA_PATH/test/cmdlineargs.jl"
+
+    '@test read(`$exename --gcthreads=2 -e $code`, String) == "2"' "$JULIA_PATH/test/cmdlineargs.jl"
+
+    '@test read(`$exename -e $code`, String) == "2"' "$JULIA_PATH/test/cmdlineargs.jl"
 )
 
 for (( i=0; i < ${#tests_to_skip[@]}; i+=2 )); do
