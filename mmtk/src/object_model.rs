@@ -6,7 +6,7 @@ use crate::julia_scanning::{
 };
 use crate::{julia_types::*, UPCALLS};
 use crate::{JuliaVM, JULIA_BUFF_TAG, JULIA_HEADER_SIZE};
-use log::info;
+use log::trace;
 use mmtk::util::copy::*;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::ObjectModel;
@@ -76,7 +76,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         }
         let to_obj = ObjectReference::from_raw_address(dst + header_offset);
 
-        info!("Copying object from {} to {}", from, to_obj);
+        trace!("Copying object from {} to {}", from, to_obj);
 
         copy_context.post_copy(to_obj, bytes, semantics);
 
