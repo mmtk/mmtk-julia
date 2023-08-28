@@ -14,6 +14,11 @@ declare -a tests_to_skip=(
     # Ignore the entire libgit2.jl -- there are too many possible network related issues to run this test
     # '@test.*$' "$JULIA_PATH/usr/share/julia/stdlib/v1.8/LibGit2/test/libgit2.jl"
 
+    # These tests check for the number of stock GC threads (which we set to 0 with mmtk)
+    '@test (cpu_threads == 1 ? "1" : string(div(cpu_threads, 2))) ==' "$JULIA_PATH/test/cmdlineargs.jl"
+    '@test read(`$exename --gcthreads=2 -e $code`, String) == "2"' "$JULIA_PATH/test/cmdlineargs.jl"
+    '@test read(`$exename -e $code`, String) == "2"' "$JULIA_PATH/test/cmdlineargs.jl"
+
     # This test checks GC logging
     '@test occursin("GC: pause", read(tmppath, String))' "$JULIA_PATH/test/misc.jl"
 )
