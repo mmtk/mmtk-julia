@@ -36,7 +36,7 @@ impl std::fmt::Debug for JuliaVMEdge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Simple(e) => write!(f, "{}", e.as_address()),
-            Self::Offset(e) => write!(f, "{}+{}", e.slot_address(), e.offset)
+            Self::Offset(e) => write!(f, "{}+{}", e.slot_address(), e.offset),
         }
     }
 }
