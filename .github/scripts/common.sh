@@ -24,6 +24,7 @@ ci_run_jl_test() {
 
     cd $JULIA_PATH
     export JULIA_CPU_THREADS=$threads
+    export JULIA_NUM_THREADS=4 # set default to 4 mutator threads to try to capture bad races
 
     # Directly run runtests.jl: There could be some issues with some test suites. We better just use their build script.
     # $JULIA_PATH/julia $JULIA_TEST_ARGS $JULIA_PATH/test/runtests.jl --exit-on-error $test
