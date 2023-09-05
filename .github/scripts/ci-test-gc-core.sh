@@ -1,3 +1,5 @@
+set -e
+
 # run tests that are more specific to the GC
 # this list was built intuitively based on tests that 
 # call the gc manually, have finalizers, have multiple threads, etc.
