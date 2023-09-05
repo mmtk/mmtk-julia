@@ -32,6 +32,9 @@ jobs:
         run: |
           ./.github/scripts/ci-checkout.sh
           ./.github/scripts/ci-setup.sh
+      - name: Patching unsupported tests
+        run: |
+          ./.github/scripts/ci-test-patching.sh
       - name: Build Julia (Release)
         run: |
           ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }}
