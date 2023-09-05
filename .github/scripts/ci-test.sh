@@ -12,6 +12,4 @@ cd $cur
 
 # Use release build to run tests
 cd $cur
-./ci-test-other.sh
-cd $cur
-./ci-test-stdlib.sh
+./ci-test-gc-core.sh
