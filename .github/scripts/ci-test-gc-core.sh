@@ -4,9 +4,6 @@ set -e
 # this list was built intuitively based on tests that 
 # call the gc manually, have finalizers, have multiple threads, etc.
 
-# Patch some tests to skip
-. $(dirname "$0")/ci-test-patching.sh
-
 declare -a test_names=(
     "gc"                            # Julia's GC specific testset
     "threads"                       # Tests for multithreading (with some GC interaction)

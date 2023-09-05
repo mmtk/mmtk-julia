@@ -6,6 +6,9 @@ cur=$(realpath $(dirname "$0"))
 # cd $cur
 # ./ci-build.sh debug
 
+# Patch some tests to skip
+. $(dirname "$0")/ci-test-patching.sh
+
 # Build release
 cd $cur
 ./ci-build.sh release Immix
