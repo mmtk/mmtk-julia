@@ -23,12 +23,22 @@ impl Scanning<JuliaVM> for VMScanning {
         mut factory: impl RootsWorkFactory<JuliaVMEdge>,
     ) {
         // This allows us to reuse mmtk_scan_gcstack which expectes an EdgeVisitor
+        // Push the nodes as they need to be transitively pinned
         struct EdgeBuffer {
-            pub buffer: Vec<JuliaVMEdge>,
+            pub buffer: Vec<ObjectReference>,
         }
         impl mmtk::vm::EdgeVisitor<JuliaVMEdge> for EdgeBuffer {
             fn visit_edge(&mut self, edge: JuliaVMEdge) {
-                self.buffer.push(edge);
+                match edge {
+                    JuliaVMEdge::Simple(se) =>  {
+                        let slot = se.as_address();
+                        let object = unsafe { slot.load::<ObjectReference>() };
+                        self.buffer.push(object);
+                    }
+                    JuliaVMEdge::Offset(_) => {
+                        unimplemented!() // transitively pinned roots in Julia only come from the stack
+                    }
+                }                
             }
         }
 
@@ -111,15 +121,15 @@ impl Scanning<JuliaVM> for VMScanning {
 
         // Push work
         const CAPACITY_PER_PACKET: usize = 4096;
-        for edges in edge_buffer
+        for tpinning_roots in edge_buffer
             .buffer
             .chunks(CAPACITY_PER_PACKET)
             .map(|c| c.to_vec())
         {
-            factory.create_process_tp_edge_roots_work(edges);
+            factory.create_process_tpinning_roots_work(tpinning_roots);
         }
         for nodes in node_buffer.chunks(CAPACITY_PER_PACKET).map(|c| c.to_vec()) {
-            factory.create_process_node_roots_work(nodes);
+            factory.create_process_pinning_roots_work(nodes);
         }
     }
 
