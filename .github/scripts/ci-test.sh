@@ -6,12 +6,13 @@ cur=$(realpath $(dirname "$0"))
 # cd $cur
 # ./ci-build.sh debug
 
+# Patch some tests to skip
+. $(dirname "$0")/ci-test-patching.sh
+
 # Build release
 cd $cur
 ./ci-build.sh release Immix
 
 # Use release build to run tests
 cd $cur
-./ci-test-other.sh
-cd $cur
-./ci-test-stdlib.sh
+./ci-test-gc-core.sh

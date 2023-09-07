@@ -2,9 +2,6 @@ set -xe
 
 . $(dirname "$0")/common.sh
 
-# Patch some tests to skip
-. $(dirname "$0")/ci-test-patching.sh
-
 # Get all the tests
 CHOOSE_TESTS_JL_PATH=$JULIA_PATH/test/choosetests.jl
 CHOOSE_TESTS_JL_CONTENT=`cat $CHOOSE_TESTS_JL_PATH`
