@@ -30,7 +30,7 @@ impl Scanning<JuliaVM> for VMScanning {
         impl mmtk::vm::EdgeVisitor<JuliaVMEdge> for EdgeBuffer {
             fn visit_edge(&mut self, edge: JuliaVMEdge) {
                 match edge {
-                    JuliaVMEdge::Simple(se) =>  {
+                    JuliaVMEdge::Simple(se) => {
                         let slot = se.as_address();
                         let object = unsafe { slot.load::<ObjectReference>() };
                         self.buffer.push(object);
@@ -38,7 +38,7 @@ impl Scanning<JuliaVM> for VMScanning {
                     JuliaVMEdge::Offset(_) => {
                         unimplemented!() // transitively pinned roots in Julia only come from the stack
                     }
-                }                
+                }
             }
         }
 
