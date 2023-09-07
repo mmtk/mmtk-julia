@@ -49,7 +49,7 @@ default = ["mmtk/vm_space", "julia_copy_stack", "object_pinning"]
 # Plans
 nogc = []
 immix = []
-stickyimmix = ["mmtk/sticky_immix_non_moving_nursery"]
+stickyimmix = ["non_moving_immix"]
 marksweep = []
 object_pinning = ["mmtk/object_pinning"]
 
