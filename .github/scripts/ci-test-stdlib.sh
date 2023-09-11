@@ -20,6 +20,8 @@ declare -a tests_to_skip=(
     # FIXME: We should run this test when the above issue is resolved.
     "Pkg",
     "SparseArrays"
+    # Running LinearAlgebra in a separate job
+    "LinearAlgebra"
 )
 # These tests need multiple workers.
 declare -a tests_with_multi_workers=(
