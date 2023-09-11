@@ -28,7 +28,6 @@ declare -a tests_with_multi_workers=(
 # These tests run with a single worker
 declare -a tests_with_single_worker=(
     "SparseArrays",
-    "LinearAlgebra"
 )
 
 stdlib_path=$JULIA_PATH/usr/share/julia/stdlib
