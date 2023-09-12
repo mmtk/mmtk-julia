@@ -21,6 +21,9 @@ extern void mmtk_store_obj_size_c(void* obj, size_t size);
 extern void jl_gc_free_array(jl_array_t *a);
 extern size_t mmtk_get_obj_size(void* obj);
 extern void jl_rng_split(uint64_t to[JL_RNG_SIZE], uint64_t from[JL_RNG_SIZE]);
+extern jl_mutex_t finalizers_lock;
+extern void jl_gc_wait_for_the_world(jl_ptls_t* gc_all_tls_states, int gc_n_threads);
+extern void mmtk_block_thread_for_gc(void);
 
 extern void* new_mutator_iterator(void);
 extern jl_ptls_t get_next_mutator_tls(void*);
@@ -138,65 +141,89 @@ void mmtk_exit_from_safepoint(int8_t old_state) {
     jl_gc_state_set(ptls, old_state, JL_GC_STATE_WAITING);
 }
 
-// all threads pass here and if there is another thread doing GC,
-// it will block until GC is done
-// that thread simply exits from block_for_gc without executing finalizers
-// when executing finalizers do not let another thread do GC (set a variable such that while that variable is true, no GC can be done)
-int8_t set_gc_initial_state(void* ptls_raw) 
+// based on jl_gc_collect from gc.c
+JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
 {
-    jl_ptls_t ptls = (jl_ptls_t) ptls_raw;
-    int8_t old_state = jl_atomic_load_relaxed(&((jl_ptls_t)ptls)->gc_state);
-    jl_atomic_store_release(&((jl_ptls_t)ptls)->gc_state, JL_GC_STATE_WAITING);
-    if (!jl_safepoint_start_gc()) {
-        jl_gc_state_set((jl_ptls_t)ptls, old_state, JL_GC_STATE_WAITING);
-        return -1;
+    // FIXME: set to JL_GC_AUTO since we're calling it from mmtk
+    // maybe just remove this?
+    JL_PROBE_GC_BEGIN(JL_GC_AUTO);
+
+    jl_task_t *ct = jl_current_task;
+    jl_ptls_t ptls = ct->ptls;
+    if (jl_atomic_load_acquire(&jl_gc_disable_counter)) {
+        size_t localbytes = jl_atomic_load_relaxed(&ptls->gc_num.allocd) + gc_num.interval;
+        jl_atomic_store_relaxed(&ptls->gc_num.allocd, -(int64_t)gc_num.interval);
+        static_assert(sizeof(_Atomic(uint64_t)) == sizeof(gc_num.deferred_alloc), "");
+        jl_atomic_fetch_add((_Atomic(uint64_t)*)&gc_num.deferred_alloc, localbytes);
+        return;
     }
-    return old_state;
-}
 
-void set_gc_final_state(int8_t old_state) 
-{
-    jl_ptls_t ptls = jl_current_task->ptls;
-    jl_safepoint_end_gc();
-    jl_gc_state_set(ptls, old_state, JL_GC_STATE_WAITING);
-}
+    int8_t old_state = jl_atomic_load_relaxed(&ptls->gc_state);
+    jl_atomic_store_release(&ptls->gc_state, JL_GC_STATE_WAITING);
+    // `jl_safepoint_start_gc()` makes sure only one thread can run the GC.
+    uint64_t t0 = jl_hrtime();
+    if (!jl_safepoint_start_gc()) {
+        // either another thread is running GC, or the GC got disabled just now.
+        jl_gc_state_set(ptls, old_state, JL_GC_STATE_WAITING);
+        return;
+    }
 
-void set_gc_old_state(int8_t old_state) 
-{
-    jl_ptls_t ptls = jl_current_task->ptls;
-    jl_atomic_store_release(&ptls->gc_state, old_state);
-}
+    JL_TIMING_SUSPEND_TASK(GC, ct);
+    JL_TIMING(GC, GC);
 
-void wait_for_the_world(void)
-{
+    int last_errno = errno;
+#ifdef _OS_WINDOWS_
+    DWORD last_error = GetLastError();
+#endif
+    // Now we are ready to wait for other threads to hit the safepoint,
+    // we can do a few things that doesn't require synchronization.
+    //
+    // We must sync here with the tls_lock operations, so that we have a
+    // seq-cst order between these events now we know that either the new
+    // thread must run into our safepoint flag or we must observe the
+    // existence of the thread in the jl_n_threads count.
+    //
+    // TODO: concurrently queue objects
+    jl_fence();
     gc_n_threads = jl_atomic_load_acquire(&jl_n_threads);
     gc_all_tls_states = jl_atomic_load_relaxed(&jl_all_tls_states);
-    assert(gc_n_threads);
-    if (gc_n_threads > 1)
-        jl_wake_libuv();
-    for (int i = 0; i < gc_n_threads; i++) {
-        jl_ptls_t ptls2 = gc_all_tls_states[i];
-        if (ptls2 == NULL)
-            continue;
-        // This acquire load pairs with the release stores
-        // in the signal handler of safepoint so we are sure that
-        // all the stores on those threads are visible.
-        // We're currently also using atomic store release in mutator threads
-        // (in jl_gc_state_set), but we may want to use signals to flush the
-        // memory operations on those threads lazily instead.
-        while (!jl_atomic_load_relaxed(&ptls2->gc_state) || !jl_atomic_load_acquire(&ptls2->gc_state))
-            jl_cpu_pause(); // yield?
+    jl_gc_wait_for_the_world(gc_all_tls_states, gc_n_threads);
+    JL_PROBE_GC_STOP_THE_WORLD();
+
+    uint64_t t1 = jl_hrtime();
+    uint64_t duration = t1 - t0;
+    if (duration > gc_num.max_time_to_safepoint)
+        gc_num.max_time_to_safepoint = duration;
+    gc_num.time_to_safepoint = duration;
+    gc_num.total_time_to_safepoint += duration;
+
+    if (!jl_atomic_load_acquire(&jl_gc_disable_counter)) {
+        JL_LOCK_NOGC(&finalizers_lock); // all the other threads are stopped, so this does not make sense, right? otherwise, failing that, this seems like plausibly a deadlock
+#ifndef __clang_gcanalyzer__
+        mmtk_block_thread_for_gc();
+#endif
+        JL_UNLOCK_NOGC(&finalizers_lock);
     }
-}
 
-void set_jl_last_err(int e) 
-{
-    errno = e;
-}
+    gc_n_threads = 0;
+    gc_all_tls_states = NULL;
+    jl_safepoint_end_gc();
+    jl_gc_state_set(ptls, old_state, JL_GC_STATE_WAITING);
+    JL_PROBE_GC_END();
 
-int get_jl_last_err(void) 
-{
-    return errno;
+    // Only disable finalizers on current thread
+    // Doing this on all threads is racy (it's impossible to check
+    // or wait for finalizers on other threads without dead lock).
+    if (!ptls->finalizers_inhibited && ptls->locks.len == 0) {
+        JL_TIMING(GC, GC_Finalizers);
+        run_finalizers(ct);
+    }
+    JL_PROBE_GC_FINALIZER();
+
+#ifdef _OS_WINDOWS_
+    SetLastError(last_error);
+#endif
+    errno = last_errno;
 }
 
 extern void run_finalizers(jl_task_t *ct);
@@ -401,12 +428,6 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
     // .run_finalizer_function = run_finalizer_function,
-    .get_jl_last_err = get_jl_last_err,
-    .set_jl_last_err = set_jl_last_err,
-    .wait_for_the_world = wait_for_the_world,
-    .set_gc_initial_state = set_gc_initial_state,
-    .set_gc_final_state = set_gc_final_state,
-    .set_gc_old_state = set_gc_old_state,
     .mmtk_jl_run_finalizers = mmtk_jl_run_finalizers,
     .jl_throw_out_of_memory_error = jl_throw_out_of_memory_error,
     .sweep_malloced_array = mmtk_sweep_malloced_arrays,
@@ -421,4 +442,5 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .arraylist_grow = (void (*)(void*, long unsigned int))arraylist_grow,
     .get_jl_gc_have_pending_finalizers = get_jl_gc_have_pending_finalizers,
     .scan_vm_specific_roots = scan_vm_specific_roots,
+    .prepare_to_collect = jl_gc_prepare_to_collect,
 };
