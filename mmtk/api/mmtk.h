@@ -73,12 +73,6 @@ extern uintptr_t JULIA_MALLOC_BYTES;
 typedef struct {
     void (* scan_julia_exc_obj) (void* obj, void* closure, ProcessEdgeFn process_edge);
     void* (* get_stackbase) (int16_t tid);
-    int (* get_jl_last_err) (void);
-    void (* set_jl_last_err) (int e);
-    void (* wait_for_the_world) (void);
-    int8_t (* set_gc_initial_state) (void* tls);
-    void (* set_gc_final_state) (int8_t old_state);
-    void (* set_gc_old_state) (int8_t old_state);
     void (* mmtk_jl_run_finalizers) (void* tls);
     void (* jl_throw_out_of_memory_error) (void);
     void (* sweep_malloced_array) (void);
@@ -95,6 +89,7 @@ typedef struct {
     int* (*get_jl_gc_have_pending_finalizers)(void);
     void (*scan_vm_specific_roots)(RootsWorkClosure* closure);
     void (*update_inlined_array) (void* from, void* to);
+    void (*prepare_to_collect)(void);
 } Julia_Upcalls;
 
 /**
