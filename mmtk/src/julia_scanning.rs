@@ -1,9 +1,9 @@
+use crate::api::mmtk_is_pinned;
 use crate::api::mmtk_object_is_managed_by_mmtk;
 use crate::edges::JuliaVMEdge;
 use crate::edges::OffsetEdge;
 use crate::julia_types::*;
 use crate::object_model::mmtk_jl_array_ndims;
-use crate::util::mmtk_get_possibly_forwared;
 use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
 use memoffset::offset_of;
@@ -107,63 +107,16 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         } else if flags.how_custom() == 3 {
             // has a pointer to the object that owns the data
             let owner_addr = mmtk_jl_array_data_owner_addr(array);
-
-            if mmtk_object_is_managed_by_mmtk((*array).data as usize) {
-                let data_owner = owner_addr.load::<ObjectReference>();
-                // if the owner moves and a->data points to it, it needs to be updated as well
-                // first check if it has moved already (as we need to query type info from it)
-                let owner =
-                    if mmtk_object_is_managed_by_mmtk(data_owner.to_raw_address().as_usize()) {
-                        mmtk_get_possibly_forwared(data_owner)
-                    } else {
-                        data_owner
-                    };
-
-                // owner may be either a string or another array
-                let owner_type = mmtk_jl_typeof(owner.to_raw_address());
-                if owner_type == jl_string_type {
-                    // if it is a string, a->data will point into the string object (not always the beginning of the string!!!)
-                    // see (#define jl_string_data(s) ((char*)s + sizeof(void*)) from julia.h
-                    let offset = std::mem::size_of::<*const ::std::os::raw::c_void>()
-                        + ((*array).offset as usize * (*array).elsize as usize);
-                    let data_addr = ::std::ptr::addr_of!((*array).data);
-                    process_offset_edge(closure, Address::from_ptr(data_addr), offset);
-                } else if (*owner_type).name == jl_array_typename {
-                    // if it is an array we need to check with type of array it is to update the a->data accordingly
-                    let array_owner = owner.to_raw_address().to_ptr::<mmtk_jl_array_t>();
-                    let owner_flags = (*array_owner).flags;
-                    if owner_flags.how_custom() == 0 {
-                        let offset_isize = (*array_owner).data as isize - array_owner as isize;
-                        debug_assert!(
-                            // FIXME: might not hold after removing Julia's size classes
-                            offset_isize >= 0 && offset_isize <= 2032,
-                            "Offset is larger than small object size"
-                        );
-                        debug_assert!(
-                            ((*array_owner).offset == 0 && (*array).offset == 0)
-                                || (*array).offset == (*array_owner).offset
-                        );
-                        // owner has inlined data => a->data is an internal pointer into owner (not always the beginning of owner.data!!)
-                        let offset = offset_isize as usize
-                            + ((*array).offset as usize * (*array).elsize as usize);
-                        let data_addr = ::std::ptr::addr_of!((*array).data);
-                        process_offset_edge(closure, Address::from_ptr(data_addr), offset);
-                    } else if owner_flags.how_custom() == 1 {
-                        // the data inside the owner array is a julia allocated buffer (which at least currently is always pinned)
-                        // FIXME: if buffers may move a->data needs to be updated!
-                    } else if owner_flags.how_custom() == 2 {
-                        // the data inside the owner array is malloc-allocated
-                        // don't need to do anything because the malloc-allocated data won't move
-                    } else if owner_flags.how_custom() == 3 {
-                        // owner itself has a pointer to another owner
-                        println!("owner_flags.how = 3");
-                        unreachable!() // FIXME: is this even possible?
-                    }
-                } else {
-                    unreachable!()
-                }
-            }
-
+            // to avoid having to update a->data, which requires introspecting the owner object
+            // we simply expect that both owner and buffers are pinned
+            assert!(
+                (mmtk_object_is_managed_by_mmtk(owner_addr.load())
+                    && mmtk_is_pinned(owner_addr.load())
+                    || !(mmtk_object_is_managed_by_mmtk(owner_addr.load()))),
+                "Owner ({:?}) may move (is_pinned = {}), a->data may become outdated!",
+                owner_addr.load::<ObjectReference>(),
+                mmtk_is_pinned(owner_addr.load())
+            );
             process_edge(closure, owner_addr);
             return;
         }

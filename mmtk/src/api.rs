@@ -521,18 +521,20 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
 #[cfg(feature = "object_pinning")]
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
-    if !mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
-        return false;
-    }
+    debug_assert!(
+        mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()),
+        "Object is not managed by mmtk - pinning it via this function isn't supported."
+    );
     memory_manager::pin_object::<JuliaVM>(object)
 }
 
 #[cfg(feature = "object_pinning")]
 #[no_mangle]
 pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
-    if !mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
-        return false;
-    }
+    debug_assert!(
+        mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()),
+        "Object is not managed by mmtk - pinning it via this function isn't supported."
+    );
     memory_manager::unpin_object::<JuliaVM>(object)
 }
 
