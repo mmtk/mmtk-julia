@@ -109,7 +109,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
             let owner_addr = mmtk_jl_array_data_owner_addr(array);
             // to avoid having to update a->data, which requires introspecting the owner object
             // we simply expect that both owner and buffers are pinned
-            assert!(
+            debug_assert!(
                 (mmtk_object_is_managed_by_mmtk(owner_addr.load())
                     && mmtk_is_pinned(owner_addr.load())
                     || !(mmtk_object_is_managed_by_mmtk(owner_addr.load()))),
