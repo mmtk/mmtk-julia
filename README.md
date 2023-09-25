@@ -48,7 +48,7 @@ These environment variables are set during julia initialization time, so they ca
 
 (4) In `julia`, create a file `Make.user`, and add `WITH_MMTK=1`.
 
-(5) In `julia`, run `MMTK_PLAN=Immix MMTK_BUILD=release MMTK_JULIA_DIR=../mmtk-julia make` (or with `MMTK_PLAN=StickyImmix`).
+(5) In `julia`, run `MMTK_PLAN=Immix MMTK_BUILD=release MMTK_JULIA_DIR=/absolute/path/mmtk-julia make` (or with `MMTK_PLAN=StickyImmix`).
 
 If you would like to have a debug build, remove `--release` from Step (3) and use `MMTK_BUILD=debug` in Step (5)
 
