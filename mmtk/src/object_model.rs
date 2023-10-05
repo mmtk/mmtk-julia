@@ -199,7 +199,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        llt_align( dtsz + JULIA_HEADER_SIZE, 16)
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     } else if obj_type == jl_module_type {
         let dtsz = std::mem::size_of::<mmtk_jl_module_t>();
         debug_assert!(
@@ -208,7 +208,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        llt_align( dtsz + JULIA_HEADER_SIZE, 16)
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     } else if obj_type == jl_task_type {
         let dtsz = std::mem::size_of::<mmtk_jl_task_t>();
         debug_assert!(
@@ -217,7 +217,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        llt_align( dtsz + JULIA_HEADER_SIZE, 16)
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     } else if obj_type == jl_string_type {
         let length = object.to_raw_address().load::<usize>();
         let dtsz = length + std::mem::size_of::<usize>() + 1;
@@ -228,7 +228,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        llt_align( dtsz + JULIA_HEADER_SIZE, 16)
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     } else if obj_type == jl_method_type {
         let dtsz = std::mem::size_of::<mmtk_jl_method_t>();
         debug_assert!(
@@ -237,7 +237,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        llt_align( dtsz + JULIA_HEADER_SIZE, 16)
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     } else {
         let layout = (*obj_type).layout;
         let dtsz = (*layout).size as usize;
@@ -246,8 +246,8 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             "size {} greater than minimum!",
             dtsz + JULIA_HEADER_SIZE
         );
-        
-        llt_align( dtsz + JULIA_HEADER_SIZE, 16)
+
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     }
 }
 
@@ -265,7 +265,7 @@ pub unsafe fn get_object_start_ref(object: ObjectReference) -> Address {
 
 #[inline(always)]
 pub unsafe fn llt_align(size: usize, align: usize) -> usize {
-    ((size) + (align)-1) & !((align)-1)
+    ((size) + (align) - 1) & !((align) - 1)
 }
 
 #[inline(always)]
