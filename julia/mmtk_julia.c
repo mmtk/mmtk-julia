@@ -49,16 +49,16 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offse
     jl_value_t *v;
     if ((uintptr_t)ty != jl_buff_tag) {
         // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_immix_alloc_fast(&ptls->mmtk_mutator, osize, 16, sizeof(jl_taggedvalue_t));
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_immix_alloc_fast(&ptls->mmtk_mutator, LLT_ALIGN(osize, 16), 16, sizeof(jl_taggedvalue_t));
         v = jl_valueof(v_tagged);
-        mmtk_immix_post_alloc_fast(&ptls->mmtk_mutator, v, osize);
+        mmtk_immix_post_alloc_fast(&ptls->mmtk_mutator, v, LLT_ALIGN(osize, 16));
     } else {
         // allocating an extra word to store the size of buffer objects
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_immix_alloc_fast(&ptls->mmtk_mutator, osize + sizeof(jl_taggedvalue_t), 16, 0);
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_immix_alloc_fast(&ptls->mmtk_mutator, LLT_ALIGN(osize+sizeof(jl_taggedvalue_t), 16), 16, 0);
         jl_value_t* v_tagged_aligned = ((jl_value_t*)((char*)(v_tagged) + sizeof(jl_taggedvalue_t)));
         v = jl_valueof(v_tagged_aligned);
-        mmtk_store_obj_size_c(v, osize + sizeof(jl_taggedvalue_t));
-        mmtk_immix_post_alloc_fast(&ptls->mmtk_mutator, v, osize + sizeof(jl_taggedvalue_t));
+        mmtk_store_obj_size_c(v, LLT_ALIGN(osize+sizeof(jl_taggedvalue_t), 16));
+        mmtk_immix_post_alloc_fast(&ptls->mmtk_mutator, v, LLT_ALIGN(osize+sizeof(jl_taggedvalue_t), 16));
     }
     
     ptls->gc_num.allocd += osize;
