@@ -373,6 +373,16 @@ void update_gc_time(uint64_t inc) {
 #define print_sizeof(type) (PRINT_STRUCT_SIZE ? (printf("C " #type " = %zu bytes\n", sizeof(type)), sizeof(type)) : sizeof(type))
 
 uintptr_t get_abi_structs_checksum_c(void) {
+    Allocators* base = (Allocators*)0;
+    printf("Bump0: %p\n", &base->bump_pointer[0]);
+    printf("Bump1: %p\n", &base->bump_pointer[1]);
+    printf("Large0: %p\n", &base->large_object[0]);
+    printf("Large1: %p\n", &base->large_object[1]);
+    printf("Malloc0: %p\n", &base->malloc[0]);
+    printf("Immix0: %p\n", &base->immix[0]);
+    printf("Free0: %p\n", &base->free_list[0]);
+    printf("MC0: %p\n", &base->markcompact[0]);
+
     assert_size(struct mmtk__jl_taggedvalue_bits, struct _jl_taggedvalue_bits);
     assert_size(mmtk_jl_taggedvalue_t, jl_taggedvalue_t);
     assert_size(mmtk_jl_array_flags_t, jl_array_flags_t);

@@ -49,6 +49,15 @@ macro_rules! print_sizeof {
 
 pub(crate) fn get_abi_structs_checksum_rust() -> usize {
     use crate::julia_types::*;
+    println!("Bump0: {:x}", mmtk::Mutator::<crate::JuliaVM>::get_allocator_base_offset(mmtk::util::alloc::AllocatorSelector::BumpPointer(0)));
+    println!("Bump1: {:x}", mmtk::Mutator::<crate::JuliaVM>::get_allocator_base_offset(mmtk::util::alloc::AllocatorSelector::BumpPointer(1)));
+    println!("Large0: {:x}", mmtk::Mutator::<crate::JuliaVM>::get_allocator_base_offset(mmtk::util::alloc::AllocatorSelector::LargeObject(0)));
+    println!("Large1: {:x}", mmtk::Mutator::<crate::JuliaVM>::get_allocator_base_offset(mmtk::util::alloc::AllocatorSelector::LargeObject(1)));
+    println!("Malloc0: {:x}", mmtk::Mutator::<crate::JuliaVM>::get_allocator_base_offset(mmtk::util::alloc::AllocatorSelector::Malloc(0)));
+    println!("Immix0: {:x}", mmtk::Mutator::<crate::JuliaVM>::get_allocator_base_offset(mmtk::util::alloc::AllocatorSelector::Immix(0)));
+    println!("Free0: {:x}", mmtk::Mutator::<crate::JuliaVM>::get_allocator_base_offset(mmtk::util::alloc::AllocatorSelector::FreeList(0)));
+    println!("MC0: {:x}", mmtk::Mutator::<crate::JuliaVM>::get_allocator_base_offset(mmtk::util::alloc::AllocatorSelector::MarkCompact(0)));
+
     print_sizeof!(mmtk::Mutator<crate::JuliaVM>)
         ^ print_sizeof!(mmtk__jl_taggedvalue_bits)
         ^ print_sizeof!(mmtk_jl_taggedvalue_t)
