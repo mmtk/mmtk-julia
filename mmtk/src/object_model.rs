@@ -1,8 +1,8 @@
 use crate::api::{mmtk_get_obj_size, mmtk_object_is_managed_by_mmtk};
 use crate::julia_scanning::{
     jl_array_typename, jl_method_type, jl_module_type, jl_simplevector_type, jl_string_type,
-    jl_task_type, mmtk_jl_array_len, mmtk_jl_array_ndimwords, mmtk_jl_tparam0, mmtk_jl_typeof,
-    mmtk_jl_typetagof,
+    jl_task_type, jl_uniontype_type, mmtk_jl_array_len, mmtk_jl_array_ndimwords, mmtk_jl_tparam0,
+    mmtk_jl_typeof,
 };
 use crate::julia_types::*;
 use crate::{JuliaVM, JULIA_BUFF_TAG, JULIA_HEADER_SIZE};
@@ -378,6 +378,5 @@ pub unsafe fn mmtk_jl_array_isbitunion(a: *const mmtk_jl_array_t) -> bool {
 
 #[inline(always)]
 pub unsafe fn mmtk_jl_is_uniontype(t: *const mmtk_jl_datatype_t) -> bool {
-    mmtk_jl_typetagof(Address::from_ptr(t)).as_usize()
-        == (mmtk_jlsmall_typeof_tags_mmtk_jl_uniontype_tag << 4) as usize
+    mmtk_jl_typeof(Address::from_ptr(t)) as usize == jl_uniontype_type as usize
 }

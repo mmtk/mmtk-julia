@@ -15,12 +15,12 @@ extern jl_typename_t *jl_array_typename JL_GLOBALLY_ROOTED;
 extern long BI_METADATA_START_ALIGNED_DOWN;
 extern long BI_METADATA_END_ALIGNED_UP;
 extern void gc_premark(jl_ptls_t ptls2);
-extern uint64_t finalizer_rngState[JL_RNG_SIZE];
+extern uint64_t finalizer_rngState[4];
 extern const unsigned pool_sizes[];
 extern void mmtk_store_obj_size_c(void* obj, size_t size);
 extern void jl_gc_free_array(jl_array_t *a);
 extern size_t mmtk_get_obj_size(void* obj);
-extern void jl_rng_split(uint64_t to[JL_RNG_SIZE], uint64_t from[JL_RNG_SIZE]);
+extern void jl_rng_split(uint64_t to[4], uint64_t from[4]);
 extern jl_mutex_t finalizers_lock;
 extern void jl_gc_wait_for_the_world(jl_ptls_t* gc_all_tls_states, int gc_n_threads);
 extern void mmtk_block_thread_for_gc(void);
@@ -141,6 +141,8 @@ void mmtk_exit_from_safepoint(int8_t old_state) {
     jl_gc_state_set(ptls, old_state, JL_GC_STATE_WAITING);
 }
 
+extern void run_finalizers(jl_task_t *ct);
+
 // based on jl_gc_collect from gc.c
 JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
 {
@@ -167,9 +169,7 @@ JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
         jl_gc_state_set(ptls, old_state, JL_GC_STATE_WAITING);
         return;
     }
-
-    JL_TIMING_SUSPEND_TASK(GC, ct);
-    JL_TIMING(GC, GC);
+    JL_TIMING(GC);
 
     int last_errno = errno;
 #ifdef _OS_WINDOWS_
@@ -215,7 +215,6 @@ JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
     // Doing this on all threads is racy (it's impossible to check
     // or wait for finalizers on other threads without dead lock).
     if (!ptls->finalizers_inhibited && ptls->locks.len == 0) {
-        JL_TIMING(GC, GC_Finalizers);
         run_finalizers(ct);
     }
     JL_PROBE_GC_FINALIZER();
@@ -226,13 +225,10 @@ JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
     errno = last_errno;
 }
 
-extern void run_finalizers(jl_task_t *ct);
-
 // Called after GC to run finalizers
 void mmtk_jl_run_finalizers(void* ptls_raw) {
     jl_ptls_t ptls = (jl_ptls_t) ptls_raw;
     if (!ptls->finalizers_inhibited && ptls->locks.len == 0) {
-        JL_TIMING(GC, GC_Finalizers);
         run_finalizers(jl_current_task);
     }
 }
@@ -395,6 +391,7 @@ uintptr_t get_abi_structs_checksum_c(void) {
     assert_size(struct mmtk__jl_gcframe_t, struct _jl_gcframe_t);
     assert_size(mmtk_jl_task_t, jl_task_t);
     assert_size(mmtk_jl_weakref_t, jl_weakref_t);
+    assert_size(mmtk_jl_thread_heap_t, jl_thread_heap_t);
 
     return print_sizeof(MMTkMutatorContext)
         ^ print_sizeof(struct mmtk__jl_taggedvalue_bits)
@@ -424,16 +421,26 @@ uintptr_t get_abi_structs_checksum_c(void) {
         ^ print_sizeof(mmtk_jl_thread_gc_num_t);
 }
 
+void mmtk_jl_throw_out_of_memory_error(void)
+{
+    jl_throw(jl_memory_exception);
+}
+
+uint64_t mmtk_jl_hrtime(void) JL_NOTSAFEPOINT
+{
+    return uv_hrtime();
+}
+
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
     // .run_finalizer_function = run_finalizer_function,
     .mmtk_jl_run_finalizers = mmtk_jl_run_finalizers,
-    .jl_throw_out_of_memory_error = jl_throw_out_of_memory_error,
+    .mmtk_jl_throw_out_of_memory_error = mmtk_jl_throw_out_of_memory_error,
     .sweep_malloced_array = mmtk_sweep_malloced_arrays,
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
-    .jl_hrtime = jl_hrtime,
+    .mmtk_jl_hrtime = mmtk_jl_hrtime,
     .update_gc_time = update_gc_time,
     .get_abi_structs_checksum_c = get_abi_structs_checksum_c,
     .get_thread_finalizer_list = get_thread_finalizer_list,

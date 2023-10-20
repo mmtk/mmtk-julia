@@ -10,8 +10,6 @@ use mmtk::vm::EdgeVisitor;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-const JL_MAX_TAGS: usize = 64; // from vm/julia/src/jl_exports.h
-
 extern "C" {
     pub static jl_simplevector_type: *const mmtk_jl_datatype_t;
     pub static jl_array_typename: *mut mmtk_jl_typename_t;
@@ -21,35 +19,19 @@ extern "C" {
     pub static jl_weakref_type: *const mmtk_jl_datatype_t;
     pub static jl_symbol_type: *const mmtk_jl_datatype_t;
     pub static jl_method_type: *const mmtk_jl_datatype_t;
+    pub static jl_uniontype_type: *const mmtk_jl_datatype_t;
 }
 
-extern "C" {
-    pub static mut small_typeof: [*mut mmtk_jl_datatype_t; 128usize];
-}
+const HT_NOTFOUND: usize = 1;
 
 #[inline(always)]
-pub unsafe fn mmtk_jl_typetagof(addr: Address) -> Address {
+pub unsafe fn mmtk_jl_typeof(addr: Address) -> *const mmtk_jl_datatype_t {
     let as_tagged_value =
         addr.as_usize() - std::mem::size_of::<crate::julia_scanning::mmtk_jl_taggedvalue_t>();
     let t_header = Address::from_usize(as_tagged_value).load::<Address>();
     let t = t_header.as_usize() & !15;
 
-    Address::from_usize(t)
-}
-
-#[inline(always)]
-pub unsafe fn mmtk_jl_typeof(addr: Address) -> *const mmtk_jl_datatype_t {
-    mmtk_jl_to_typeof(mmtk_jl_typetagof(addr))
-}
-
-#[inline(always)]
-pub unsafe fn mmtk_jl_to_typeof(t: Address) -> *const mmtk_jl_datatype_t {
-    let t_raw = t.as_usize();
-    if t_raw < (JL_MAX_TAGS << 4) {
-        let ty = small_typeof[t_raw / std::mem::size_of::<Address>()];
-        return ty;
-    }
-    return t.to_ptr::<mmtk_jl_datatype_t>();
+    Address::from_usize(t).to_ptr::<mmtk_jl_datatype_t>()
 }
 
 const PRINT_OBJ_TYPE: bool = false;
@@ -175,24 +157,40 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         }
 
         let m = obj.to_ptr::<mmtk_jl_module_t>();
+        let bsize = (*m).bindings.size;
+        let mut begin =
+            Address::from_mut_ptr((*m).bindings.table) + std::mem::size_of::<Address>() as usize;
+        let end = Address::from_mut_ptr((*m).bindings.table)
+            + bsize as usize * std::mem::size_of::<Address>();
+
+        while begin < end {
+            let b = begin.load::<*mut mmtk_jl_binding_t>();
+
+            if b as usize == HT_NOTFOUND {
+                begin = begin.shift::<Address>(2);
+                continue;
+            }
+            if PRINT_OBJ_TYPE {
+                println!(" - scan table: {}\n", obj);
+            }
+
+            if (b as usize) != 0 {
+                process_edge(closure, begin);
+            }
+
+            let value = ::std::ptr::addr_of!((*b).value);
+            let globalref = ::std::ptr::addr_of!((*b).globalref);
+
+            process_edge(closure, Address::from_usize(value as usize));
+            process_edge(closure, Address::from_usize(globalref as usize));
+            begin = begin.shift::<Address>(2);
+        }
 
         let parent_edge = ::std::ptr::addr_of!((*m).parent);
         if PRINT_OBJ_TYPE {
             println!(" - scan parent: {:?}\n", parent_edge);
         }
         process_edge(closure, Address::from_ptr(parent_edge));
-
-        let bindingkeyset_edge = ::std::ptr::addr_of!((*m).bindingkeyset);
-        if PRINT_OBJ_TYPE {
-            println!(" - scan bindingkeyset: {:?}\n", bindingkeyset_edge);
-        }
-        process_edge(closure, Address::from_ptr(bindingkeyset_edge));
-
-        let bindings_edge = ::std::ptr::addr_of!((*m).bindings);
-        if PRINT_OBJ_TYPE {
-            println!(" - scan bindings: {:?}\n", bindings_edge);
-        }
-        process_edge(closure, Address::from_ptr(bindings_edge));
 
         let nusings = (*m).usings.len;
         if nusings != 0 {
@@ -501,8 +499,7 @@ pub unsafe fn mmtk_jl_tparam0(vt: *const mmtk_jl_datatype_t) -> *const mmtk_jl_d
 #[inline(always)]
 pub unsafe fn mmtk_jl_svecref(vt: *mut mmtk_jl_svec_t, i: usize) -> *const mmtk_jl_datatype_t {
     debug_assert!(
-        mmtk_jl_typetagof(Address::from_mut_ptr(vt)).as_usize()
-            == (mmtk_jlsmall_typeof_tags_mmtk_jl_simplevector_tag << 4) as usize
+        mmtk_jl_typeof(Address::from_mut_ptr(vt)) as usize == jl_simplevector_type as usize
     );
     debug_assert!(i < mmtk_jl_svec_len(Address::from_mut_ptr(vt)));
 

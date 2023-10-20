@@ -147,7 +147,10 @@ pub extern "C" fn mmtk_bind_mutator(tls: VMMutatorThread, tid: usize) -> *mut Mu
 
     let res = Box::into_raw(mutator_box);
 
-    info!("Binding mutator {:?} to thread id = {}", res, tid);
+    info!(
+        "Binding mutator {:?} with tls = {:?} to thread id = {}",
+        res, tls, tid
+    );
     res
 }
 

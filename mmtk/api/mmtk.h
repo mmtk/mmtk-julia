@@ -71,11 +71,11 @@ typedef struct {
     void (* scan_julia_exc_obj) (void* obj, void* closure, ProcessEdgeFn process_edge);
     void* (* get_stackbase) (int16_t tid);
     void (* mmtk_jl_run_finalizers) (void* tls);
-    void (* jl_throw_out_of_memory_error) (void);
+    void (* mmtk_jl_throw_out_of_memory_error) (void);
     void (* sweep_malloced_array) (void);
     void (* wait_in_a_safepoint) (void);
     void (* exit_from_safepoint) (int8_t old_state);
-    uint64_t (* jl_hrtime) (void);
+    uint64_t (* mmtk_jl_hrtime) (void);
     void (* update_gc_time) (uint64_t);
     uintptr_t (* get_abi_structs_checksum_c) (void);
     void* (* get_thread_finalizer_list) (void* tls);

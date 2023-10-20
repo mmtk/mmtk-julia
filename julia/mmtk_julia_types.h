@@ -12,8 +12,6 @@ typedef int sig_atomic_t;
 struct mmtk__jl_taggedvalue_bits {
     uintptr_t gc:2;
     uintptr_t in_image:1;
-    uintptr_t unused:1;
-    uintptr_t tag:60;
 };
 
 typedef struct mmtk__jl_value_t mmtk_jl_value_t;
@@ -106,17 +104,14 @@ typedef struct mmtk__jl_datatype_t {
     const mmtk_jl_datatype_layout_t *layout;
     // memoized properties
     uint32_t hash;
-    uint16_t hasfreetypevars:1; // majority part of isconcrete computation
-    uint16_t isconcretetype:1; // whether this type can have instances
-    uint16_t isdispatchtuple:1; // aka isleaftupletype
-    uint16_t isbitstype:1; // relevant query for C-api and type-parameters
-    uint16_t zeroinit:1; // if one or more fields requires zero-initialization
-    uint16_t has_concrete_subtype:1; // If clear, no value will have this datatype
-    uint16_t maybe_subtype_of_cache:1; // Computational bit for has_concrete_supertype. See description in jltypes.c.
-    uint16_t isprimitivetype:1; // whether this is declared with 'primitive type' keyword (sized, no fields, and immutable)
-    uint16_t ismutationfree:1; // whether any mutable memory is reachable through this type (in the type or via fields)
-    uint16_t isidentityfree:1; // whether this type or any object reachable through its fields has non-content-based identity
-    uint16_t smalltag:6; // whether this type has a small-tag optimization
+    uint8_t hasfreetypevars:1; // majority part of isconcrete computation
+    uint8_t isconcretetype:1; // whether this type can have instances
+    uint8_t isdispatchtuple:1; // aka isleaftupletype
+    uint8_t isbitstype:1; // relevant query for C-api and type-parameters
+    uint8_t zeroinit:1; // if one or more fields requires zero-initialization
+    uint8_t has_concrete_subtype:1; // If clear, no value will have this datatype
+    uint8_t cached_by_hash:1; // stored in hash-based set cache (instead of linear cache)
+    uint8_t isprimitivetype:1; // whether this is declared with 'primitive type' keyword (sized, no fields, and immutable)
 } mmtk_jl_datatype_t;
 
 typedef struct {
@@ -146,16 +141,15 @@ typedef struct mmtk__jl_sym_t {
 
 typedef struct {
     // not first-class
-    _Atomic(void*) value;
+    void *name;
+    void* value;
     void* globalref;  // cached GlobalRef for this binding
-    struct mmtk__jl_binding_t* owner;  // for individual imported bindings -- TODO: make _Atomic
-    _Atomic(void*) ty;  // binding type
+    struct _jl_module_t* owner;  // for individual imported bindings -- TODO: make _Atomic
+    void* ty;  // binding type
     uint8_t constp:1;
     uint8_t exportp:1;
     uint8_t imported:1;
-    uint8_t usingfailed:1;
     uint8_t deprecated:2; // 0=not deprecated, 1=renamed, 2=moved to another package
-    uint8_t padding:2;
 } mmtk_jl_binding_t;
 
 #define HT_N_INLINE 32
@@ -198,8 +192,7 @@ typedef struct mmtk__jl_module_t {
     void *name;
     struct mmtk__jl_module_t *parent;
     // hidden fields:
-    mmtk_jl_svec_t* bindings;
-    mmtk_jl_array_t* bindingkeyset; // index lookup by name into bindings
+    mmtk_htable_t bindings;
     mmtk_arraylist_t usings;  // modules with all bindings potentially imported
     mmtk_jl_uuid_t build_id;
     mmtk_jl_uuid_t uuid;
@@ -212,7 +205,6 @@ typedef struct mmtk__jl_module_t {
     uint8_t istopmod;
     int8_t max_methods;
     mmtk_jl_mutex_t lock;
-    intptr_t hash;
 } mmtk_jl_module_t;
 
 // Exception stack: a stack of pairs of (exception,raw_backtrace).
@@ -311,10 +303,10 @@ typedef struct {
 
 typedef struct {
     // variable for tracking weak references
-    mmtk_arraylist_t weak_refs;
+    mmtk_small_arraylist_t weak_refs;
     // live tasks started on this thread
     // that are holding onto a stack from the pool
-    mmtk_arraylist_t live_tasks;
+    mmtk_small_arraylist_t live_tasks;
 
     // variables for tracking malloc'd arrays
     struct _mallocarray_t *mallocarrays;
@@ -324,6 +316,7 @@ typedef struct {
     struct _bigval_t *big_objects;
 
     // variables for tracking "remembered set"
+    mmtk_arraylist_t rem_bindings;
     mmtk_arraylist_t _remset[2]; // contains jl_value_t*
     // lower bound of the number of pointers inside remembered values
     int remset_nptr;
@@ -335,7 +328,7 @@ typedef struct {
     mmtk_jl_gc_pool_t norm_pools[JL_GC_N_POOLS];
 
 #define JL_N_STACK_POOLS 16
-    mmtk_arraylist_t free_stacks[JL_N_STACK_POOLS];
+    mmtk_small_arraylist_t free_stacks[JL_N_STACK_POOLS];
 } mmtk_jl_thread_heap_t;
 
 // handle to reference an OS thread
@@ -370,6 +363,10 @@ typedef struct {
     // the lists (the mark bit cannot be flipped to `0` without sweeping)
     void *big_obj[1024];
 } mmtk_jl_gc_mark_cache_t;
+
+typedef struct {
+    void* bottom;
+} mmtk_jl_gc_page_stack_t;
 
 typedef struct mmtk__jl_tls_states_t {
     int16_t tid;
@@ -425,9 +422,12 @@ typedef struct mmtk__jl_tls_states_t {
     void *signal_stack;
     mmtk_jl_thread_t system_id;
     mmtk_arraylist_t finalizers;
+    mmtk_jl_gc_page_stack_t page_metadata_allocd;
+    mmtk_jl_gc_page_stack_t page_metadata_buffered;
     mmtk_jl_gc_markqueue_t mark_queue;
     mmtk_jl_gc_mark_cache_t gc_cache;
     mmtk_arraylist_t sweep_objs;
+    _Atomic(int64_t) gc_sweeps_requested;
     // Saved exception for previous *external* API call or NULL if cleared.
     // Access via jl_exception_occurred().
     struct _jl_value_t *previous_exception;
@@ -447,8 +447,6 @@ typedef struct mmtk__jl_tls_states_t {
     // some hidden state (usually just because we don't have the type's size declaration)
 } mmtk_jl_tls_states_t;
 
-#define JL_RNG_SIZE 5 // xoshiro 4 + splitmix 1
-
 typedef struct mmtk__jl_task_t {
     void *next; // invasive linked list for scheduler
     void *queue; // invasive linked list for scheduler
@@ -457,7 +455,7 @@ typedef struct mmtk__jl_task_t {
     void *result;
     void *logstate;
     void *start;
-    uint64_t rngState[JL_RNG_SIZE];
+    uint64_t rngState[4];
     _Atomic(uint8_t) _state;
     uint8_t sticky; // record whether this Task can be migrated to a new thread
     _Atomic(uint8_t) _isexception; // set if `result` is an exception to throw or that we exited with
@@ -469,11 +467,6 @@ typedef struct mmtk__jl_task_t {
     _Atomic(int16_t) tid;
     // threadpool id
     int8_t threadpoolid;
-    // Reentrancy bits
-    // Bit 0: 1 if we are currently running inference/codegen
-    // Bit 1-2: 0-3 counter of how many times we've reentered inference
-    // Bit 3: 1 if we are writing the image and inference is illegal
-    uint8_t reentrant_timing;
     // saved gc stack top for context switches
     mmtk_jl_gcframe_t *gcstack;
     size_t world_age;
@@ -487,6 +480,9 @@ typedef struct mmtk__jl_task_t {
     mmtk_jl_ucontext_t ctx;
     void *stkbuf; // malloc'd memory (either copybuf or stack)
     size_t bufsz; // actual sizeof stkbuf
+    uint64_t inference_start_time; // time when inference started
+    uint16_t reentrant_inference; // How many times we've reentered inference
+    uint16_t reentrant_timing; // How many times we've reentered timing
     unsigned int copy_stack:31; // sizeof stack for copybuf
     unsigned int started:1;
 } mmtk_jl_task_t;
@@ -563,8 +559,6 @@ typedef struct mmtk__jl_method_t {
     uint8_t is_for_opaque_closure;
     // uint8 settings
     uint8_t constprop;      // 0x00 = use heuristic; 0x01 = aggressive; 0x02 = none
-    uint8_t max_varargs;    // 0xFF = use heuristic; otherwise, max # of args to expand
-                            // varargs when specializing.
 
     // Override the conclusions of inter-procedural effect analysis,
     // forcing the conclusion to always true.
@@ -574,48 +568,3 @@ typedef struct mmtk__jl_method_t {
     // lock for modifications to the method
     mmtk_jl_mutex_t writelock;
 } mmtk_jl_method_t;
-
-#define JL_SMALL_TYPEOF(XX) \
-    /* kinds */ \
-    XX(typeofbottom) \
-    XX(datatype) \
-    XX(unionall) \
-    XX(uniontype) \
-    /* type parameter objects */ \
-    XX(vararg) \
-    XX(tvar) \
-    XX(symbol) \
-    XX(module) \
-    /* special GC objects */ \
-    XX(simplevector) \
-    XX(string) \
-    XX(task) \
-    /* bits types with special allocators */ \
-    XX(bool) \
-    XX(char) \
-    /*XX(float16)*/ \
-    /*XX(float32)*/ \
-    /*XX(float64)*/ \
-    XX(int16) \
-    XX(int32) \
-    XX(int64) \
-    XX(int8) \
-    XX(uint16) \
-    XX(uint32) \
-    XX(uint64) \
-    XX(uint8) \
-    /* AST objects */ \
-    /* XX(argument) */ \
-    /* XX(newvarnode) */ \
-    /* XX(slotnumber) */ \
-    /* XX(ssavalue) */ \
-    /* end of JL_SMALL_TYPEOF */
-enum mmtk_jlsmall_typeof_tags {
-    mmtk_jl_null_tag = 0,
-#define XX(name) mmtk_jl_##name##_tag,
-    JL_SMALL_TYPEOF(XX)
-#undef XX
-    mmtk_jl_tags_count,
-    mmtk_jl_bitstags_first = mmtk_jl_char_tag, // n.b. bool is not considered a bitstype, since it can be compared by pointer
-    mmtk_jl_max_tags = 64
-};

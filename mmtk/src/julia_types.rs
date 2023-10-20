@@ -250,7 +250,6 @@ pub const JL_GC_N_POOLS: u32 = 49;
 pub const JL_N_STACK_POOLS: u32 = 16;
 pub const JL_GC_STATE_WAITING: u32 = 1;
 pub const JL_GC_STATE_SAFE: u32 = 2;
-pub const JL_RNG_SIZE: u32 = 5;
 pub type __jmp_buf = [::std::os::raw::c_long; 8usize];
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -3514,8 +3513,9 @@ pub type sig_atomic_t = ::std::os::raw::c_int;
 #[repr(align(8))]
 #[derive(Debug, Copy, Clone)]
 pub struct mmtk__jl_taggedvalue_bits {
-    pub _bitfield_align_1: [u64; 0],
-    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 8usize]>,
+    pub _bitfield_align_1: [u8; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 1usize]>,
+    pub __bindgen_padding_0: [u8; 7usize],
 }
 #[test]
 fn bindgen_test_layout_mmtk__jl_taggedvalue_bits() {
@@ -3554,35 +3554,8 @@ impl mmtk__jl_taggedvalue_bits {
         }
     }
     #[inline]
-    pub fn unused(&self) -> usize {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(3usize, 1u8) as u64) }
-    }
-    #[inline]
-    pub fn set_unused(&mut self, val: usize) {
-        unsafe {
-            let val: u64 = ::std::mem::transmute(val);
-            self._bitfield_1.set(3usize, 1u8, val as u64)
-        }
-    }
-    #[inline]
-    pub fn tag(&self) -> usize {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(4usize, 60u8) as u64) }
-    }
-    #[inline]
-    pub fn set_tag(&mut self, val: usize) {
-        unsafe {
-            let val: u64 = ::std::mem::transmute(val);
-            self._bitfield_1.set(4usize, 60u8, val as u64)
-        }
-    }
-    #[inline]
-    pub fn new_bitfield_1(
-        gc: usize,
-        in_image: usize,
-        unused: usize,
-        tag: usize,
-    ) -> __BindgenBitfieldUnit<[u8; 8usize]> {
-        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 8usize]> = Default::default();
+    pub fn new_bitfield_1(gc: usize, in_image: usize) -> __BindgenBitfieldUnit<[u8; 1usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 1usize]> = Default::default();
         __bindgen_bitfield_unit.set(0usize, 2u8, {
             let gc: u64 = unsafe { ::std::mem::transmute(gc) };
             gc as u64
@@ -3590,14 +3563,6 @@ impl mmtk__jl_taggedvalue_bits {
         __bindgen_bitfield_unit.set(2usize, 1u8, {
             let in_image: u64 = unsafe { ::std::mem::transmute(in_image) };
             in_image as u64
-        });
-        __bindgen_bitfield_unit.set(3usize, 1u8, {
-            let unused: u64 = unsafe { ::std::mem::transmute(unused) };
-            unused as u64
-        });
-        __bindgen_bitfield_unit.set(4usize, 60u8, {
-            let tag: u64 = unsafe { ::std::mem::transmute(tag) };
-            tag as u64
         });
         __bindgen_bitfield_unit
     }
@@ -4258,8 +4223,8 @@ pub struct mmtk__jl_datatype_t {
     pub layout: *const mmtk_jl_datatype_layout_t,
     pub hash: u32,
     pub _bitfield_align_1: [u8; 0],
-    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 2usize]>,
-    pub __bindgen_padding_0: u16,
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 1usize]>,
+    pub __bindgen_padding_0: [u8; 3usize],
 }
 #[test]
 fn bindgen_test_layout_mmtk__jl_datatype_t() {
@@ -4348,185 +4313,136 @@ fn bindgen_test_layout_mmtk__jl_datatype_t() {
 }
 impl mmtk__jl_datatype_t {
     #[inline]
-    pub fn hasfreetypevars(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 1u8) as u16) }
+    pub fn hasfreetypevars(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 1u8) as u8) }
     }
     #[inline]
-    pub fn set_hasfreetypevars(&mut self, val: u16) {
+    pub fn set_hasfreetypevars(&mut self, val: u8) {
         unsafe {
-            let val: u16 = ::std::mem::transmute(val);
+            let val: u8 = ::std::mem::transmute(val);
             self._bitfield_1.set(0usize, 1u8, val as u64)
         }
     }
     #[inline]
-    pub fn isconcretetype(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(1usize, 1u8) as u16) }
+    pub fn isconcretetype(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(1usize, 1u8) as u8) }
     }
     #[inline]
-    pub fn set_isconcretetype(&mut self, val: u16) {
+    pub fn set_isconcretetype(&mut self, val: u8) {
         unsafe {
-            let val: u16 = ::std::mem::transmute(val);
+            let val: u8 = ::std::mem::transmute(val);
             self._bitfield_1.set(1usize, 1u8, val as u64)
         }
     }
     #[inline]
-    pub fn isdispatchtuple(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(2usize, 1u8) as u16) }
+    pub fn isdispatchtuple(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(2usize, 1u8) as u8) }
     }
     #[inline]
-    pub fn set_isdispatchtuple(&mut self, val: u16) {
+    pub fn set_isdispatchtuple(&mut self, val: u8) {
         unsafe {
-            let val: u16 = ::std::mem::transmute(val);
+            let val: u8 = ::std::mem::transmute(val);
             self._bitfield_1.set(2usize, 1u8, val as u64)
         }
     }
     #[inline]
-    pub fn isbitstype(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(3usize, 1u8) as u16) }
+    pub fn isbitstype(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(3usize, 1u8) as u8) }
     }
     #[inline]
-    pub fn set_isbitstype(&mut self, val: u16) {
+    pub fn set_isbitstype(&mut self, val: u8) {
         unsafe {
-            let val: u16 = ::std::mem::transmute(val);
+            let val: u8 = ::std::mem::transmute(val);
             self._bitfield_1.set(3usize, 1u8, val as u64)
         }
     }
     #[inline]
-    pub fn zeroinit(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(4usize, 1u8) as u16) }
+    pub fn zeroinit(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(4usize, 1u8) as u8) }
     }
     #[inline]
-    pub fn set_zeroinit(&mut self, val: u16) {
+    pub fn set_zeroinit(&mut self, val: u8) {
         unsafe {
-            let val: u16 = ::std::mem::transmute(val);
+            let val: u8 = ::std::mem::transmute(val);
             self._bitfield_1.set(4usize, 1u8, val as u64)
         }
     }
     #[inline]
-    pub fn has_concrete_subtype(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(5usize, 1u8) as u16) }
+    pub fn has_concrete_subtype(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(5usize, 1u8) as u8) }
     }
     #[inline]
-    pub fn set_has_concrete_subtype(&mut self, val: u16) {
+    pub fn set_has_concrete_subtype(&mut self, val: u8) {
         unsafe {
-            let val: u16 = ::std::mem::transmute(val);
+            let val: u8 = ::std::mem::transmute(val);
             self._bitfield_1.set(5usize, 1u8, val as u64)
         }
     }
     #[inline]
-    pub fn maybe_subtype_of_cache(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(6usize, 1u8) as u16) }
+    pub fn cached_by_hash(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(6usize, 1u8) as u8) }
     }
     #[inline]
-    pub fn set_maybe_subtype_of_cache(&mut self, val: u16) {
+    pub fn set_cached_by_hash(&mut self, val: u8) {
         unsafe {
-            let val: u16 = ::std::mem::transmute(val);
+            let val: u8 = ::std::mem::transmute(val);
             self._bitfield_1.set(6usize, 1u8, val as u64)
         }
     }
     #[inline]
-    pub fn isprimitivetype(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(7usize, 1u8) as u16) }
+    pub fn isprimitivetype(&self) -> u8 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(7usize, 1u8) as u8) }
     }
     #[inline]
-    pub fn set_isprimitivetype(&mut self, val: u16) {
+    pub fn set_isprimitivetype(&mut self, val: u8) {
         unsafe {
-            let val: u16 = ::std::mem::transmute(val);
+            let val: u8 = ::std::mem::transmute(val);
             self._bitfield_1.set(7usize, 1u8, val as u64)
         }
     }
     #[inline]
-    pub fn ismutationfree(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(8usize, 1u8) as u16) }
-    }
-    #[inline]
-    pub fn set_ismutationfree(&mut self, val: u16) {
-        unsafe {
-            let val: u16 = ::std::mem::transmute(val);
-            self._bitfield_1.set(8usize, 1u8, val as u64)
-        }
-    }
-    #[inline]
-    pub fn isidentityfree(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(9usize, 1u8) as u16) }
-    }
-    #[inline]
-    pub fn set_isidentityfree(&mut self, val: u16) {
-        unsafe {
-            let val: u16 = ::std::mem::transmute(val);
-            self._bitfield_1.set(9usize, 1u8, val as u64)
-        }
-    }
-    #[inline]
-    pub fn smalltag(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(10usize, 6u8) as u16) }
-    }
-    #[inline]
-    pub fn set_smalltag(&mut self, val: u16) {
-        unsafe {
-            let val: u16 = ::std::mem::transmute(val);
-            self._bitfield_1.set(10usize, 6u8, val as u64)
-        }
-    }
-    #[inline]
     pub fn new_bitfield_1(
-        hasfreetypevars: u16,
-        isconcretetype: u16,
-        isdispatchtuple: u16,
-        isbitstype: u16,
-        zeroinit: u16,
-        has_concrete_subtype: u16,
-        maybe_subtype_of_cache: u16,
-        isprimitivetype: u16,
-        ismutationfree: u16,
-        isidentityfree: u16,
-        smalltag: u16,
-    ) -> __BindgenBitfieldUnit<[u8; 2usize]> {
-        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 2usize]> = Default::default();
+        hasfreetypevars: u8,
+        isconcretetype: u8,
+        isdispatchtuple: u8,
+        isbitstype: u8,
+        zeroinit: u8,
+        has_concrete_subtype: u8,
+        cached_by_hash: u8,
+        isprimitivetype: u8,
+    ) -> __BindgenBitfieldUnit<[u8; 1usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 1usize]> = Default::default();
         __bindgen_bitfield_unit.set(0usize, 1u8, {
-            let hasfreetypevars: u16 = unsafe { ::std::mem::transmute(hasfreetypevars) };
+            let hasfreetypevars: u8 = unsafe { ::std::mem::transmute(hasfreetypevars) };
             hasfreetypevars as u64
         });
         __bindgen_bitfield_unit.set(1usize, 1u8, {
-            let isconcretetype: u16 = unsafe { ::std::mem::transmute(isconcretetype) };
+            let isconcretetype: u8 = unsafe { ::std::mem::transmute(isconcretetype) };
             isconcretetype as u64
         });
         __bindgen_bitfield_unit.set(2usize, 1u8, {
-            let isdispatchtuple: u16 = unsafe { ::std::mem::transmute(isdispatchtuple) };
+            let isdispatchtuple: u8 = unsafe { ::std::mem::transmute(isdispatchtuple) };
             isdispatchtuple as u64
         });
         __bindgen_bitfield_unit.set(3usize, 1u8, {
-            let isbitstype: u16 = unsafe { ::std::mem::transmute(isbitstype) };
+            let isbitstype: u8 = unsafe { ::std::mem::transmute(isbitstype) };
             isbitstype as u64
         });
         __bindgen_bitfield_unit.set(4usize, 1u8, {
-            let zeroinit: u16 = unsafe { ::std::mem::transmute(zeroinit) };
+            let zeroinit: u8 = unsafe { ::std::mem::transmute(zeroinit) };
             zeroinit as u64
         });
         __bindgen_bitfield_unit.set(5usize, 1u8, {
-            let has_concrete_subtype: u16 = unsafe { ::std::mem::transmute(has_concrete_subtype) };
+            let has_concrete_subtype: u8 = unsafe { ::std::mem::transmute(has_concrete_subtype) };
             has_concrete_subtype as u64
         });
         __bindgen_bitfield_unit.set(6usize, 1u8, {
-            let maybe_subtype_of_cache: u16 =
-                unsafe { ::std::mem::transmute(maybe_subtype_of_cache) };
-            maybe_subtype_of_cache as u64
+            let cached_by_hash: u8 = unsafe { ::std::mem::transmute(cached_by_hash) };
+            cached_by_hash as u64
         });
         __bindgen_bitfield_unit.set(7usize, 1u8, {
-            let isprimitivetype: u16 = unsafe { ::std::mem::transmute(isprimitivetype) };
+            let isprimitivetype: u8 = unsafe { ::std::mem::transmute(isprimitivetype) };
             isprimitivetype as u64
-        });
-        __bindgen_bitfield_unit.set(8usize, 1u8, {
-            let ismutationfree: u16 = unsafe { ::std::mem::transmute(ismutationfree) };
-            ismutationfree as u64
-        });
-        __bindgen_bitfield_unit.set(9usize, 1u8, {
-            let isidentityfree: u16 = unsafe { ::std::mem::transmute(isidentityfree) };
-            isidentityfree as u64
-        });
-        __bindgen_bitfield_unit.set(10usize, 6u8, {
-            let smalltag: u16 = unsafe { ::std::mem::transmute(smalltag) };
-            smalltag as u64
         });
         __bindgen_bitfield_unit
     }
@@ -4716,10 +4632,11 @@ pub type mmtk_jl_sym_t = mmtk__jl_sym_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct mmtk_jl_binding_t {
-    pub value: u64,
+    pub name: *mut ::std::os::raw::c_void,
+    pub value: *mut ::std::os::raw::c_void,
     pub globalref: *mut ::std::os::raw::c_void,
-    pub owner: *mut mmtk__jl_binding_t,
-    pub ty: u64,
+    pub owner: *mut _jl_module_t,
+    pub ty: *mut ::std::os::raw::c_void,
     pub _bitfield_align_1: [u8; 0],
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 1usize]>,
     pub __bindgen_padding_0: [u8; 7usize],
@@ -4730,7 +4647,7 @@ fn bindgen_test_layout_mmtk_jl_binding_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk_jl_binding_t>(),
-        40usize,
+        48usize,
         concat!("Size of: ", stringify!(mmtk_jl_binding_t))
     );
     assert_eq!(
@@ -4739,8 +4656,18 @@ fn bindgen_test_layout_mmtk_jl_binding_t() {
         concat!("Alignment of ", stringify!(mmtk_jl_binding_t))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).value) as usize - ptr as usize },
+        unsafe { ::std::ptr::addr_of!((*ptr).name) as usize - ptr as usize },
         0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk_jl_binding_t),
+            "::",
+            stringify!(name)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).value) as usize - ptr as usize },
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_binding_t),
@@ -4750,7 +4677,7 @@ fn bindgen_test_layout_mmtk_jl_binding_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).globalref) as usize - ptr as usize },
-        8usize,
+        16usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_binding_t),
@@ -4760,7 +4687,7 @@ fn bindgen_test_layout_mmtk_jl_binding_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).owner) as usize - ptr as usize },
-        16usize,
+        24usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_binding_t),
@@ -4770,7 +4697,7 @@ fn bindgen_test_layout_mmtk_jl_binding_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).ty) as usize - ptr as usize },
-        24usize,
+        32usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_binding_t),
@@ -4814,36 +4741,14 @@ impl mmtk_jl_binding_t {
         }
     }
     #[inline]
-    pub fn usingfailed(&self) -> u8 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(3usize, 1u8) as u8) }
-    }
-    #[inline]
-    pub fn set_usingfailed(&mut self, val: u8) {
-        unsafe {
-            let val: u8 = ::std::mem::transmute(val);
-            self._bitfield_1.set(3usize, 1u8, val as u64)
-        }
-    }
-    #[inline]
     pub fn deprecated(&self) -> u8 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(4usize, 2u8) as u8) }
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(3usize, 2u8) as u8) }
     }
     #[inline]
     pub fn set_deprecated(&mut self, val: u8) {
         unsafe {
             let val: u8 = ::std::mem::transmute(val);
-            self._bitfield_1.set(4usize, 2u8, val as u64)
-        }
-    }
-    #[inline]
-    pub fn padding(&self) -> u8 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(6usize, 2u8) as u8) }
-    }
-    #[inline]
-    pub fn set_padding(&mut self, val: u8) {
-        unsafe {
-            let val: u8 = ::std::mem::transmute(val);
-            self._bitfield_1.set(6usize, 2u8, val as u64)
+            self._bitfield_1.set(3usize, 2u8, val as u64)
         }
     }
     #[inline]
@@ -4851,9 +4756,7 @@ impl mmtk_jl_binding_t {
         constp: u8,
         exportp: u8,
         imported: u8,
-        usingfailed: u8,
         deprecated: u8,
-        padding: u8,
     ) -> __BindgenBitfieldUnit<[u8; 1usize]> {
         let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 1usize]> = Default::default();
         __bindgen_bitfield_unit.set(0usize, 1u8, {
@@ -4868,17 +4771,9 @@ impl mmtk_jl_binding_t {
             let imported: u8 = unsafe { ::std::mem::transmute(imported) };
             imported as u64
         });
-        __bindgen_bitfield_unit.set(3usize, 1u8, {
-            let usingfailed: u8 = unsafe { ::std::mem::transmute(usingfailed) };
-            usingfailed as u64
-        });
-        __bindgen_bitfield_unit.set(4usize, 2u8, {
+        __bindgen_bitfield_unit.set(3usize, 2u8, {
             let deprecated: u8 = unsafe { ::std::mem::transmute(deprecated) };
             deprecated as u64
-        });
-        __bindgen_bitfield_unit.set(6usize, 2u8, {
-            let padding: u8 = unsafe { ::std::mem::transmute(padding) };
-            padding as u64
         });
         __bindgen_bitfield_unit
     }
@@ -5149,8 +5044,7 @@ fn bindgen_test_layout_mmtk_jl_mutex_t() {
 pub struct mmtk__jl_module_t {
     pub name: *mut ::std::os::raw::c_void,
     pub parent: *mut mmtk__jl_module_t,
-    pub bindings: *mut mmtk_jl_svec_t,
-    pub bindingkeyset: *mut mmtk_jl_array_t,
+    pub bindings: mmtk_htable_t,
     pub usings: mmtk_arraylist_t,
     pub build_id: mmtk_jl_uuid_t,
     pub uuid: mmtk_jl_uuid_t,
@@ -5163,7 +5057,6 @@ pub struct mmtk__jl_module_t {
     pub istopmod: u8,
     pub max_methods: i8,
     pub lock: mmtk_jl_mutex_t,
-    pub hash: isize,
 }
 #[test]
 fn bindgen_test_layout_mmtk__jl_module_t() {
@@ -5171,7 +5064,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk__jl_module_t>(),
-        368usize,
+        616usize,
         concat!("Size of: ", stringify!(mmtk__jl_module_t))
     );
     assert_eq!(
@@ -5210,18 +5103,8 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).bindingkeyset) as usize - ptr as usize },
-        24usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(mmtk__jl_module_t),
-            "::",
-            stringify!(bindingkeyset)
-        )
-    );
-    assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).usings) as usize - ptr as usize },
-        32usize,
+        288usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5231,7 +5114,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).build_id) as usize - ptr as usize },
-        288usize,
+        544usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5241,7 +5124,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).uuid) as usize - ptr as usize },
-        304usize,
+        560usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5251,7 +5134,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).primary_world) as usize - ptr as usize },
-        320usize,
+        576usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5261,7 +5144,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).counter) as usize - ptr as usize },
-        328usize,
+        584usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5271,7 +5154,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).nospecialize) as usize - ptr as usize },
-        332usize,
+        588usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5281,7 +5164,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).optlevel) as usize - ptr as usize },
-        336usize,
+        592usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5291,7 +5174,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).compile) as usize - ptr as usize },
-        337usize,
+        593usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5301,7 +5184,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).infer) as usize - ptr as usize },
-        338usize,
+        594usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5311,7 +5194,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).istopmod) as usize - ptr as usize },
-        339usize,
+        595usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5321,7 +5204,7 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).max_methods) as usize - ptr as usize },
-        340usize,
+        596usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
@@ -5331,22 +5214,12 @@ fn bindgen_test_layout_mmtk__jl_module_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).lock) as usize - ptr as usize },
-        344usize,
+        600usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_module_t),
             "::",
             stringify!(lock)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).hash) as usize - ptr as usize },
-        360usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(mmtk__jl_module_t),
-            "::",
-            stringify!(hash)
         )
     );
 }
@@ -5746,17 +5619,18 @@ fn bindgen_test_layout_mmtk_jl_thread_gc_num_t() {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct mmtk_jl_thread_heap_t {
-    pub weak_refs: mmtk_arraylist_t,
-    pub live_tasks: mmtk_arraylist_t,
+    pub weak_refs: mmtk_small_arraylist_t,
+    pub live_tasks: mmtk_small_arraylist_t,
     pub mallocarrays: *mut _mallocarray_t,
     pub mafreelist: *mut _mallocarray_t,
     pub big_objects: *mut _bigval_t,
+    pub rem_bindings: mmtk_arraylist_t,
     pub _remset: [mmtk_arraylist_t; 2usize],
     pub remset_nptr: ::std::os::raw::c_int,
     pub remset: *mut mmtk_arraylist_t,
     pub last_remset: *mut mmtk_arraylist_t,
     pub norm_pools: [mmtk_jl_gc_pool_t; 49usize],
-    pub free_stacks: [mmtk_arraylist_t; 16usize],
+    pub free_stacks: [mmtk_small_arraylist_t; 16usize],
 }
 #[test]
 fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
@@ -5765,7 +5639,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk_jl_thread_heap_t>(),
-        6344usize,
+        3144usize,
         concat!("Size of: ", stringify!(mmtk_jl_thread_heap_t))
     );
     assert_eq!(
@@ -5785,7 +5659,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).live_tasks) as usize - ptr as usize },
-        256usize,
+        64usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5795,7 +5669,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mallocarrays) as usize - ptr as usize },
-        512usize,
+        128usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5805,7 +5679,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mafreelist) as usize - ptr as usize },
-        520usize,
+        136usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5815,7 +5689,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).big_objects) as usize - ptr as usize },
-        528usize,
+        144usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5824,8 +5698,18 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
         )
     );
     assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).rem_bindings) as usize - ptr as usize },
+        152usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk_jl_thread_heap_t),
+            "::",
+            stringify!(rem_bindings)
+        )
+    );
+    assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr)._remset) as usize - ptr as usize },
-        536usize,
+        408usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5835,7 +5719,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).remset_nptr) as usize - ptr as usize },
-        1048usize,
+        920usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5845,7 +5729,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).remset) as usize - ptr as usize },
-        1056usize,
+        928usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5855,7 +5739,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).last_remset) as usize - ptr as usize },
-        1064usize,
+        936usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5865,7 +5749,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).norm_pools) as usize - ptr as usize },
-        1072usize,
+        944usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5875,7 +5759,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).free_stacks) as usize - ptr as usize },
-        2248usize,
+        2120usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -6055,6 +5939,37 @@ fn bindgen_test_layout_mmtk_jl_gc_mark_cache_t() {
     );
 }
 #[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct mmtk_jl_gc_page_stack_t {
+    pub bottom: *mut ::std::os::raw::c_void,
+}
+#[test]
+fn bindgen_test_layout_mmtk_jl_gc_page_stack_t() {
+    const UNINIT: ::std::mem::MaybeUninit<mmtk_jl_gc_page_stack_t> =
+        ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<mmtk_jl_gc_page_stack_t>(),
+        8usize,
+        concat!("Size of: ", stringify!(mmtk_jl_gc_page_stack_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<mmtk_jl_gc_page_stack_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(mmtk_jl_gc_page_stack_t))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).bottom) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk_jl_gc_page_stack_t),
+            "::",
+            stringify!(bottom)
+        )
+    );
+}
+#[repr(C)]
 pub struct mmtk__jl_tls_states_t {
     pub tid: i16,
     pub threadpoolid: i8,
@@ -6086,9 +6001,12 @@ pub struct mmtk__jl_tls_states_t {
     pub signal_stack: *mut ::std::os::raw::c_void,
     pub system_id: mmtk_jl_thread_t,
     pub finalizers: mmtk_arraylist_t,
+    pub page_metadata_allocd: mmtk_jl_gc_page_stack_t,
+    pub page_metadata_buffered: mmtk_jl_gc_page_stack_t,
     pub mark_queue: mmtk_jl_gc_markqueue_t,
     pub gc_cache: mmtk_jl_gc_mark_cache_t,
     pub sweep_objs: mmtk_arraylist_t,
+    pub gc_sweeps_requested: u64,
     pub previous_exception: *mut _jl_value_t,
     pub locks: mmtk_small_arraylist_t,
     pub mmtk_mutator: MMTkMutatorContext,
@@ -6146,7 +6064,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk__jl_tls_states_t>(),
-        16672usize,
+        13496usize,
         concat!("Size of: ", stringify!(mmtk__jl_tls_states_t))
     );
     assert_eq!(
@@ -6266,7 +6184,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).gc_num) as usize - ptr as usize },
-        6384usize,
+        3184usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6276,7 +6194,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).defer_signal) as usize - ptr as usize },
-        6440usize,
+        3240usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6286,7 +6204,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).current_task) as usize - ptr as usize },
-        6448usize,
+        3248usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6296,7 +6214,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).next_task) as usize - ptr as usize },
-        6456usize,
+        3256usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6306,7 +6224,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).previous_task) as usize - ptr as usize },
-        6464usize,
+        3264usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6316,7 +6234,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).root_task) as usize - ptr as usize },
-        6472usize,
+        3272usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6326,7 +6244,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).timing_stack) as usize - ptr as usize },
-        6480usize,
+        3280usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6336,7 +6254,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).stackbase) as usize - ptr as usize },
-        6488usize,
+        3288usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6346,7 +6264,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).stacksize) as usize - ptr as usize },
-        6496usize,
+        3296usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6356,7 +6274,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).sig_exception) as usize - ptr as usize },
-        6704usize,
+        3504usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6366,7 +6284,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).bt_data) as usize - ptr as usize },
-        6712usize,
+        3512usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6376,7 +6294,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).bt_size) as usize - ptr as usize },
-        6720usize,
+        3520usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6386,7 +6304,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).profiling_bt_buffer) as usize - ptr as usize },
-        6728usize,
+        3528usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6396,7 +6314,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).signal_request) as usize - ptr as usize },
-        6736usize,
+        3536usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6406,7 +6324,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).io_wait) as usize - ptr as usize },
-        6740usize,
+        3540usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6416,7 +6334,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).signal_stack) as usize - ptr as usize },
-        6744usize,
+        3544usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6426,7 +6344,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).system_id) as usize - ptr as usize },
-        6752usize,
+        3552usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6436,7 +6354,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).finalizers) as usize - ptr as usize },
-        6760usize,
+        3560usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6445,8 +6363,28 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
         )
     );
     assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).page_metadata_allocd) as usize - ptr as usize },
+        3816usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_tls_states_t),
+            "::",
+            stringify!(page_metadata_allocd)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).page_metadata_buffered) as usize - ptr as usize },
+        3824usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_tls_states_t),
+            "::",
+            stringify!(page_metadata_buffered)
+        )
+    );
+    assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mark_queue) as usize - ptr as usize },
-        7016usize,
+        3832usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6456,7 +6394,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).gc_cache) as usize - ptr as usize },
-        7320usize,
+        4136usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6466,7 +6404,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).sweep_objs) as usize - ptr as usize },
-        15536usize,
+        12352usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6475,8 +6413,18 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
         )
     );
     assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).gc_sweeps_requested) as usize - ptr as usize },
+        12608usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_tls_states_t),
+            "::",
+            stringify!(gc_sweeps_requested)
+        )
+    );
+    assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).previous_exception) as usize - ptr as usize },
-        15792usize,
+        12616usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6486,7 +6434,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).locks) as usize - ptr as usize },
-        15800usize,
+        12624usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6496,7 +6444,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mmtk_mutator) as usize - ptr as usize },
-        15864usize,
+        12688usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6506,7 +6454,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).malloc_sz_since_last_poll) as usize - ptr as usize },
-        16664usize,
+        13488usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6526,14 +6474,13 @@ pub struct mmtk__jl_task_t {
     pub result: *mut ::std::os::raw::c_void,
     pub logstate: *mut ::std::os::raw::c_void,
     pub start: *mut ::std::os::raw::c_void,
-    pub rngState: [u64; 5usize],
+    pub rngState: [u64; 4usize],
     pub _state: u8,
     pub sticky: u8,
     pub _isexception: u8,
     pub priority: u16,
     pub tid: u16,
     pub threadpoolid: i8,
-    pub reentrant_timing: u8,
     pub gcstack: *mut mmtk_jl_gcframe_t,
     pub world_age: usize,
     pub ptls: *mut ::std::os::raw::c_void,
@@ -6542,9 +6489,11 @@ pub struct mmtk__jl_task_t {
     pub ctx: mmtk_jl_ucontext_t,
     pub stkbuf: *mut ::std::os::raw::c_void,
     pub bufsz: usize,
+    pub inference_start_time: u64,
+    pub reentrant_inference: u16,
+    pub reentrant_timing: u16,
     pub _bitfield_align_1: [u32; 0],
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 4usize]>,
-    pub __bindgen_padding_0: u32,
 }
 #[test]
 fn bindgen_test_layout_mmtk__jl_task_t() {
@@ -6642,7 +6591,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr)._state) as usize - ptr as usize },
-        96usize,
+        88usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6652,7 +6601,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).sticky) as usize - ptr as usize },
-        97usize,
+        89usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6662,7 +6611,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr)._isexception) as usize - ptr as usize },
-        98usize,
+        90usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6672,7 +6621,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).priority) as usize - ptr as usize },
-        100usize,
+        92usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6682,7 +6631,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).tid) as usize - ptr as usize },
-        102usize,
+        94usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6692,7 +6641,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).threadpoolid) as usize - ptr as usize },
-        104usize,
+        96usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6701,18 +6650,8 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).reentrant_timing) as usize - ptr as usize },
-        105usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(mmtk__jl_task_t),
-            "::",
-            stringify!(reentrant_timing)
-        )
-    );
-    assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).gcstack) as usize - ptr as usize },
-        112usize,
+        104usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6722,7 +6661,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).world_age) as usize - ptr as usize },
-        120usize,
+        112usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6732,7 +6671,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).ptls) as usize - ptr as usize },
-        128usize,
+        120usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6742,7 +6681,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).excstack) as usize - ptr as usize },
-        136usize,
+        128usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6752,7 +6691,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).eh) as usize - ptr as usize },
-        144usize,
+        136usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6762,7 +6701,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).ctx) as usize - ptr as usize },
-        152usize,
+        144usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6772,7 +6711,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).stkbuf) as usize - ptr as usize },
-        352usize,
+        344usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6782,12 +6721,42 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).bufsz) as usize - ptr as usize },
-        360usize,
+        352usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
             "::",
             stringify!(bufsz)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).inference_start_time) as usize - ptr as usize },
+        360usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_task_t),
+            "::",
+            stringify!(inference_start_time)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).reentrant_inference) as usize - ptr as usize },
+        368usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_task_t),
+            "::",
+            stringify!(reentrant_inference)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).reentrant_timing) as usize - ptr as usize },
+        370usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_task_t),
+            "::",
+            stringify!(reentrant_timing)
         )
     );
 }
@@ -7083,7 +7052,6 @@ pub struct mmtk__jl_method_t {
     pub isva: u8,
     pub is_for_opaque_closure: u8,
     pub constprop: u8,
-    pub max_varargs: u8,
     pub purity: mmtk__jl_purity_overrides_t,
     pub writelock: mmtk_jl_mutex_t,
 }
@@ -7372,18 +7340,8 @@ fn bindgen_test_layout_mmtk__jl_method_t() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).max_varargs) as usize - ptr as usize },
-        179usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(mmtk__jl_method_t),
-            "::",
-            stringify!(max_varargs)
-        )
-    );
-    assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).purity) as usize - ptr as usize },
-        180usize,
+        179usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_method_t),
@@ -7403,32 +7361,6 @@ fn bindgen_test_layout_mmtk__jl_method_t() {
     );
 }
 pub type mmtk_jl_method_t = mmtk__jl_method_t;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_null_tag: mmtk_jlsmall_typeof_tags = 0;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_typeofbottom_tag: mmtk_jlsmall_typeof_tags = 1;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_datatype_tag: mmtk_jlsmall_typeof_tags = 2;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_unionall_tag: mmtk_jlsmall_typeof_tags = 3;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_uniontype_tag: mmtk_jlsmall_typeof_tags = 4;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_vararg_tag: mmtk_jlsmall_typeof_tags = 5;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_tvar_tag: mmtk_jlsmall_typeof_tags = 6;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_symbol_tag: mmtk_jlsmall_typeof_tags = 7;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_module_tag: mmtk_jlsmall_typeof_tags = 8;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_simplevector_tag: mmtk_jlsmall_typeof_tags = 9;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_string_tag: mmtk_jlsmall_typeof_tags = 10;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_task_tag: mmtk_jlsmall_typeof_tags = 11;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_bool_tag: mmtk_jlsmall_typeof_tags = 12;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_char_tag: mmtk_jlsmall_typeof_tags = 13;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_int16_tag: mmtk_jlsmall_typeof_tags = 14;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_int32_tag: mmtk_jlsmall_typeof_tags = 15;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_int64_tag: mmtk_jlsmall_typeof_tags = 16;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_int8_tag: mmtk_jlsmall_typeof_tags = 17;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_uint16_tag: mmtk_jlsmall_typeof_tags = 18;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_uint32_tag: mmtk_jlsmall_typeof_tags = 19;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_uint64_tag: mmtk_jlsmall_typeof_tags = 20;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_uint8_tag: mmtk_jlsmall_typeof_tags = 21;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_tags_count: mmtk_jlsmall_typeof_tags = 22;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_bitstags_first: mmtk_jlsmall_typeof_tags = 13;
-pub const mmtk_jlsmall_typeof_tags_mmtk_jl_max_tags: mmtk_jlsmall_typeof_tags = 64;
-pub type mmtk_jlsmall_typeof_tags = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct __locale_data {
@@ -7436,7 +7368,7 @@ pub struct __locale_data {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct mmtk__jl_binding_t {
+pub struct _jl_module_t {
     pub _address: u8,
 }
 #[repr(C)]
