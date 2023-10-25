@@ -114,7 +114,7 @@ fn gc_ptr_clear_tag(addr: Address, tag: usize) -> ObjectReference {
     ObjectReference::from_raw_address(unsafe { Address::from_usize(addr & !tag) })
 }
 
-fn gc_ptr_tag(addr: Address, tag: usize) -> bool {
+pub fn gc_ptr_tag(addr: Address, tag: usize) -> bool {
     addr & tag != 0
 }
 
