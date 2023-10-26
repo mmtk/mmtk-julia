@@ -259,7 +259,7 @@ pub extern "C" fn mmtk_disable_collection() {
     }
 
     // if user has triggered GC, wait until GC is finished
-    while AtomicIsize::load(&USER_TRIGGERED_GC, Ordering::SeqCst) != 0
+    if AtomicIsize::load(&USER_TRIGGERED_GC, Ordering::SeqCst) != 0
         || AtomicBool::load(&BLOCK_FOR_GC, Ordering::SeqCst)
     {
         info!("Waiting for a triggered gc to finish...");
