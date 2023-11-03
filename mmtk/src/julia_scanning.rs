@@ -332,7 +332,7 @@ pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
                 } else {
                     let real_addr =
                         get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
-                    
+
                     let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                     use crate::julia_finalizer::gc_ptr_tag;
                     if gc_ptr_tag(slot, 1) {
@@ -342,7 +342,7 @@ pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
                         i += 1;
                         continue;
                     }
-                    
+
                     process_edge(closure, real_addr);
                 }
 
