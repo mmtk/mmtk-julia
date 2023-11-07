@@ -180,9 +180,11 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
 
             let value = ::std::ptr::addr_of!((*b).value);
             let globalref = ::std::ptr::addr_of!((*b).globalref);
+            let ty = ::std::ptr::addr_of!((*b).ty);
 
             process_edge(closure, Address::from_usize(value as usize));
             process_edge(closure, Address::from_usize(globalref as usize));
+            process_edge(closure, Address::from_usize(ty as usize));
             begin = begin.shift::<Address>(2);
         }
 
