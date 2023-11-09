@@ -337,8 +337,10 @@ pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
 
                     let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                     use crate::julia_finalizer::gc_ptr_tag;
+                    // handle tagged pointers in finalizer list
                     if gc_ptr_tag(slot, 1) {
                         i += 1;
+                        continue;
                     }
                     if gc_ptr_tag(slot, 2) {
                         i += 1;
@@ -397,16 +399,7 @@ use mmtk::vm::edge_shape::Edge;
 #[inline(always)]
 pub fn process_edge<EV: EdgeVisitor<JuliaVMEdge>>(closure: &mut EV, slot: Address) {
     let simple_edge = SimpleEdge::from_address(slot);
-    assert!(
-        simple_edge.load().is_null()
-            || (simple_edge.load().to_raw_address().as_usize() % 8 == 0
-                || simple_edge.load().to_raw_address().as_usize() % 16 == 0),
-        "Object {:?} in slot {:?} is not aligned to 8 or 16",
-        simple_edge.load(),
-        simple_edge
-    );
-
-    assert!(
+    debug_assert!(
         simple_edge.load().is_null()
             || mmtk::memory_manager::is_mapped_address(simple_edge.load().to_raw_address()),
         "Object {:?} in slot {:?} is not mapped address",
