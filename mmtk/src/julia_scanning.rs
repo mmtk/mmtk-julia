@@ -115,7 +115,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                     process_edge(closure, objary_begin);
                     objary_begin = objary_begin.shift::<Address>(elsize as isize);
                 }
-            } else if (*layout).fielddesc_type_custom() == 0 {
+            } else if (*layout).fielddesc_type() == 0 {
                 let obj8_begin = mmtk_jl_dt_layout_ptrs(layout);
                 let obj8_end = obj8_begin.shift::<u8>(npointers as isize);
                 let mut elem_begin = obj8_begin;
@@ -131,7 +131,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                     elem_begin = obj8_begin;
                     objary_begin = objary_begin.shift::<Address>(elsize as isize);
                 }
-            } else if (*layout).fielddesc_type_custom() == 1 {
+            } else if (*layout).fielddesc_type() == 1 {
                 let mut obj16_begin = mmtk_jl_dt_layout_ptrs(layout);
                 let obj16_end = obj16_begin.shift::<u16>(npointers as isize);
 
@@ -217,7 +217,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         mmtk_scan_gcstack(ta, closure);
 
         let layout = (*jl_task_type).layout;
-        debug_assert!((*layout).fielddesc_type_custom() == 0);
+        debug_assert!((*layout).fielddesc_type() == 0);
         debug_assert!((*layout).nfields > 0);
         let npointers = (*layout).npointers;
         let mut obj8_begin = mmtk_jl_dt_layout_ptrs(layout);
@@ -249,10 +249,10 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
             return;
         } else {
             debug_assert!(
-                (*layout).nfields > 0 && (*layout).fielddesc_type_custom() != 3,
+                (*layout).nfields > 0 && (*layout).fielddesc_type() != 3,
                 "opaque types should have been handled specially"
             );
-            if (*layout).fielddesc_type_custom() == 0 {
+            if (*layout).fielddesc_type() == 0 {
                 let mut obj8_begin = mmtk_jl_dt_layout_ptrs(layout);
                 let obj8_end = obj8_begin.shift::<u8>(npointers as isize);
 
@@ -262,7 +262,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                     process_edge(closure, slot);
                     obj8_begin = obj8_begin.shift::<u8>(1);
                 }
-            } else if (*layout).fielddesc_type_custom() == 1 {
+            } else if (*layout).fielddesc_type() == 1 {
                 let mut obj16_begin = mmtk_jl_dt_layout_ptrs(layout);
                 let obj16_end = obj16_begin.shift::<u16>(npointers as isize);
 
@@ -272,7 +272,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                     process_edge(closure, slot);
                     obj16_begin = obj16_begin.shift::<u16>(1);
                 }
-            } else if (*layout).fielddesc_type_custom() == 2 {
+            } else if (*layout).fielddesc_type() == 2 {
                 let mut obj32_begin = mmtk_jl_dt_layout_ptrs(layout);
                 let obj32_end = obj32_begin.shift::<u32>(npointers as isize);
 
@@ -283,7 +283,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                     obj32_begin = obj32_begin.shift::<u32>(1);
                 }
             } else {
-                debug_assert!((*layout).fielddesc_type_custom() == 3);
+                debug_assert!((*layout).fielddesc_type() == 3);
                 unimplemented!();
             }
         }
@@ -397,7 +397,16 @@ use mmtk::vm::edge_shape::Edge;
 #[inline(always)]
 pub fn process_edge<EV: EdgeVisitor<JuliaVMEdge>>(closure: &mut EV, slot: Address) {
     let simple_edge = SimpleEdge::from_address(slot);
-    debug_assert!(
+    assert!(
+        simple_edge.load().is_null()
+            || (simple_edge.load().to_raw_address().as_usize() % 8 == 0
+                || simple_edge.load().to_raw_address().as_usize() % 16 == 0),
+        "Object {:?} in slot {:?} is not aligned to 8 or 16",
+        simple_edge.load(),
+        simple_edge
+    );
+
+    assert!(
         simple_edge.load().is_null()
             || mmtk::memory_manager::is_mapped_address(simple_edge.load().to_raw_address()),
         "Object {:?} in slot {:?} is not mapped address",
@@ -525,7 +534,7 @@ pub unsafe fn mmtk_jl_svecref(vt: *mut mmtk_jl_svec_t, i: usize) -> *const mmtk_
 #[inline(always)]
 pub unsafe fn mmtk_jl_dt_layout_ptrs(l: *const mmtk_jl_datatype_layout_t) -> Address {
     mmtk_jl_dt_layout_fields(l)
-        + (mmtk_jl_fielddesc_size((*l).fielddesc_type_custom()) * (*l).nfields) as usize
+        + (mmtk_jl_fielddesc_size((*l).fielddesc_type()) * (*l).nfields) as usize
 }
 
 #[inline(always)]

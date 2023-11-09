@@ -78,19 +78,18 @@ pub(crate) fn get_abi_structs_checksum_rust() -> usize {
 }
 
 // The functions below allow accessing the values of bitfields without performing a for loop
-use crate::julia_types::{
-    __BindgenBitfieldUnit, mmtk__jl_task_t, mmtk_jl_array_flags_t, mmtk_jl_datatype_layout_t,
-};
+use crate::julia_types::{__BindgenBitfieldUnit, mmtk__jl_task_t, mmtk_jl_array_flags_t};
 
-impl mmtk_jl_datatype_layout_t {
-    #[inline]
-    pub fn fielddesc_type_custom(&self) -> u16 {
-        let fielddesc_type_raw: u16 = unsafe {
-            ::std::mem::transmute::<__BindgenBitfieldUnit<[u8; 2usize]>, u16>(self._bitfield_1)
-        };
-        fielddesc_type_raw >> 1 & 0b11
-    }
-}
+// FIXME: this function needs to be updated with the 1.9.2 layout
+// impl mmtk_jl_datatype_layout_t {
+//     #[inline]
+//     pub fn fielddesc_type_custom(&self) -> u16 {
+//         let fielddesc_type_raw: u16 = unsafe {
+//             ::std::mem::transmute::<__BindgenBitfieldUnit<[u8; 2usize]>, u16>(self._bitfield_1)
+//         };
+//         fielddesc_type_raw >> 1 & 0b11
+//     }
+// }
 
 impl mmtk_jl_array_flags_t {
     #[inline]
