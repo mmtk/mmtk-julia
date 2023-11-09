@@ -339,7 +339,10 @@ pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
                     use crate::julia_finalizer::gc_ptr_tag;
                     // handle tagged pointers in finalizer list
                     if gc_ptr_tag(slot, 1) {
-                        i += 2;
+                        i += 1;
+                        process_offset_edge(closure, real_addr, 1);
+
+                        i += 1;
                         continue;
                     }
                     if gc_ptr_tag(slot, 2) {
