@@ -68,6 +68,8 @@ impl Collection<JuliaVM> for VMCollection {
 
         unsafe { ((*UPCALLS).prepare_to_collect)() };
 
+        AtomicIsize::store(&USER_TRIGGERED_GC, 0, Ordering::SeqCst);
+
         info!("Finished blocking mutator for GC!");
     }
 
@@ -123,6 +125,4 @@ pub extern "C" fn mmtk_block_thread_for_gc() {
     while AtomicBool::load(&BLOCK_FOR_GC, Ordering::SeqCst) {
         count = cvar.wait(count).unwrap();
     }
-
-    AtomicIsize::store(&USER_TRIGGERED_GC, 0, Ordering::SeqCst);
 }
