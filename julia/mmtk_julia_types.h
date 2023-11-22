@@ -407,7 +407,7 @@ typedef struct mmtk__jl_tls_states_t {
         mmtk_jl_stack_context_t copy_stack_ctx;
     };
     // Temp storage for exception thrown in signal handler. Not rooted.
-    struct mmtk_jl_value_t *sig_exception;
+    mmtk_jl_value_t *sig_exception;
     // Temporary backtrace buffer. Scanned for gc roots when bt_size > 0.
     struct mmtk__jl_bt_element_t *bt_data; // JL_MAX_BT_SIZE + 1 elements long
     size_t bt_size;    // Size for backtrace in transit in bt_data

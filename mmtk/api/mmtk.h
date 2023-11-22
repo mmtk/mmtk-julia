@@ -85,6 +85,7 @@ typedef struct {
     int* (*get_jl_gc_have_pending_finalizers)(void);
     void (*scan_vm_specific_roots)(RootsWorkClosure* closure);
     void (*prepare_to_collect)(void);
+    bool (*check_is_collection_disabled)(void);
 } Julia_Upcalls;
 
 /**
@@ -96,8 +97,6 @@ extern bool mmtk_process(char* name, char* value);
 extern void mmtk_scan_region(void);
 extern void mmtk_handle_user_collection_request(void *tls, uint8_t collection);
 extern void mmtk_initialize_collection(void* tls);
-extern void mmtk_enable_collection(void);
-extern void mmtk_disable_collection(void);
 extern void mmtk_start_control_collector(void *tls);
 extern void mmtk_start_worker(void *tls, void* worker, void* mmtk);
 extern void mmtk_process_julia_obj(void* addr);

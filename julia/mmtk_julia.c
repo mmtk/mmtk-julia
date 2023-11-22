@@ -153,7 +153,6 @@ JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
     jl_task_t *ct = jl_current_task;
     jl_ptls_t ptls = ct->ptls;
     if (jl_atomic_load_acquire(&jl_gc_disable_counter)) {
-        disable_collection();
         size_t localbytes = jl_atomic_load_relaxed(&ptls->gc_num.allocd) + gc_num.interval;
         jl_atomic_store_relaxed(&ptls->gc_num.allocd, -(int64_t)gc_num.interval);
         static_assert(sizeof(_Atomic(uint64_t)) == sizeof(gc_num.deferred_alloc), "");
@@ -358,6 +357,11 @@ void update_gc_time(uint64_t inc) {
     gc_num.total_time += inc;
 }
 
+bool check_is_collection_disabled(void) {
+    return (jl_atomic_load_acquire(&jl_gc_disable_counter) > 0);
+}
+
+
 #define assert_size(ty_a, ty_b) \
     if(sizeof(ty_a) != sizeof(ty_b)) {\
         printf("%s size = %ld, %s size = %ld. Need to update our type definition.\n", #ty_a, sizeof(ty_a), #ty_b, sizeof(ty_b));\
@@ -449,4 +453,5 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .get_jl_gc_have_pending_finalizers = get_jl_gc_have_pending_finalizers,
     .scan_vm_specific_roots = scan_vm_specific_roots,
     .prepare_to_collect = jl_gc_prepare_to_collect,
+    .check_is_collection_disabled = check_is_collection_disabled,
 };

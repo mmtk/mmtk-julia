@@ -102,6 +102,10 @@ impl Collection<JuliaVM> for VMCollection {
     fn vm_live_bytes() -> usize {
         crate::api::JULIA_MALLOC_BYTES.load(Ordering::SeqCst)
     }
+
+    fn is_collection_disabled() -> bool {
+        unsafe { ((*UPCALLS).check_is_collection_disabled)() }
+    }
 }
 
 pub fn is_current_gc_nursery() -> bool {
