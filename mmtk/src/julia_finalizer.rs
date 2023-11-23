@@ -147,7 +147,10 @@ fn sweep_finalizer_list(
             (true, false)
         } else {
             let isfreed = !memory_manager::is_live_object(v);
-            let isold = finalizer_list_marked.is_some() && !isfreed;
+            let isold = finalizer_list_marked.is_some()
+                && !isfreed
+                && (mmtk_object_is_managed_by_mmtk(fin) && memory_manager::is_live_object(fin)
+                    || !(mmtk_object_is_managed_by_mmtk(fin)));
             (isfreed, isold)
         };
         if isfreed || isold {
