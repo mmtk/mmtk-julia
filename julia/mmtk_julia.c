@@ -24,6 +24,8 @@ extern void jl_rng_split(uint64_t to[4], uint64_t from[4]);
 extern jl_mutex_t finalizers_lock;
 extern void jl_gc_wait_for_the_world(jl_ptls_t* gc_all_tls_states, int gc_n_threads);
 extern void mmtk_block_thread_for_gc(void);
+extern void combine_thread_gc_counts(jl_gc_num_t *dest);
+extern void reset_thread_gc_counts(void);
 
 extern void* new_mutator_iterator(void);
 extern jl_ptls_t get_next_mutator_tls(void*);
@@ -199,7 +201,9 @@ JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
 
     if (!jl_atomic_load_acquire(&jl_gc_disable_counter)) {
         JL_LOCK_NOGC(&finalizers_lock); // all the other threads are stopped, so this does not make sense, right? otherwise, failing that, this seems like plausibly a deadlock
+        combine_thread_gc_counts(&gc_num);
         mmtk_block_thread_for_gc();
+        reset_thread_gc_counts();
         JL_UNLOCK_NOGC(&finalizers_lock);
     }
 

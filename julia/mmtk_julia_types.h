@@ -435,14 +435,15 @@ typedef struct mmtk__jl_tls_states_t {
     // currently-held locks, to be released when an exception is thrown
     mmtk_small_arraylist_t locks;
 
+    MMTkMutatorContext mmtk_mutator;
+    size_t malloc_sz_since_last_poll;
+
     // JULIA_DEBUG_SLEEPWAKE(
     //     uint64_t uv_run_enter;
     //     uint64_t uv_run_leave;
     //     uint64_t sleep_enter;
     //     uint64_t sleep_leave;
     // )
-    MMTkMutatorContext mmtk_mutator;
-    size_t malloc_sz_since_last_poll;
 
     // some hidden state (usually just because we don't have the type's size declaration)
 } mmtk_jl_tls_states_t;
