@@ -337,16 +337,17 @@ pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
 
                     let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                     use crate::julia_finalizer::gc_ptr_tag;
-                    // handle tagged pointers in finalizer list
-                    if gc_ptr_tag(slot, 1) {
-                        i += 1;
-                        process_offset_edge(closure, real_addr, 1);
-
-                        i += 1;
+                    // malloced pointer tagged in jl_gc_add_quiescent
+                    // skip both the next element (native function), and the object
+                    if slot & 3usize == 3 {
+                        i += 2;
                         continue;
                     }
-                    if gc_ptr_tag(slot, 2) {
-                        i += 1;
+
+                    // pointer is not malloced but function is native, so skip it
+                    if gc_ptr_tag(slot, 1) {
+                        process_offset_edge(closure, real_addr, 1);
+                        i += 2;
                         continue;
                     }
 
