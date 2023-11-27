@@ -26,6 +26,8 @@ extern void jl_gc_wait_for_the_world(jl_ptls_t* gc_all_tls_states, int gc_n_thre
 extern void mmtk_block_thread_for_gc(void);
 extern void combine_thread_gc_counts(jl_gc_num_t *dest);
 extern void reset_thread_gc_counts(void);
+extern void _jl_free_stack(jl_ptls_t ptls, void *stkbuf, size_t bufsz);
+extern void free_stack(void *stkbuf, size_t bufsz);
 
 extern void* new_mutator_iterator(void);
 extern jl_ptls_t get_next_mutator_tls(void*);
@@ -347,6 +349,85 @@ JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn
     }
 }
 
+// number of stacks to always keep available per pool
+#define MIN_STACK_MAPPINGS_PER_POOL 5
+
+// modified sweep_stack_pools from gc-stacks.c
+void mmtk_sweep_stack_pools(void)
+{
+    // Stack sweeping algorithm:
+    //    // deallocate stacks if we have too many sitting around unused
+    //    for (stk in halfof(free_stacks))
+    //        free_stack(stk, pool_sz);
+    //    // then sweep the task stacks
+    //    for (t in live_tasks)
+    //        if (!gc-marked(t))
+    //            stkbuf = t->stkbuf
+    //            bufsz = t->bufsz
+    //            if (stkbuf)
+    //                push(free_stacks[sz], stkbuf)
+    for (int i = 0; i < jl_n_threads; i++) {
+        jl_ptls_t ptls2 = jl_all_tls_states[i];
+
+        // free half of stacks that remain unused since last sweep
+        for (int p = 0; p < JL_N_STACK_POOLS; p++) {
+            small_arraylist_t *al = &ptls2->heap.free_stacks[p];
+            size_t n_to_free;
+            if (al->len > MIN_STACK_MAPPINGS_PER_POOL) {
+                n_to_free = al->len / 2;
+                if (n_to_free > (al->len - MIN_STACK_MAPPINGS_PER_POOL))
+                    n_to_free = al->len - MIN_STACK_MAPPINGS_PER_POOL;
+            }
+            else {
+                n_to_free = 0;
+            }
+            for (int n = 0; n < n_to_free; n++) {
+                void *stk = small_arraylist_pop(al);
+                free_stack(stk, pool_sizes[p]);
+            }
+        }
+
+        small_arraylist_t *live_tasks = &ptls2->heap.live_tasks;
+        size_t n = 0;
+        size_t ndel = 0;
+        size_t l = live_tasks->len;
+        void **lst = live_tasks->items;
+        if (l == 0)
+            continue;
+        while (1) {
+            jl_task_t *t = (jl_task_t*)lst[n];
+            if (mmtk_is_live_object(t)) {
+                live_tasks->items[n] = t;
+                assert(jl_is_task(t));
+                if (t->stkbuf == NULL)
+                    ndel++; // jl_release_task_stack called
+                else
+                    n++;
+            } else {
+                ndel++;
+                void *stkbuf = t->stkbuf;
+                size_t bufsz = t->bufsz;
+                if (stkbuf) {
+                    t->stkbuf = NULL;
+                    _jl_free_stack(ptls2, stkbuf, bufsz);
+                }
+#ifdef _COMPILER_TSAN_ENABLED_
+                if (t->ctx.tsan_state) {
+                    __tsan_destroy_fiber(t->ctx.tsan_state);
+                    t->ctx.tsan_state = NULL;
+                }
+#endif
+            }
+            if (n >= l - ndel)
+                break;
+            void *tmp = lst[n];
+            lst[n] = lst[n + ndel];
+            lst[n + ndel] = tmp;
+        }
+        live_tasks->len -= ndel;
+    }
+}
+
 #define jl_array_data_owner_addr(a) (((jl_value_t**)((char*)a + jl_array_data_owner_offset(jl_array_ndims(a)))))
 
 JL_DLLEXPORT void* get_stackbase(int16_t tid) {
@@ -445,6 +526,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .mmtk_jl_run_finalizers = mmtk_jl_run_finalizers,
     .mmtk_jl_throw_out_of_memory_error = mmtk_jl_throw_out_of_memory_error,
     .sweep_malloced_array = mmtk_sweep_malloced_arrays,
+    .sweep_stack_pools = mmtk_sweep_stack_pools,
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
     .mmtk_jl_hrtime = mmtk_jl_hrtime,

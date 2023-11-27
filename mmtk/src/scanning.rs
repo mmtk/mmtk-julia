@@ -111,11 +111,11 @@ impl Scanning<JuliaVM> for VMScanning {
         process_object(object, edge_visitor);
     }
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
-        let sweep_malloced_arrays_work = SweepMallocedArrays::new();
+        let sweep_vm_specific_work = SweepVMSpecific::new();
         memory_manager::add_work_packet(
             &SINGLETON,
             WorkBucketStage::Compact,
-            sweep_malloced_arrays_work,
+            sweep_vm_specific_work,
         );
     }
     fn supports_return_barrier() -> bool {
@@ -150,20 +150,21 @@ pub fn process_object<EV: EdgeVisitor<JuliaVMEdge>>(object: ObjectReference, clo
 }
 
 // Sweep malloced arrays work
-pub struct SweepMallocedArrays {
+pub struct SweepVMSpecific {
     swept: bool,
 }
 
-impl SweepMallocedArrays {
+impl SweepVMSpecific {
     pub fn new() -> Self {
         Self { swept: false }
     }
 }
 
-impl<VM: VMBinding> GCWork<VM> for SweepMallocedArrays {
+impl<VM: VMBinding> GCWork<VM> for SweepVMSpecific {
     fn do_work(&mut self, _worker: &mut GCWorker<VM>, _mmtk: &'static MMTK<VM>) {
         // call sweep malloced arrays from UPCALLS
         unsafe { ((*UPCALLS).mmtk_sweep_malloced_array)() }
+        unsafe { ((*UPCALLS).mmtk_sweep_stack_pools)() }
         self.swept = true;
     }
 }
