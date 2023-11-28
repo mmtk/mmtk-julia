@@ -366,7 +366,8 @@ void mmtk_sweep_stack_pools(void)
     //            bufsz = t->bufsz
     //            if (stkbuf)
     //                push(free_stacks[sz], stkbuf)
-    for (int i = 0; i < jl_n_threads; i++) {
+    assert(gc_n_threads);
+    for (int i = 0; i < gc_n_threads; i++) {
         jl_ptls_t ptls2 = jl_all_tls_states[i];
 
         // free half of stacks that remain unused since last sweep
@@ -396,9 +397,9 @@ void mmtk_sweep_stack_pools(void)
             continue;
         while (1) {
             jl_task_t *t = (jl_task_t*)lst[n];
+            assert(jl_is_task(t));
             if (mmtk_is_live_object(t)) {
                 live_tasks->items[n] = t;
-                assert(jl_is_task(t));
                 if (t->stkbuf == NULL)
                     ndel++; // jl_release_task_stack called
                 else
