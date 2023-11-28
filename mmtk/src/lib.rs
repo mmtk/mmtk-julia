@@ -103,6 +103,8 @@ pub struct Julia_Upcalls {
     pub jl_throw_out_of_memory_error: extern "C" fn(),
     pub mmtk_sweep_malloced_array: extern "C" fn(),
     pub mmtk_sweep_stack_pools: extern "C" fn(),
+    pub mmtk_clear_weak_refs: extern "C" fn(),
+    pub mmtk_sweep_weak_refs: extern "C" fn(),
     pub wait_in_a_safepoint: extern "C" fn(),
     pub exit_from_safepoint: extern "C" fn(old_state: i8),
     pub jl_hrtime: extern "C" fn() -> u64,

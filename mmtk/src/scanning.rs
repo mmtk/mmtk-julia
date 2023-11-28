@@ -165,6 +165,7 @@ impl<VM: VMBinding> GCWork<VM> for SweepVMSpecific {
         // call sweep malloced arrays from UPCALLS
         unsafe { ((*UPCALLS).mmtk_sweep_malloced_array)() }
         unsafe { ((*UPCALLS).mmtk_sweep_stack_pools)() }
+        unsafe { ((*UPCALLS).mmtk_sweep_weak_refs)() }
         self.swept = true;
     }
 }
@@ -175,6 +176,7 @@ pub struct ScanFinalizersSingleThreaded<C: ObjectTracerContext<JuliaVM>> {
 
 impl<C: ObjectTracerContext<JuliaVM>> GCWork<JuliaVM> for ScanFinalizersSingleThreaded<C> {
     fn do_work(&mut self, worker: &mut GCWorker<JuliaVM>, _mmtk: &'static MMTK<JuliaVM>) {
+        unsafe { ((*UPCALLS).mmtk_clear_weak_refs)() }
         self.tracer_context.with_tracer(worker, |tracer| {
             crate::julia_finalizer::scan_finalizers_in_rust(tracer);
         });

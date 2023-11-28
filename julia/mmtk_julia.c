@@ -28,6 +28,8 @@ extern void combine_thread_gc_counts(jl_gc_num_t *dest);
 extern void reset_thread_gc_counts(void);
 extern void _jl_free_stack(jl_ptls_t ptls, void *stkbuf, size_t bufsz);
 extern void free_stack(void *stkbuf, size_t bufsz);
+extern void clear_weak_refs(void);
+extern void sweep_weak_refs(void);
 
 extern void* new_mutator_iterator(void);
 extern jl_ptls_t get_next_mutator_tls(void*);
@@ -528,6 +530,8 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .mmtk_jl_throw_out_of_memory_error = mmtk_jl_throw_out_of_memory_error,
     .sweep_malloced_array = mmtk_sweep_malloced_arrays,
     .sweep_stack_pools = mmtk_sweep_stack_pools,
+    .clear_weak_refs = clear_weak_refs,
+    .sweep_weak_refs = sweep_weak_refs,
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
     .mmtk_jl_hrtime = mmtk_jl_hrtime,
