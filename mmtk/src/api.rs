@@ -6,7 +6,7 @@ use crate::Julia_Upcalls;
 use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
 use crate::UPCALLS;
-use crate::{BUILDER, DISABLED_GC, MUTATORS, USER_TRIGGERED_GC};
+use crate::{BUILDER, MUTATORS};
 
 use libc::c_char;
 use log::*;
@@ -18,8 +18,7 @@ use mmtk::util::{Address, ObjectReference, OpaquePointer};
 use mmtk::AllocationSemantics;
 use mmtk::Mutator;
 use std::ffi::CStr;
-use std::sync::atomic::AtomicIsize;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[no_mangle]
 pub extern "C" fn mmtk_gc_init(
@@ -269,11 +268,6 @@ pub extern "C" fn mmtk_is_mapped_address(address: Address) -> bool {
 
 #[no_mangle]
 pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread, collection: u8) {
-    AtomicIsize::fetch_add(&USER_TRIGGERED_GC, 1, Ordering::SeqCst);
-    if AtomicBool::load(&DISABLED_GC, Ordering::SeqCst) {
-        AtomicIsize::fetch_add(&USER_TRIGGERED_GC, -1, Ordering::SeqCst);
-        return;
-    }
     // See jl_gc_collection_t
     match collection {
         // auto

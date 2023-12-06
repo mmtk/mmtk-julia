@@ -12,7 +12,6 @@ use mmtk::MMTK;
 
 use std::collections::HashMap;
 use std::ptr::null_mut;
-use std::sync::atomic::AtomicIsize;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 
@@ -72,12 +71,6 @@ pub static BLOCK_FOR_GC: AtomicBool = AtomicBool::new(false);
 
 #[no_mangle]
 pub static WORLD_HAS_STOPPED: AtomicBool = AtomicBool::new(false);
-
-#[no_mangle]
-pub static DISABLED_GC: AtomicBool = AtomicBool::new(false);
-
-#[no_mangle]
-pub static USER_TRIGGERED_GC: AtomicIsize = AtomicIsize::new(0);
 
 lazy_static! {
     pub static ref STW_COND: Arc<(Mutex<usize>, Condvar)> =

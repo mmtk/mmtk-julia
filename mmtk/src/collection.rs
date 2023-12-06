@@ -1,4 +1,4 @@
-use crate::{JuliaVM, USER_TRIGGERED_GC};
+use crate::{JuliaVM};
 use crate::{SINGLETON, UPCALLS};
 use log::{info, trace};
 use mmtk::util::alloc::AllocationError;
@@ -6,7 +6,7 @@ use mmtk::util::opaque_pointer::*;
 use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::vm::ActivePlan;
 use mmtk::Mutator;
-use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 
 use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
 
@@ -72,8 +72,6 @@ impl Collection<JuliaVM> for VMCollection {
 
         unsafe { ((*UPCALLS).prepare_to_collect)() };
 
-        AtomicIsize::store(&USER_TRIGGERED_GC, 0, Ordering::SeqCst);
-
         info!("Finished blocking mutator for GC!");
     }
 
@@ -106,7 +104,8 @@ impl Collection<JuliaVM> for VMCollection {
     fn vm_live_bytes() -> usize {
         crate::api::JULIA_MALLOC_BYTES.load(Ordering::SeqCst)
     }
-
+    
+    #[inline(always)]
     fn is_collection_disabled() -> bool {
         unsafe {
             AtomicU32::load(
