@@ -23,7 +23,7 @@ extern size_t mmtk_get_obj_size(void* obj);
 extern void jl_rng_split(uint64_t to[4], uint64_t from[4]);
 extern jl_mutex_t finalizers_lock;
 extern void jl_gc_wait_for_the_world(jl_ptls_t* gc_all_tls_states, int gc_n_threads);
-extern void mmtk_block_thread_for_gc(void);
+extern void mmtk_block_thread_for_gc(int gc_n_threads);
 extern void combine_thread_gc_counts(jl_gc_num_t *dest);
 extern void reset_thread_gc_counts(void);
 extern void _jl_free_stack(jl_ptls_t ptls, void *stkbuf, size_t bufsz);
@@ -206,7 +206,7 @@ JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
     if (!jl_atomic_load_acquire(&jl_gc_disable_counter)) {
         JL_LOCK_NOGC(&finalizers_lock); // all the other threads are stopped, so this does not make sense, right? otherwise, failing that, this seems like plausibly a deadlock
         combine_thread_gc_counts(&gc_num);
-        mmtk_block_thread_for_gc();
+        mmtk_block_thread_for_gc(gc_n_threads);
         reset_thread_gc_counts();
         JL_UNLOCK_NOGC(&finalizers_lock);
     }
@@ -320,12 +320,11 @@ JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn
         }
         jl_excstack_t *excstack = ta->excstack;
         size_t itr = ta->excstack->top;
-        size_t bt_index = 0;
         size_t jlval_index = 0;
         while (itr > 0) {
             size_t bt_size = jl_excstack_bt_size(excstack, itr);
             jl_bt_element_t *bt_data = jl_excstack_bt_data(excstack, itr);
-            for (; bt_index < bt_size; bt_index += jl_bt_entry_size(bt_data + bt_index)) {
+            for (size_t bt_index = 0; bt_index < bt_size; bt_index += jl_bt_entry_size(bt_data + bt_index)) {
                 jl_bt_element_t *bt_entry = bt_data + bt_index;
                 if (jl_bt_is_native(bt_entry))
                     continue;
@@ -344,7 +343,6 @@ JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn
             jl_value_t** stack_obj_edge = &stack_raw[itr-1].jlvalue;
 
             itr = jl_excstack_next(excstack, itr);
-            bt_index = 0;
             jlval_index = 0;
             process_edge(closure, stack_obj_edge);
         }
@@ -441,8 +439,10 @@ JL_DLLEXPORT void* get_stackbase(int16_t tid) {
 
 const bool PRINT_OBJ_TYPE = false;
 
-void update_gc_time(uint64_t inc) {
+void update_gc_stats(uint64_t inc, bool is_nursery_gc) {
     gc_num.total_time += inc;
+    gc_num.pause += 1;
+    gc_num.full_sweep += !(is_nursery_gc);
 }
 
 bool check_is_collection_disabled(void) {
@@ -535,7 +535,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
     .mmtk_jl_hrtime = mmtk_jl_hrtime,
-    .update_gc_time = update_gc_time,
+    .update_gc_stats = update_gc_stats,
     .get_abi_structs_checksum_c = get_abi_structs_checksum_c,
     .get_thread_finalizer_list = get_thread_finalizer_list,
     .get_to_finalize_list = get_to_finalize_list,

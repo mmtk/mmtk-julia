@@ -51,6 +51,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         if PRINT_OBJ_TYPE {
             println!("scan_julia_obj {}: simple vector\n", obj);
         }
+
         let length = mmtk_jl_svec_len(obj);
         let mut objary_begin = mmtk_jl_svec_data(obj);
         let objary_end = objary_begin.shift::<Address>(length as isize);

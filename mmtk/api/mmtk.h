@@ -79,7 +79,7 @@ typedef struct {
     void (* wait_in_a_safepoint) (void);
     void (* exit_from_safepoint) (int8_t old_state);
     uint64_t (* mmtk_jl_hrtime) (void);
-    void (* update_gc_time) (uint64_t);
+    void (* update_gc_stats) (uint64_t, bool);
     uintptr_t (* get_abi_structs_checksum_c) (void);
     void* (* get_thread_finalizer_list) (void* tls);
     void* (* get_to_finalize_list)(void);

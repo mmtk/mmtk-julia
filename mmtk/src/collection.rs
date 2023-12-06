@@ -4,6 +4,7 @@ use log::{info, trace};
 use mmtk::util::alloc::AllocationError;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::{Collection, GCThreadContext};
+use mmtk::vm::ActivePlan;
 use mmtk::Mutator;
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, AtomicU64, Ordering};
 
@@ -32,7 +33,6 @@ impl Collection<JuliaVM> for VMCollection {
 
         // Tell MMTk the stacks are ready.
         {
-            use mmtk::vm::ActivePlan;
             for mutator in crate::active_plan::VMActivePlan::mutators() {
                 info!("stop_all_mutators: visiting {:?}", mutator.mutator_tls);
                 mutator_visitor(mutator);
@@ -50,7 +50,7 @@ impl Collection<JuliaVM> for VMCollection {
         let end = unsafe { ((*UPCALLS).jl_hrtime)() };
         trace!("gc_end = {}", end);
         let gc_time = end - GC_START.load(Ordering::Relaxed);
-        unsafe { ((*UPCALLS).update_gc_time)(gc_time) }
+        unsafe { ((*UPCALLS).update_gc_stats)(gc_time, is_current_gc_nursery()) }
 
         AtomicBool::store(&BLOCK_FOR_GC, false, Ordering::SeqCst);
         AtomicBool::store(&WORLD_HAS_STOPPED, false, Ordering::SeqCst);
@@ -127,13 +127,20 @@ pub fn is_current_gc_nursery() -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_block_thread_for_gc() {
+pub extern "C" fn mmtk_block_thread_for_gc(gc_n_threads: u16) {
     AtomicBool::store(&BLOCK_FOR_GC, true, Ordering::SeqCst);
 
     let &(ref lock, ref cvar) = &*STW_COND.clone();
     let mut count = lock.lock().unwrap();
 
     info!("Blocking for GC!");
+
+    debug_assert!(
+        gc_n_threads as usize == crate::active_plan::VMActivePlan::number_of_mutators(),
+        "gc_nthreads = {} != number_of_mutators = {}",
+        gc_n_threads,
+        crate::active_plan::VMActivePlan::number_of_mutators()
+    );
 
     AtomicBool::store(&WORLD_HAS_STOPPED, true, Ordering::SeqCst);
 
