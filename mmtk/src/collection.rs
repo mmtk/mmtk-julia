@@ -1,10 +1,10 @@
-use crate::{JuliaVM};
+use crate::JuliaVM;
 use crate::{SINGLETON, UPCALLS};
 use log::{info, trace};
 use mmtk::util::alloc::AllocationError;
 use mmtk::util::opaque_pointer::*;
-use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::vm::ActivePlan;
+use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::Mutator;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 
@@ -50,7 +50,13 @@ impl Collection<JuliaVM> for VMCollection {
         let end = unsafe { ((*UPCALLS).jl_hrtime)() };
         trace!("gc_end = {}", end);
         let gc_time = end - GC_START.load(Ordering::Relaxed);
-        unsafe { ((*UPCALLS).update_gc_stats)(gc_time, is_current_gc_nursery()) }
+        unsafe {
+            ((*UPCALLS).update_gc_stats)(
+                gc_time,
+                crate::api::mmtk_used_bytes(),
+                is_current_gc_nursery(),
+            )
+        }
 
         AtomicBool::store(&BLOCK_FOR_GC, false, Ordering::SeqCst);
         AtomicBool::store(&WORLD_HAS_STOPPED, false, Ordering::SeqCst);
@@ -104,7 +110,7 @@ impl Collection<JuliaVM> for VMCollection {
     fn vm_live_bytes() -> usize {
         crate::api::JULIA_MALLOC_BYTES.load(Ordering::SeqCst)
     }
-    
+
     #[inline(always)]
     fn is_collection_disabled() -> bool {
         unsafe {

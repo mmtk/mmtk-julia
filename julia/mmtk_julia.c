@@ -30,6 +30,7 @@ extern void _jl_free_stack(jl_ptls_t ptls, void *stkbuf, size_t bufsz);
 extern void free_stack(void *stkbuf, size_t bufsz);
 extern void clear_weak_refs(void);
 extern void sweep_weak_refs(void);
+extern int64_t live_bytes;
 
 extern void* new_mutator_iterator(void);
 extern jl_ptls_t get_next_mutator_tls(void*);
@@ -439,10 +440,12 @@ JL_DLLEXPORT void* get_stackbase(int16_t tid) {
 
 const bool PRINT_OBJ_TYPE = false;
 
-void update_gc_stats(uint64_t inc, bool is_nursery_gc) {
+void update_gc_stats(uint64_t inc, size_t mmtk_live_bytes, bool is_nursery_gc) {
     gc_num.total_time += inc;
     gc_num.pause += 1;
     gc_num.full_sweep += !(is_nursery_gc);
+    gc_num.allocd = 0;
+    live_bytes = mmtk_live_bytes;
 }
 
 bool check_is_collection_disabled(void) {
