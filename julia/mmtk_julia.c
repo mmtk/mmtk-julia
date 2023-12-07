@@ -444,6 +444,7 @@ void update_gc_stats(uint64_t inc, size_t mmtk_live_bytes, bool is_nursery_gc) {
     gc_num.total_time += inc;
     gc_num.pause += 1;
     gc_num.full_sweep += !(is_nursery_gc);
+    gc_num.total_allocd += gc_num.allocd;
     gc_num.allocd = 0;
     live_bytes = mmtk_live_bytes;
 }
