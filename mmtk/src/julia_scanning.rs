@@ -43,7 +43,26 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
     // get Julia object type
     let vt = mmtk_jl_typeof(obj);
 
-    if vt == jl_symbol_type || vt as usize == JULIA_BUFF_TAG {
+    if vt as usize == JULIA_BUFF_TAG {
+        let as_tagged_value = obj.as_usize() - std::mem::size_of::<crate::julia_scanning::mmtk_jl_taggedvalue_t>();
+        let t_header = Address::from_usize(as_tagged_value).load::<Address>();
+        let tag = t_header.as_usize() & 3;
+        if tag == 2 { // buf is binding
+            let b = obj.to_ptr::<mmtk_jl_binding_t>();
+            let value = ::std::ptr::addr_of!((*b).value);
+            let globalref = ::std::ptr::addr_of!((*b).globalref);
+            let ty = ::std::ptr::addr_of!((*b).ty);
+
+            process_edge(closure, Address::from_usize(value as usize));
+            process_edge(closure, Address::from_usize(globalref as usize));
+            process_edge(closure, Address::from_usize(ty as usize));
+            return;
+        } else {
+            return; // do not scan buffers
+        }
+    }
+
+    if vt == jl_symbol_type {
         return;
     }
 
