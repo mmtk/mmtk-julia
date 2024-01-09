@@ -64,7 +64,7 @@ pub extern "C" fn mmtk_gc_init(
         // Set heap size
         let success;
         if min_heap_size != 0 {
-            println!(
+            info!(
                 "Setting mmtk heap size to a variable size with min-max of {}-{} (in bytes)",
                 min_heap_size, max_heap_size
             );
