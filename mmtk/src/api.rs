@@ -75,7 +75,7 @@ pub extern "C" fn mmtk_gc_init(
                 ),
             );
         } else {
-            println!(
+            info!(
                 "Setting mmtk heap size to a fixed max of {} (in bytes)",
                 max_heap_size
             );
