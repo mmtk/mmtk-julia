@@ -10,3 +10,16 @@ pull_request_rules:
         assignees:
           - "{{ author }}"
         label_conflicts: backport-conflicts
+
+pull_request_rules:
+  - name: backport patches to v1.9.2+RAI
+    conditions:
+      - base=master
+      - label=backport-v1.9.2+RAI
+    actions:
+      backport:
+        branches:
+          - v1.9.2+RAI
+        assignees:
+          - "{{ author }}"
+        label_conflicts: backport-conflicts

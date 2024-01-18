@@ -9,7 +9,7 @@ export MMTK_JULIA_DIR=$BINDING_PATH
 
 # Make sure we have enough heap to build Julia
 export MMTK_MIN_HSIZE_G=0.5
-export MMTK_MAX_HSIZE_G=4
+export MMTK_MAX_HSIZE_G=5
 # Make sure we do not get OOM killed. The Github runner has ~7G RAM.
 export JULIA_TEST_MAXRSS_MB=6500
 
