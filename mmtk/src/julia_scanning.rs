@@ -44,10 +44,12 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
     let vt = mmtk_jl_typeof(obj);
 
     if vt as usize == JULIA_BUFF_TAG {
-        let as_tagged_value = obj.as_usize() - std::mem::size_of::<crate::julia_scanning::mmtk_jl_taggedvalue_t>();
+        let as_tagged_value =
+            obj.as_usize() - std::mem::size_of::<crate::julia_scanning::mmtk_jl_taggedvalue_t>();
         let t_header = Address::from_usize(as_tagged_value).load::<Address>();
         let tag = t_header.as_usize() & 3;
-        if tag == 2 { // buf is binding
+        if tag == 2 {
+            // buf is binding
             let b = obj.to_ptr::<mmtk_jl_binding_t>();
             let value = ::std::ptr::addr_of!((*b).value);
             let globalref = ::std::ptr::addr_of!((*b).globalref);
