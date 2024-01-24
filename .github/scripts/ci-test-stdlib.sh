@@ -22,8 +22,6 @@ declare -a tests_to_skip=(
     "SparseArrays"
     # Running LinearAlgebra in a separate job
     "LinearAlgebra"
-    # This is failing for v1.9.2 on the stock Julia as well.
-    "Profile"
 )
 # These tests need multiple workers.
 declare -a tests_with_multi_workers=(

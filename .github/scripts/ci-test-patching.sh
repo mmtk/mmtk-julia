@@ -28,6 +28,12 @@ declare -a tests_to_skip=(
     # The required string int.jl does not appear in the output even if I test with the stock Julia code.
     # I do not know what is wrong, but at this point, I dont want to spend time on it.
     '@test occursin("int.jl", code)' "$JULIA_PATH/test/cmdlineargs.jl"
+
+    # These are failing for v1.9.2 on the stock Julia as well.
+    '@test process_running(p)' "$JULIA_PATH/stdlib/Profile/test/runtests.jl"
+    '@test occursin("Overhead ╎", s)' "$JULIA_PATH/stdlib/Profile/test/runtests.jl"
+    '@test length(prof.allocs) >= 1' "$JULIA_PATH/stdlib/Profile/test/allocs.jl"
+    '@test length(\[a for a in prof.allocs if a.type == MyType\]) >= 1' "$JULIA_PATH/stdlib/Profile/test/allocs.jl"
 )
 
 for (( i=0; i < ${#tests_to_skip[@]}; i+=2 )); do
