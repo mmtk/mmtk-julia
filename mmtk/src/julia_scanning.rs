@@ -43,6 +43,10 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
     // get Julia object type
     let vt = mmtk_jl_typeof(obj);
 
+    // We don't scan buffers, as they will be scanned as a part of its parent object. 
+    // But when a jl_binding_t buffer is inserted into remset, they have be to scanned. 
+    // The gc bits (tag), which is set in the write barrier, tells us if the buffer is in the remset.
+    // FIXME: set the tags back to 0?
     if vt as usize == JULIA_BUFF_TAG {
         let as_tagged_value =
             obj.as_usize() - std::mem::size_of::<crate::julia_scanning::mmtk_jl_taggedvalue_t>();
