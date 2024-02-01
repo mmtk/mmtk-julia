@@ -3,7 +3,6 @@
 
 use crate::JuliaVM;
 use crate::Julia_Upcalls;
-use crate::BLOCK_FOR_GC;
 use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
 use crate::UPCALLS;
