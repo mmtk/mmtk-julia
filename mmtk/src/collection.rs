@@ -11,6 +11,10 @@ use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
 
 static GC_START: AtomicU64 = AtomicU64::new(0);
 
+extern "C" {
+    pub static jl_gc_disable_counter: AtomicU32;
+}
+
 pub struct VMCollection {}
 
 impl Collection<JuliaVM> for VMCollection {
@@ -99,6 +103,17 @@ impl Collection<JuliaVM> for VMCollection {
 
     fn vm_live_bytes() -> usize {
         crate::api::JULIA_MALLOC_BYTES.load(Ordering::SeqCst)
+    }
+
+    fn is_collection_enabled() -> bool {
+        unsafe {
+            AtomicU32::load(
+                ::std::mem::transmute::<*const AtomicU32, &AtomicU32>(::std::ptr::addr_of!(
+                    jl_gc_disable_counter
+                )),
+                Ordering::SeqCst,
+            ) == 0
+        }
     }
 }
 
