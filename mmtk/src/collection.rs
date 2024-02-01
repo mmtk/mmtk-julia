@@ -112,7 +112,7 @@ impl Collection<JuliaVM> for VMCollection {
                     jl_gc_disable_counter
                 )),
                 Ordering::SeqCst,
-            ) == 0
+            ) <= 0
         }
     }
 }
