@@ -33,7 +33,9 @@ impl Scanning<JuliaVM> for VMScanning {
                     JuliaVMEdge::Simple(se) => {
                         let slot = se.as_address();
                         let object = unsafe { slot.load::<ObjectReference>() };
-                        self.buffer.push(object);
+                        if !object.is_null() {
+                            self.buffer.push(object);
+                        }
                     }
                     JuliaVMEdge::Offset(_) => {
                         unimplemented!() // transitively pinned roots in Julia only come from the stack
