@@ -11,13 +11,21 @@ use mmtk::util::opaque_pointer::*;
 use mmtk::util::Address;
 use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::Mutator;
+<<<<<<< HEAD
 use mmtk::MutatorContext;
 use std::sync::atomic::{AtomicBool, Ordering};
+=======
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, AtomicU64, Ordering};
+>>>>>>> eac7e88 (Ask from binding if GC is disabled (#126))
 
 use crate::{BLOCK_FOR_GC, FINALIZERS_RUNNING, STW_COND, WORLD_HAS_STOPPED};
 
 const GC_THREAD_KIND_CONTROLLER: libc::c_int = 0;
 const GC_THREAD_KIND_WORKER: libc::c_int = 1;
+
+extern "C" {
+    pub static jl_gc_disable_counter: AtomicU32;
+}
 
 pub struct VMCollection {}
 
@@ -132,11 +140,27 @@ impl Collection<JuliaVM> for VMCollection {
         unsafe { ((*UPCALLS).jl_throw_out_of_memory_error)() };
     }
 
+<<<<<<< HEAD
     fn prepare_mutator<T: MutatorContext<JuliaVM>>(
         _tls_w: VMWorkerThread,
         _tls_m: VMMutatorThread,
         _mutator: &T,
     ) {
+=======
+    fn vm_live_bytes() -> usize {
+        crate::api::JULIA_MALLOC_BYTES.load(Ordering::SeqCst)
+    }
+
+    fn is_collection_enabled() -> bool {
+        unsafe { AtomicU32::load(&jl_gc_disable_counter, Ordering::SeqCst) <= 0 }
+    }
+}
+
+pub fn is_current_gc_nursery() -> bool {
+    match crate::SINGLETON.get_plan().generational() {
+        Some(gen) => gen.is_current_gc_nursery(),
+        None => false,
+>>>>>>> eac7e88 (Ask from binding if GC is disabled (#126))
     }
 }
 

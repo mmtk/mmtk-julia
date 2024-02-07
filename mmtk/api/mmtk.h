@@ -115,6 +115,7 @@ typedef struct {
 /**
  * Misc
  */
+<<<<<<< HEAD
 extern void gc_init(long long min_heap_size, long long max_heap_size, Julia_Upcalls *calls, long header_size);
 extern bool will_never_move(void* object);
 extern bool process(char* name, char* value);
@@ -128,6 +129,19 @@ extern void start_worker(void *tls, void* worker, void* mmtk);
 extern void process_julia_obj(void* addr);
 extern void register_finalizer(void* obj, void* function, bool is_ptr);
 extern void run_finalizers_for_obj(void* obj);
+=======
+extern void mmtk_gc_init(uintptr_t min_heap_size, uintptr_t max_heap_size, uintptr_t n_gcthreads, Julia_Upcalls *calls, uintptr_t header_size, uintptr_t tag);
+extern bool mmtk_will_never_move(void* object);
+extern bool mmtk_process(char* name, char* value);
+extern void mmtk_scan_region(void);
+extern void mmtk_handle_user_collection_request(void *tls, uint8_t collection);
+extern void mmtk_initialize_collection(void* tls);
+extern void mmtk_start_control_collector(void *tls);
+extern void mmtk_start_worker(void *tls, void* worker, void* mmtk);
+extern void mmtk_process_julia_obj(void* addr);
+extern void mmtk_register_finalizer(void* obj, void* function, bool is_ptr);
+extern void mmtk_run_finalizers_for_obj(void* obj);
+>>>>>>> eac7e88 (Ask from binding if GC is disabled (#126))
 extern void mmtk_run_finalizers(bool at_exit);
 extern void mmtk_gc_poll(void *tls);
 

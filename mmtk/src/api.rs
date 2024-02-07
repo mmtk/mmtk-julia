@@ -4,8 +4,12 @@
 use crate::reference_glue::JuliaFinalizableObject;
 use crate::JuliaVM;
 use crate::Julia_Upcalls;
+<<<<<<< HEAD
 use crate::BLOCK_FOR_GC;
 use crate::FINALIZER_ROOTS;
+=======
+use crate::JULIA_HEADER_SIZE;
+>>>>>>> eac7e88 (Ask from binding if GC is disabled (#126))
 use crate::SINGLETON;
 use crate::UPCALLS;
 use crate::{
@@ -197,6 +201,7 @@ pub extern "C" fn initialize_collection(tls: VMThread) {
 }
 
 #[no_mangle]
+<<<<<<< HEAD
 pub extern "C" fn enable_collection() {
     if AtomicBool::load(&DISABLED_GC, Ordering::SeqCst) {
         memory_manager::enable_collection(&SINGLETON);
@@ -222,6 +227,9 @@ pub extern "C" fn disable_collection() {
 
 #[no_mangle]
 pub extern "C" fn used_bytes() -> usize {
+=======
+pub extern "C" fn mmtk_used_bytes() -> usize {
+>>>>>>> eac7e88 (Ask from binding if GC is disabled (#126))
     memory_manager::used_bytes(&SINGLETON)
 }
 

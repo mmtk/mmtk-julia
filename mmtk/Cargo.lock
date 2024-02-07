@@ -533,8 +533,13 @@ dependencies = [
 
 [[package]]
 name = "mmtk"
+<<<<<<< HEAD
 version = "0.17.0"
 source = "git+https://github.com/mmtk/mmtk-core.git?rev=b2968e3903a5730f2ce33654d75dd2e53b26d8b2#b2968e3903a5730f2ce33654d75dd2e53b26d8b2"
+=======
+version = "0.22.1"
+source = "git+https://github.com/mmtk/mmtk-core.git?rev=7cafe560139211c0e3a74815d2e288278506099d#7cafe560139211c0e3a74815d2e288278506099d"
+>>>>>>> eac7e88 (Ask from binding if GC is disabled (#126))
 dependencies = [
  "atomic 0.5.1",
  "atomic-traits",
@@ -577,8 +582,13 @@ dependencies = [
 
 [[package]]
 name = "mmtk-macros"
+<<<<<<< HEAD
 version = "0.17.0"
 source = "git+https://github.com/mmtk/mmtk-core.git?rev=b2968e3903a5730f2ce33654d75dd2e53b26d8b2#b2968e3903a5730f2ce33654d75dd2e53b26d8b2"
+=======
+version = "0.22.1"
+source = "git+https://github.com/mmtk/mmtk-core.git?rev=7cafe560139211c0e3a74815d2e288278506099d#7cafe560139211c0e3a74815d2e288278506099d"
+>>>>>>> eac7e88 (Ask from binding if GC is disabled (#126))
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
