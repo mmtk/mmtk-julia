@@ -106,14 +106,7 @@ impl Collection<JuliaVM> for VMCollection {
     }
 
     fn is_collection_enabled() -> bool {
-        unsafe {
-            AtomicU32::load(
-                ::std::mem::transmute::<*const AtomicU32, &AtomicU32>(::std::ptr::addr_of!(
-                    jl_gc_disable_counter
-                )),
-                Ordering::SeqCst,
-            ) <= 0
-        }
+        unsafe { AtomicU32::load(&jl_gc_disable_counter, Ordering::SeqCst) <= 0 }
     }
 }
 
