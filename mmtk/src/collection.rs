@@ -6,11 +6,7 @@ use mmtk::util::opaque_pointer::*;
 use mmtk::vm::ActivePlan;
 use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::Mutator;
-<<<<<<< HEAD
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
-=======
-use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, AtomicU64, Ordering};
->>>>>>> eac7e88 (Ask from binding if GC is disabled (#126))
 
 use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
 
@@ -115,21 +111,8 @@ impl Collection<JuliaVM> for VMCollection {
         crate::api::JULIA_MALLOC_BYTES.load(Ordering::SeqCst)
     }
 
-<<<<<<< HEAD
-    #[inline(always)]
-    fn is_collection_disabled() -> bool {
-        unsafe {
-            AtomicU32::load(
-                ::std::mem::transmute::<*const AtomicU32, &AtomicU32>(::std::ptr::addr_of!(
-                    jl_gc_disable_counter
-                )),
-                Ordering::SeqCst,
-            ) > 0
-        }
-=======
     fn is_collection_enabled() -> bool {
         unsafe { AtomicU32::load(&jl_gc_disable_counter, Ordering::SeqCst) <= 0 }
->>>>>>> eac7e88 (Ask from binding if GC is disabled (#126))
     }
 }
 
