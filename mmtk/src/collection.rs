@@ -111,16 +111,8 @@ impl Collection<JuliaVM> for VMCollection {
         crate::api::JULIA_MALLOC_BYTES.load(Ordering::SeqCst)
     }
 
-    #[inline(always)]
-    fn is_collection_disabled() -> bool {
-        unsafe {
-            AtomicU32::load(
-                ::std::mem::transmute::<*const AtomicU32, &AtomicU32>(::std::ptr::addr_of!(
-                    jl_gc_disable_counter
-                )),
-                Ordering::SeqCst,
-            ) > 0
-        }
+    fn is_collection_enabled() -> bool {
+        unsafe { AtomicU32::load(&jl_gc_disable_counter, Ordering::SeqCst) <= 0 }
     }
 }
 
