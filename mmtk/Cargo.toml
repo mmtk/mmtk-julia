@@ -53,6 +53,6 @@ stickyimmix = ["mmtk/sticky_immix_non_moving_nursery", "mmtk/immix_smaller_block
 marksweep = []
 object_pinning = ["mmtk/object_pinning"]
 
-# TODO remove this when we properly support moving
-non_moving_immix = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
+# This feature disables moving
+non_moving = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
 julia_copy_stack = []
