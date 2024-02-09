@@ -484,7 +484,7 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
     }
 }
 
-#[cfg(feature = "object_pinning")]
+#[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
     debug_assert!(
@@ -494,7 +494,7 @@ pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
     memory_manager::pin_object::<JuliaVM>(object)
 }
 
-#[cfg(feature = "object_pinning")]
+#[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
 #[no_mangle]
 pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
     debug_assert!(
@@ -504,8 +504,26 @@ pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
     memory_manager::unpin_object::<JuliaVM>(object)
 }
 
-#[cfg(feature = "object_pinning")]
+#[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
 #[no_mangle]
 pub extern "C" fn mmtk_is_pinned(object: ObjectReference) -> bool {
     memory_manager::is_pinned::<JuliaVM>(object)
+}
+
+#[cfg(all(feature = "object_pinning", feature = "non_moving"))]
+#[no_mangle]
+pub extern "C" fn mmtk_pin_object(_object: ObjectReference) -> bool {
+    false
+}
+
+#[cfg(all(feature = "object_pinning", feature = "non_moving"))]
+#[no_mangle]
+pub extern "C" fn mmtk_unpin_object(_object: ObjectReference) -> bool {
+    false
+}
+
+#[cfg(all(feature = "object_pinning", feature = "non_moving"))]
+#[no_mangle]
+pub extern "C" fn mmtk_is_pinned(_object: ObjectReference) -> bool {
+    true
 }
