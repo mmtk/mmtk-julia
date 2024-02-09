@@ -6,6 +6,9 @@ on:
       gc_plan:
         required: true
         type: string
+      moving:
+        required: true
+        type: string
 
 jobs:
   build-debug:
