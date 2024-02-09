@@ -21,7 +21,7 @@ jobs:
           ./.github/scripts/ci-setup.sh
       - name: Build Julia (Debug)
         run: |
-          ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }}
+          ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
       - name: Style check
         run: |
           ./.github/scripts/ci-style.sh
