@@ -108,8 +108,10 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         } else if flags.how_custom() == 3 {
             // has a pointer to the object that owns the data
             let owner_addr = mmtk_jl_array_data_owner_addr(array);
+
             // to avoid having to update a->data, which requires introspecting the owner object
-            // we simply expect that both owner and buffers are pinned
+            // we simply expect that both owner and buffers are pinned when in a moving GC
+            #[cfg(not(feature = "non_moving"))]
             debug_assert!(
                 (mmtk_object_is_managed_by_mmtk(owner_addr.load())
                     && mmtk_is_pinned(owner_addr.load())
@@ -118,6 +120,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                 owner_addr.load::<ObjectReference>(),
                 mmtk_is_pinned(owner_addr.load())
             );
+
             process_edge(closure, owner_addr);
             return;
         }
