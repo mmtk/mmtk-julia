@@ -24,6 +24,10 @@ declare -a tests_to_skip=(
     # This test checks GC logging
     '@test occursin("GC: pause", read(tmppath, String))' "$JULIA_PATH/test/misc.jl"
 
+    # These tests check for the number of stock GC threads (which we set to 0 with mmtk)
+    '@test (cpu_threads == 1 ? "1" : string(div(cpu_threads, 2))) ==' "$JULIA_PATH/test/cmdlineargs.jl"
+    '@test read(`$exename --gcthreads=2 -e $code`, String) == "2"' "$JULIA_PATH/test/cmdlineargs.jl"
+    '@test read(`$exename -e $code`, String) == "2"' "$JULIA_PATH/test/cmdlineargs.jl"
     # This seems to be a regression from upstream when we merge with upstream 43bf2c8.
     # The required string int.jl does not appear in the output even if I test with the stock Julia code.
     # I do not know what is wrong, but at this point, I dont want to spend time on it.
