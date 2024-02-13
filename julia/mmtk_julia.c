@@ -21,6 +21,8 @@ extern void mmtk_store_obj_size_c(void* obj, size_t size);
 extern void jl_gc_free_array(jl_array_t *a);
 extern size_t mmtk_get_obj_size(void* obj);
 extern void jl_rng_split(uint64_t to[4], uint64_t from[4]);
+extern void _jl_free_stack(jl_ptls_t ptls, void *stkbuf, size_t bufsz);
+extern void free_stack(void *stkbuf, size_t bufsz);
 extern jl_mutex_t finalizers_lock;
 extern void jl_gc_wait_for_the_world(jl_ptls_t* gc_all_tls_states, int gc_n_threads);
 extern void mmtk_block_thread_for_gc(int gc_n_threads);
@@ -121,6 +123,9 @@ static void mmtk_sweep_malloced_arrays(void) JL_NOTSAFEPOINT
                 continue;
             }
             if (mmtk_is_live_object(ma->a)) {
+                // if the array has been forwarded, the reference needs to be updated
+                jl_array_t *maybe_forwarded = (jl_array_t*)mmtk_get_possibly_forwared(ma->a);
+                ma->a = maybe_forwarded;
                 pma = &ma->next;
             }
             else {
@@ -277,6 +282,19 @@ static void add_node_to_roots_buffer(RootsWorkClosure* closure, RootsWorkBuffer*
     }
 }
 
+static void add_node_to_tpinned_roots_buffer(RootsWorkClosure* closure, RootsWorkBuffer* buf, size_t* buf_len, void* root) {
+    if (root == NULL)
+        return;
+
+    buf->ptr[*buf_len] = root;
+    *buf_len += 1;
+    if (*buf_len >= buf->cap) {
+        RootsWorkBuffer new_buf = (closure->report_tpinned_nodes_func)(buf->ptr, *buf_len, buf->cap, closure->data, true);
+        *buf = new_buf;
+        *buf_len = 0;
+    }
+}
+
 void scan_vm_specific_roots(RootsWorkClosure* closure)
 {
     // Create a new buf
@@ -305,10 +323,15 @@ void scan_vm_specific_roots(RootsWorkClosure* closure)
     // constants
     add_node_to_roots_buffer(closure, &buf, &len, jl_emptytuple_type);
     add_node_to_roots_buffer(closure, &buf, &len, cmpswap_names);
-    add_node_to_roots_buffer(closure, &buf, &len, jl_global_roots_table);
+
+    // jl_global_roots_table must be transitively pinned 
+    RootsWorkBuffer tpinned_buf = (closure->report_tpinned_nodes_func)((void**)0, 0, 0, closure->data, true);
+    size_t tpinned_len = 0;
+    add_node_to_tpinned_roots_buffer(closure, &tpinned_buf, &tpinned_len, jl_global_roots_table);
 
     // Push the result of the work.
     (closure->report_nodes_func)(buf.ptr, len, buf.cap, closure->data, false);
+    (closure->report_tpinned_nodes_func)(tpinned_buf.ptr, tpinned_len, tpinned_buf.cap, closure->data, false);
 }
 
 JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn process_edge) {
@@ -350,8 +373,28 @@ JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn
     }
 }
 
-// number of stacks to always keep available per pool
+// number of stacks to always keep available per pool - from gc-stacks.c
 #define MIN_STACK_MAPPINGS_PER_POOL 5
+
+// if data is inlined inside the array object --- to->data needs to be updated when copying the array
+void update_inlined_array(void* from, void* to) {
+    jl_value_t* jl_from = (jl_value_t*) from;
+    jl_value_t* jl_to = (jl_value_t*) to;
+
+    uintptr_t tag_to = (uintptr_t)jl_typeof(jl_to);
+    jl_datatype_t *vt = (jl_datatype_t*)tag_to;
+
+    if(vt->name == jl_array_typename) {
+        jl_array_t *a = (jl_array_t*)jl_from;
+        jl_array_t *b = (jl_array_t*)jl_to;
+        if (a->flags.how == 0 && mmtk_object_is_managed_by_mmtk(a->data)) { // a is inlined (a->data is an mmtk object)
+            size_t offset_of_data = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
+            if (offset_of_data > 0 && offset_of_data <= ARRAY_INLINE_NBYTES) {
+                b->data = (void*)((size_t) b + offset_of_data);
+            }
+        }
+    }
+}
 
 // modified sweep_stack_pools from gc-stacks.c
 void mmtk_sweep_stack_pools(void)
@@ -398,9 +441,11 @@ void mmtk_sweep_stack_pools(void)
             continue;
         while (1) {
             jl_task_t *t = (jl_task_t*)lst[n];
-            assert(jl_is_task(t));
             if (mmtk_is_live_object(t)) {
-                live_tasks->items[n] = t;
+                jl_task_t *maybe_forwarded = (jl_task_t*)mmtk_get_possibly_forwared(t);
+                live_tasks->items[n] = maybe_forwarded;
+                t = maybe_forwarded;
+                assert(jl_is_task(t));
                 if (t->stkbuf == NULL)
                     ndel++; // jl_release_task_stack called
                 else
@@ -547,6 +592,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .arraylist_grow = (void (*)(void*, long unsigned int))arraylist_grow,
     .get_jl_gc_have_pending_finalizers = get_jl_gc_have_pending_finalizers,
     .scan_vm_specific_roots = scan_vm_specific_roots,
+    .update_inlined_array = update_inlined_array,
     .prepare_to_collect = jl_gc_prepare_to_collect,
     .check_is_collection_disabled = check_is_collection_disabled,
 };

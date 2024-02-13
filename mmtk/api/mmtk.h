@@ -22,6 +22,7 @@ typedef struct {
 typedef struct {
     RootsWorkBuffer (*report_edges_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
     RootsWorkBuffer (*report_nodes_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
+    RootsWorkBuffer (*report_tpinned_nodes_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
     void* data;
 } RootsWorkClosure;
 
@@ -48,6 +49,8 @@ extern void mmtk_modify_check(void* ref);
 extern int mmtk_object_is_managed_by_mmtk(void* addr);
 extern void mmtk_runtime_panic(void);
 extern void mmtk_unreachable(void);
+extern unsigned char mmtk_pin_object(void* obj);
+extern bool mmtk_is_pinned(void* obj);
 
 extern void mmtk_set_vm_space(void* addr, size_t size);
 extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
@@ -87,6 +90,7 @@ typedef struct {
     void (*arraylist_grow)(void* a, size_t n);
     int* (*get_jl_gc_have_pending_finalizers)(void);
     void (*scan_vm_specific_roots)(RootsWorkClosure* closure);
+    void (*update_inlined_array) (void* from, void* to);
     void (*prepare_to_collect)(void);
     bool (*check_is_collection_disabled)(void);
 } Julia_Upcalls;
@@ -108,6 +112,7 @@ extern void mmtk_run_finalizers_for_obj(void* obj);
 extern void mmtk_run_finalizers(bool at_exit);
 extern void mmtk_gc_poll(void *tls);
 extern void mmtk_julia_copy_stack_check(int copy_stack);
+extern void* mmtk_get_possibly_forwared(void* object);
 
 /**
  * VM Accounting

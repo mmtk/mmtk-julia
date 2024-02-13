@@ -109,6 +109,7 @@ pub struct Julia_Upcalls {
     pub arraylist_grow: extern "C" fn(Address, usize),
     pub get_jl_gc_have_pending_finalizers: extern "C" fn() -> *mut i32,
     pub scan_vm_specific_roots: extern "C" fn(closure: *mut crate::edges::RootsWorkClosure),
+    pub update_inlined_array: extern "C" fn(to: Address, from: Address),
     pub prepare_to_collect: extern "C" fn(),
     pub check_is_collection_disabled: extern "C" fn() -> bool,
 }
