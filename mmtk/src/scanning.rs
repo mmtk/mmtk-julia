@@ -208,10 +208,7 @@ impl<VM: VMBinding> GCWork<VM> for SweepVMSpecific {
         // call sweep malloced arrays and sweep stack pools from UPCALLS
         unsafe { ((*UPCALLS).mmtk_sweep_malloced_array)() }
         unsafe { ((*UPCALLS).mmtk_sweep_stack_pools)() }
-<<<<<<< HEAD
         unsafe { ((*UPCALLS).mmtk_sweep_weak_refs)() }
-=======
->>>>>>> 1622162 (Supporting moving immix (#93))
         self.swept = true;
     }
 }

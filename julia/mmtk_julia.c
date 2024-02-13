@@ -20,13 +20,9 @@ extern const unsigned pool_sizes[];
 extern void mmtk_store_obj_size_c(void* obj, size_t size);
 extern void jl_gc_free_array(jl_array_t *a);
 extern size_t mmtk_get_obj_size(void* obj);
-<<<<<<< HEAD
 extern void jl_rng_split(uint64_t to[4], uint64_t from[4]);
-=======
-extern void jl_rng_split(uint64_t to[JL_RNG_SIZE], uint64_t from[JL_RNG_SIZE]);
 extern void _jl_free_stack(jl_ptls_t ptls, void *stkbuf, size_t bufsz);
 extern void free_stack(void *stkbuf, size_t bufsz);
->>>>>>> 1622162 (Supporting moving immix (#93))
 extern jl_mutex_t finalizers_lock;
 extern void jl_gc_wait_for_the_world(jl_ptls_t* gc_all_tls_states, int gc_n_threads);
 extern void mmtk_block_thread_for_gc(int gc_n_threads);
@@ -377,11 +373,6 @@ JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn
     }
 }
 
-<<<<<<< HEAD
-// number of stacks to always keep available per pool
-#define MIN_STACK_MAPPINGS_PER_POOL 5
-
-=======
 // number of stacks to always keep available per pool - from gc-stacks.c
 #define MIN_STACK_MAPPINGS_PER_POOL 5
 
@@ -405,7 +396,6 @@ void update_inlined_array(void* from, void* to) {
     }
 }
 
->>>>>>> 1622162 (Supporting moving immix (#93))
 // modified sweep_stack_pools from gc-stacks.c
 void mmtk_sweep_stack_pools(void)
 {
@@ -420,21 +410,13 @@ void mmtk_sweep_stack_pools(void)
     //            bufsz = t->bufsz
     //            if (stkbuf)
     //                push(free_stacks[sz], stkbuf)
-<<<<<<< HEAD
     assert(gc_n_threads);
     for (int i = 0; i < gc_n_threads; i++) {
-=======
-    for (int i = 0; i < jl_n_threads; i++) {
->>>>>>> 1622162 (Supporting moving immix (#93))
         jl_ptls_t ptls2 = jl_all_tls_states[i];
 
         // free half of stacks that remain unused since last sweep
         for (int p = 0; p < JL_N_STACK_POOLS; p++) {
-<<<<<<< HEAD
             small_arraylist_t *al = &ptls2->heap.free_stacks[p];
-=======
-            arraylist_t *al = &ptls2->heap.free_stacks[p];
->>>>>>> 1622162 (Supporting moving immix (#93))
             size_t n_to_free;
             if (al->len > MIN_STACK_MAPPINGS_PER_POOL) {
                 n_to_free = al->len / 2;
@@ -445,20 +427,12 @@ void mmtk_sweep_stack_pools(void)
                 n_to_free = 0;
             }
             for (int n = 0; n < n_to_free; n++) {
-<<<<<<< HEAD
                 void *stk = small_arraylist_pop(al);
-=======
-                void *stk = arraylist_pop(al);
->>>>>>> 1622162 (Supporting moving immix (#93))
                 free_stack(stk, pool_sizes[p]);
             }
         }
 
-<<<<<<< HEAD
         small_arraylist_t *live_tasks = &ptls2->heap.live_tasks;
-=======
-        arraylist_t *live_tasks = &ptls2->heap.live_tasks;
->>>>>>> 1622162 (Supporting moving immix (#93))
         size_t n = 0;
         size_t ndel = 0;
         size_t l = live_tasks->len;
@@ -467,17 +441,11 @@ void mmtk_sweep_stack_pools(void)
             continue;
         while (1) {
             jl_task_t *t = (jl_task_t*)lst[n];
-<<<<<<< HEAD
-            assert(jl_is_task(t));
-            if (mmtk_is_live_object(t)) {
-                live_tasks->items[n] = t;
-=======
             if (mmtk_is_live_object(t)) {
                 jl_task_t *maybe_forwarded = (jl_task_t*)mmtk_get_possibly_forwared(t);
                 live_tasks->items[n] = maybe_forwarded;
                 t = maybe_forwarded;
                 assert(jl_is_task(t));
->>>>>>> 1622162 (Supporting moving immix (#93))
                 if (t->stkbuf == NULL)
                     ndel++; // jl_release_task_stack called
                 else
@@ -611,11 +579,8 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .mmtk_jl_throw_out_of_memory_error = mmtk_jl_throw_out_of_memory_error,
     .sweep_malloced_array = mmtk_sweep_malloced_arrays,
     .sweep_stack_pools = mmtk_sweep_stack_pools,
-<<<<<<< HEAD
     .clear_weak_refs = clear_weak_refs,
     .sweep_weak_refs = sweep_weak_refs,
-=======
->>>>>>> 1622162 (Supporting moving immix (#93))
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
     .mmtk_jl_hrtime = mmtk_jl_hrtime,

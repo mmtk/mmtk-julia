@@ -14,13 +14,9 @@ use mmtk::vm::EdgeVisitor;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-<<<<<<< HEAD
-=======
-const JL_MAX_TAGS: usize = 64; // from vm/julia/src/jl_exports.h
 const OFFSET_OF_INLINED_SPACE_IN_MODULE: usize =
     offset_of!(mmtk_jl_module_t, usings) + offset_of!(mmtk_arraylist_t, _space);
 
->>>>>>> 1622162 (Supporting moving immix (#93))
 extern "C" {
     pub static jl_simplevector_type: *const mmtk_jl_datatype_t;
     pub static jl_array_typename: *mut mmtk_jl_typename_t;
@@ -251,20 +247,6 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         }
         process_edge(closure, Address::from_ptr(parent_edge));
 
-<<<<<<< HEAD
-=======
-        let bindingkeyset_edge = ::std::ptr::addr_of!((*m).bindingkeyset);
-        if PRINT_OBJ_TYPE {
-            println!(" - scan bindingkeyset: {:?}\n", bindingkeyset_edge);
-        }
-        process_edge(closure, Address::from_ptr(bindingkeyset_edge));
-
-        let bindings_edge = ::std::ptr::addr_of!((*m).bindings);
-        if PRINT_OBJ_TYPE {
-            println!(" - scan bindings: {:?}\n", bindings_edge);
-        }
-        process_edge(closure, Address::from_ptr(bindings_edge));
-
         // m.usings.items may be inlined in the module when the array list size <= AL_N_INLINE (cf. arraylist_new)
         // In that case it may be an mmtk object and not a malloced address.
         // If it is an mmtk object, (*m).usings.items will then be an internal pointer to the module
@@ -275,7 +257,6 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
             process_offset_edge(closure, slot, offset);
         }
 
->>>>>>> 1622162 (Supporting moving immix (#93))
         let nusings = (*m).usings.len;
         if nusings != 0 {
             let mut objary_begin = Address::from_mut_ptr((*m).usings.items);
