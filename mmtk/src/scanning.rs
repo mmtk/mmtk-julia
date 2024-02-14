@@ -4,6 +4,7 @@ use mmtk::memory_manager;
 use mmtk::scheduler::*;
 use mmtk::util::opaque_pointer::*;
 use mmtk::util::ObjectReference;
+use mmtk::vm::edge_shape::Edge;
 use mmtk::vm::EdgeVisitor;
 use mmtk::vm::ObjectTracerContext;
 use mmtk::vm::RootsWorkFactory;
@@ -37,8 +38,11 @@ impl Scanning<JuliaVM> for VMScanning {
                             self.buffer.push(object);
                         }
                     }
-                    JuliaVMEdge::Offset(_) => {
-                        unimplemented!() // transitively pinned roots in Julia only come from the stack
+                    JuliaVMEdge::Offset(oe) => {
+                        let object = oe.load();
+                        if !object.is_null() {
+                            self.buffer.push(object);
+                        }
                     }
                 }
             }
