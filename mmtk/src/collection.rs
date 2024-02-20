@@ -2,12 +2,12 @@ use crate::JuliaVM;
 use crate::{SINGLETON, UPCALLS};
 use log::{info, trace};
 use mmtk::util::alloc::AllocationError;
+use mmtk::util::heap::GCTriggerPolicy;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::ActivePlan;
 use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::Mutator;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
-use mmtk::util::heap::GCTriggerPolicy;
 
 use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
 
@@ -119,9 +119,15 @@ impl Collection<JuliaVM> for VMCollection {
     fn create_gc_trigger() -> Box<dyn GCTriggerPolicy<JuliaVM>> {
         use crate::gc_trigger::*;
         use std::convert::TryInto;
-        let total_mem = unsafe { ((*UPCALLS).mmtk_get_total_memory)() }.try_into().unwrap();
-        let constrained_mem = unsafe { ((*UPCALLS).mmtk_get_constrained_memory)() }.try_into().unwrap();
-        let size_hint = unsafe { ((*UPCALLS).mmtk_get_heap_size_hint)() }.try_into().unwrap();
+        let total_mem = unsafe { ((*UPCALLS).mmtk_get_total_memory)() }
+            .try_into()
+            .unwrap();
+        let constrained_mem = unsafe { ((*UPCALLS).mmtk_get_constrained_memory)() }
+            .try_into()
+            .unwrap();
+        let size_hint = unsafe { ((*UPCALLS).mmtk_get_heap_size_hint)() }
+            .try_into()
+            .unwrap();
         Box::new(JuliaGCTrigger::new(total_mem, constrained_mem, size_hint))
     }
 }
