@@ -487,6 +487,25 @@ void update_gc_time(uint64_t inc) {
     gc_num.total_time += inc;
 }
 
+<<<<<<< HEAD
+=======
+bool check_is_collection_disabled(void) {
+    return (jl_atomic_load_acquire(&jl_gc_disable_counter) > 0);
+}
+
+uint64_t mmtk_get_total_memory(void) {
+    return uv_get_total_memory();
+}
+
+uint64_t mmtk_get_constrained_memory(void) {
+    return uv_get_constrained_memory();
+}
+
+uint64_t mmtk_get_heap_size_hint(void) {
+    return jl_options.heap_size_hint;
+}
+
+>>>>>>> 3ff2749 (Implemnet Julia's GC heuristics)
 #define assert_size(ty_a, ty_b) \
     if(sizeof(ty_a) != sizeof(ty_b)) {\
         printf("%s size = %ld, %s size = %ld. Need to update our type definition.\n", #ty_a, sizeof(ty_a), #ty_b, sizeof(ty_b));\
@@ -569,4 +588,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_vm_specific_roots = scan_vm_specific_roots,
     .update_inlined_array = update_inlined_array,
     .prepare_to_collect = jl_gc_prepare_to_collect,
+    .mmtk_get_total_memory = mmtk_get_total_memory,
+    .mmtk_get_constrained_memory = mmtk_get_constrained_memory,
+    .mmtk_get_heap_size_hint = mmtk_get_heap_size_hint,
 };

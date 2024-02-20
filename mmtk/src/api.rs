@@ -63,32 +63,40 @@ pub extern "C" fn mmtk_gc_init(
         }
 
         // Set heap size
-        let success;
-        if min_heap_size != 0 {
-            info!(
-                "Setting mmtk heap size to a variable size with min-max of {}-{} (in bytes)",
-                min_heap_size, max_heap_size
-            );
-            success = builder.options.gc_trigger.set(
-                mmtk::util::options::GCTriggerSelector::DynamicHeapSize(
-                    min_heap_size,
-                    max_heap_size,
-                ),
-            );
-        } else {
-            info!(
-                "Setting mmtk heap size to a fixed max of {} (in bytes)",
-                max_heap_size
-            );
-            success = builder.options.gc_trigger.set(
-                mmtk::util::options::GCTriggerSelector::FixedHeapSize(max_heap_size),
-            );
+        // First check MMTK_GC_TRIGGER. If this is set, then MMTk already got its value, and we do not need to do anything.
+        // This also means the env var will overwrite other settings.
+        match std::env::var("MMTK_GC_TRIGGER") {
+            Ok(val) => info!("Using MMTK_GC_TRIGGER={:?}", val),
+            // If MMTK_GC_TRIGGER is not set, then use the min/max heap size from the arguments.
+            Err(_) => {
+                let success;
+                if min_heap_size != 0 {
+                    info!(
+                        "Setting mmtk heap size to a variable size with min-max of {}-{} (in bytes)",
+                        min_heap_size, max_heap_size
+                    );
+                    success = builder.options.gc_trigger.set(
+                        mmtk::util::options::GCTriggerSelector::DynamicHeapSize(
+                            min_heap_size,
+                            max_heap_size,
+                        ),
+                    );
+                } else {
+                    info!(
+                        "Setting mmtk heap size to a fixed max of {} (in bytes)",
+                        max_heap_size
+                    );
+                    success = builder.options.gc_trigger.set(
+                        mmtk::util::options::GCTriggerSelector::FixedHeapSize(max_heap_size),
+                    );
+                }
+                assert!(
+                    success,
+                    "Failed to set heap size to {}-{}",
+                    min_heap_size, max_heap_size
+                );
+            }
         }
-        assert!(
-            success,
-            "Failed to set heap size to {}-{}",
-            min_heap_size, max_heap_size
-        );
 
         // Set using weak references
         let success = builder.options.no_reference_types.set(false);

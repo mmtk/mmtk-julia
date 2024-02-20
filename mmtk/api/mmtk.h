@@ -89,6 +89,9 @@ typedef struct {
     void (*scan_vm_specific_roots)(RootsWorkClosure* closure);
     void (*update_inlined_array) (void* from, void* to);
     void (*prepare_to_collect)(void);
+    uint64_t (*mmtk_get_total_memory)(void);
+    uint64_t (*mmtk_get_constrained_memory)(void);
+    uint64_t (*mmtk_get_heap_size_hint)(void);
 } Julia_Upcalls;
 
 /**
