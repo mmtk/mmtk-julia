@@ -93,6 +93,9 @@ typedef struct {
     void (*update_inlined_array) (void* from, void* to);
     void (*prepare_to_collect)(void);
     bool (*check_is_collection_disabled)(void);
+    uint64_t (*mmtk_get_total_memory)(void);
+    uint64_t (*mmtk_get_constrained_memory)(void);
+    uint64_t (*mmtk_get_heap_size_hint)(void);
 } Julia_Upcalls;
 
 /**
