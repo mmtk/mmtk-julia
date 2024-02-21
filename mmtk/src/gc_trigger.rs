@@ -15,6 +15,19 @@ const DEFAULT_COLLECT_INTERVAL: usize = 5600 * 1024 * std::mem::size_of::<usize>
 const MAX_COLLECT_INTERVAL: usize = 1250000000;
 const GC_ALWAYS_SWEEP_FULL: bool = false;
 
+/// This tries to implement Julia-style GC triggering heuristics. However, it is still siginificantly different
+/// from the Julia's GC heuristics.
+/// 1. Julia counts allocation per thread and compares with a per-thread interval, while this impl counts global
+///    allocation and compares that with an estimated global interval. For Julia, the first thread that allocates
+///    the amount of bytes that exceeds the interval will trigger a GC. For us, as MMTk does not count allocation
+///    per thread, we calculate an estiamted global interval (using thread interval * n_mutator / 2), and compare
+///    global allocation with it.
+/// 2. Julia makes the decision of full heap GC after marking and before sweeping (they call it full sweep), while
+///    MMTk makes such decisions before a GC. So for us, we use Julia's decision, but force a full heap GC in the next
+///    next GC (not the current one).
+/// 3. Julia counts the pointers in the remembered set, and if the remembered set is too large (large_frontier),
+///    they will do full heap GC. MMTk does not collect such information about remembered set, so we do not have the heuristic
+///    based on the remembered set.
 pub struct JuliaGCTrigger {
     total_mem: AtomicUsize,
     max_total_memory: AtomicUsize,
