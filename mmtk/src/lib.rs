@@ -19,6 +19,7 @@ pub mod active_plan;
 pub mod api;
 pub mod collection;
 pub mod edges;
+pub mod gc_trigger;
 pub mod object_model;
 pub mod reference_glue;
 pub mod scanning;
@@ -112,6 +113,9 @@ pub struct Julia_Upcalls {
     pub update_inlined_array: extern "C" fn(to: Address, from: Address),
     pub prepare_to_collect: extern "C" fn(),
     pub check_is_collection_disabled: extern "C" fn() -> bool,
+    pub mmtk_get_total_memory: extern "C" fn() -> u64,
+    pub mmtk_get_constrained_memory: extern "C" fn() -> u64,
+    pub mmtk_get_heap_size_hint: extern "C" fn() -> u64,
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();
