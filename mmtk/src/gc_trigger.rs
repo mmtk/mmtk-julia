@@ -260,20 +260,21 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
         plan.collection_required(space_full, space)
     }
 
+    // Basically there is no limit for the heap size.
+
     /// Is current heap full?
     fn is_heap_full(&self, plan: &dyn Plan<VM = JuliaVM>) -> bool {
-        plan.get_reserved_pages()
-            >= conversions::bytes_to_pages_up(self.max_total_memory.load(Ordering::Relaxed))
+        false
     }
 
     /// Return the current heap size (in pages)
     fn get_current_heap_size_in_pages(&self) -> usize {
-        conversions::bytes_to_pages_up(self.max_total_memory.load(Ordering::Relaxed))
+        usize::MAX
     }
 
     /// Return the upper bound of heap size
     fn get_max_heap_size_in_pages(&self) -> usize {
-        conversions::bytes_to_pages_up(self.max_total_memory.load(Ordering::Relaxed))
+        usize::MAX
     }
 
     /// Can the heap size grow?
