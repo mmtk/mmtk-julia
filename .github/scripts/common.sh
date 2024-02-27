@@ -10,8 +10,9 @@ export MMTK_JULIA_DIR=$BINDING_PATH
 # Make sure we have enough heap to build Julia
 export MMTK_MIN_HSIZE_G=0.5
 export MMTK_MAX_HSIZE_G=4
-# Make sure we do not get OOM killed. The Github runner has ~7G RAM.
-export JULIA_TEST_MAXRSS_MB=6500
+# Make sure we do not get OOM killed.
+total_mem=$(free -m | awk '/^Mem:/ {print $2}')
+export JULIA_TEST_MAXRSS_MB=$total_mem
 
 ci_run_jl_test() {
     test=$1
@@ -24,7 +25,6 @@ ci_run_jl_test() {
 
     cd $JULIA_PATH
     export JULIA_CPU_THREADS=$threads
-    export JULIA_NUM_THREADS=4 # set default to 4 mutator threads to try to capture bad races
 
     # Directly run runtests.jl: There could be some issues with some test suites. We better just use their build script.
     # $JULIA_PATH/julia $JULIA_TEST_ARGS $JULIA_PATH/test/runtests.jl --exit-on-error $test

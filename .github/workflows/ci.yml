@@ -4,7 +4,8 @@ on:
   pull_request:
     branches:
       - master
-      - v1.8.2-RAI
+      - v1.8.2\+RAI
+      - v1.9.2\+RAI
 
 concurrency:
   # Cancels pending runs when a PR gets updated.
@@ -17,6 +18,8 @@ jobs:
       fail-fast: false
       matrix:
         gc_plan: [Immix, StickyImmix]
+        moving: [Default, Non_Moving]
     uses: ./.github/workflows/binding-tests.yml
     with:
       gc_plan: ${{ matrix.gc_plan }}
+      moving: ${{ matrix.moving }}

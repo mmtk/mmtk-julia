@@ -6,6 +6,9 @@ on:
       gc_plan:
         required: true
         type: string
+      moving:
+        required: true
+        type: string
 
 jobs:
   build-debug:
@@ -18,7 +21,7 @@ jobs:
           ./.github/scripts/ci-setup.sh
       - name: Build Julia (Debug)
         run: |
-          ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }}
+          ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
       - name: Style check
         run: |
           ./.github/scripts/ci-style.sh
@@ -37,7 +40,7 @@ jobs:
           ./.github/scripts/ci-test-patching.sh
       - name: Build Julia (Release)
         run: |
-          ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }}
+          ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
       - name: Test Julia
         run: |
           ./.github/scripts/ci-test-other.sh
@@ -53,7 +56,7 @@ jobs:
           ./.github/scripts/ci-setup.sh
       - name: Build Julia (Release)
         run: |
-          ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }}
+          ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
       - name: Test Julia
         run: |
           ./.github/scripts/ci-test-stdlib.sh
@@ -69,7 +72,7 @@ jobs:
           ./.github/scripts/ci-setup.sh
       - name: Build Julia (Release)
         run: |
-          ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }}
+          ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
       - name: Test Julia
         run: |
           ./.github/scripts/ci-test-LinearAlgebra.sh

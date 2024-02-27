@@ -12,6 +12,8 @@ fi
 build_type=$1
 # plan to use
 plan=$2
+# moving vs non-moving
+is_moving=$3
 
 # helloworld.jl
 HELLO_WORLD_JL=$BINDING_PATH/.github/scripts/hello_world.jl
@@ -23,9 +25,10 @@ if [ "$build_type" == "release" ]; then
 fi
 
 plan_feature=${plan,,}
+moving_feature=${is_moving,,}
 
 cd $MMTK_JULIA_DIR/mmtk
-cargo build --features $plan_feature $build_args
+cargo build --features $plan_feature,$moving_feature $build_args
 
 cd $JULIA_PATH
 

@@ -3,7 +3,6 @@
 
 use crate::JuliaVM;
 use crate::Julia_Upcalls;
-use crate::BLOCK_FOR_GC;
 use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
 use crate::UPCALLS;
@@ -241,30 +240,6 @@ pub extern "C" fn mmtk_initialize_collection(tls: VMThread) {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_enable_collection() {
-    if AtomicBool::load(&DISABLED_GC, Ordering::SeqCst) {
-        memory_manager::enable_collection(&SINGLETON);
-        AtomicBool::store(&DISABLED_GC, false, Ordering::SeqCst);
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn mmtk_disable_collection() {
-    if AtomicBool::load(&DISABLED_GC, Ordering::SeqCst) == false {
-        AtomicBool::store(&DISABLED_GC, true, Ordering::SeqCst);
-        memory_manager::disable_collection(&SINGLETON);
-    }
-
-    // if user has triggered GC, wait until GC is finished
-    while AtomicIsize::load(&USER_TRIGGERED_GC, Ordering::SeqCst) != 0
-        || AtomicBool::load(&BLOCK_FOR_GC, Ordering::SeqCst)
-    {
-        info!("Waiting for a triggered gc to finish...");
-        unsafe { ((*UPCALLS).wait_in_a_safepoint)() };
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn mmtk_used_bytes() -> usize {
     memory_manager::used_bytes(&SINGLETON)
 }
@@ -290,11 +265,6 @@ pub extern "C" fn mmtk_is_mapped_address(address: Address) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn mmtk_modify_check(object: ObjectReference) {
-    memory_manager::modify_check(&SINGLETON, object)
-}
-
-#[no_mangle]
 pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread, collection: u8) {
     AtomicIsize::fetch_add(&USER_TRIGGERED_GC, 1, Ordering::SeqCst);
     if AtomicBool::load(&DISABLED_GC, Ordering::SeqCst) {
@@ -306,13 +276,9 @@ pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread, coll
         // auto
         0 => memory_manager::handle_user_collection_request::<JuliaVM>(&SINGLETON, tls),
         // full
-        1 => SINGLETON
-            .get_plan()
-            .handle_user_collection_request(tls, true, true),
+        1 => SINGLETON.handle_user_collection_request(tls, true, true),
         // incremental
-        2 => SINGLETON
-            .get_plan()
-            .handle_user_collection_request(tls, true, false),
+        2 => SINGLETON.handle_user_collection_request(tls, true, false),
         _ => unreachable!(),
     }
 }
@@ -516,4 +482,56 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
         let addr_size = obj.to_raw_address() - 2 * JULIA_HEADER_SIZE;
         addr_size.load::<u64>() as usize
     }
+}
+
+#[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
+#[no_mangle]
+pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
+    if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
+        memory_manager::pin_object::<JuliaVM>(object)
+    } else {
+        warn!("Object is not managed by mmtk - (un)pinning it via this function isn't supported.");
+        false
+    }
+}
+
+#[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
+#[no_mangle]
+pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
+    if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
+        memory_manager::unpin_object::<JuliaVM>(object)
+    } else {
+        warn!("Object is not managed by mmtk - (un)pinning it via this function isn't supported.");
+        false
+    }
+}
+
+#[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
+#[no_mangle]
+pub extern "C" fn mmtk_is_pinned(object: ObjectReference) -> bool {
+    if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
+        memory_manager::is_pinned::<JuliaVM>(object)
+    } else {
+        warn!("Object is not managed by mmtk - checking via this function isn't supported.");
+        false
+    }
+}
+
+// If the `non-moving` feature is selected, pinning/unpinning is a noop and simply returns false
+#[cfg(all(feature = "object_pinning", feature = "non_moving"))]
+#[no_mangle]
+pub extern "C" fn mmtk_pin_object(_object: ObjectReference) -> bool {
+    false
+}
+
+#[cfg(all(feature = "object_pinning", feature = "non_moving"))]
+#[no_mangle]
+pub extern "C" fn mmtk_unpin_object(_object: ObjectReference) -> bool {
+    false
+}
+
+#[cfg(all(feature = "object_pinning", feature = "non_moving"))]
+#[no_mangle]
+pub extern "C" fn mmtk_is_pinned(_object: ObjectReference) -> bool {
+    false
 }

@@ -22,6 +22,7 @@ typedef struct {
 typedef struct {
     RootsWorkBuffer (*report_edges_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
     RootsWorkBuffer (*report_nodes_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
+    RootsWorkBuffer (*report_tpinned_nodes_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
     void* data;
 } RootsWorkClosure;
 
@@ -44,10 +45,11 @@ extern void mmtk_post_alloc(MMTk_Mutator mutator, void* refer,
 extern bool mmtk_is_live_object(void* ref);
 extern bool mmtk_is_mapped_object(void* ref);
 extern bool mmtk_is_mapped_address(void* addr);
-extern void mmtk_modify_check(void* ref);
 extern int mmtk_object_is_managed_by_mmtk(void* addr);
 extern void mmtk_runtime_panic(void);
 extern void mmtk_unreachable(void);
+extern unsigned char mmtk_pin_object(void* obj);
+extern bool mmtk_is_pinned(void* obj);
 
 extern void mmtk_set_vm_space(void* addr, size_t size);
 extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
@@ -73,6 +75,7 @@ typedef struct {
     void (* mmtk_jl_run_finalizers) (void* tls);
     void (* jl_throw_out_of_memory_error) (void);
     void (* sweep_malloced_array) (void);
+    void (* sweep_stack_pools) (void);
     void (* wait_in_a_safepoint) (void);
     void (* exit_from_safepoint) (int8_t old_state);
     uint64_t (* jl_hrtime) (void);
@@ -84,6 +87,7 @@ typedef struct {
     void (*arraylist_grow)(void* a, size_t n);
     int* (*get_jl_gc_have_pending_finalizers)(void);
     void (*scan_vm_specific_roots)(RootsWorkClosure* closure);
+    void (*update_inlined_array) (void* from, void* to);
     void (*prepare_to_collect)(void);
 } Julia_Upcalls;
 
@@ -96,8 +100,6 @@ extern bool mmtk_process(char* name, char* value);
 extern void mmtk_scan_region(void);
 extern void mmtk_handle_user_collection_request(void *tls, uint8_t collection);
 extern void mmtk_initialize_collection(void* tls);
-extern void mmtk_enable_collection(void);
-extern void mmtk_disable_collection(void);
 extern void mmtk_start_control_collector(void *tls);
 extern void mmtk_start_worker(void *tls, void* worker, void* mmtk);
 extern void mmtk_process_julia_obj(void* addr);
@@ -106,6 +108,7 @@ extern void mmtk_run_finalizers_for_obj(void* obj);
 extern void mmtk_run_finalizers(bool at_exit);
 extern void mmtk_gc_poll(void *tls);
 extern void mmtk_julia_copy_stack_check(int copy_stack);
+extern void* mmtk_get_possibly_forwared(void* object);
 
 /**
  * VM Accounting
