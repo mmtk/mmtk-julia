@@ -10,7 +10,11 @@ edition = "2018"
 [package.metadata.julia]
 # Our CI matches the following line and extract mmtk/julia. If this line is updated, please check ci yaml files and make sure it works.
 julia_repo = "https://github.com/mmtk/julia.git"
+<<<<<<< HEAD
 julia_version = "75ac661401d8e26e3305dc43c662430814a3076c"
+=======
+julia_version = "9460689801747623d464024586fe90e635c74fbc"
+>>>>>>> efb9e10 (Stop using Julia's size classes when using MMTk (#108))
 
 [lib]
 crate-type = ["cdylib"]
