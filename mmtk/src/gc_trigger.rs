@@ -263,7 +263,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
     // Basically there is no limit for the heap size.
 
     /// Is current heap full?
-    fn is_heap_full(&self, plan: &dyn Plan<VM = JuliaVM>) -> bool {
+    fn is_heap_full(&self, _plan: &dyn Plan<VM = JuliaVM>) -> bool {
         false
     }
 
