@@ -4,8 +4,9 @@ use crate::julia_scanning::{
     jl_task_type, mmtk_jl_array_len, mmtk_jl_array_ndimwords, mmtk_jl_tparam0, mmtk_jl_typeof,
     mmtk_jl_typetagof,
 };
-use crate::julia_types::*;
+use crate::{julia_types::*, UPCALLS};
 use crate::{JuliaVM, JULIA_BUFF_TAG, JULIA_HEADER_SIZE};
+use log::trace;
 use mmtk::util::copy::*;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::ObjectModel;
@@ -19,6 +20,10 @@ pub(crate) const LOGGING_SIDE_METADATA_SPEC: VMGlobalLogBitSpec = VMGlobalLogBit
 
 pub(crate) const MARKING_METADATA_SPEC: VMLocalMarkBitSpec =
     VMLocalMarkBitSpec::side_after(LOS_METADATA_SPEC.as_spec());
+
+#[cfg(feature = "object_pinning")]
+pub(crate) const LOCAL_PINNING_METADATA_BITS_SPEC: VMLocalPinningBitSpec =
+    VMLocalPinningBitSpec::side_after(MARKING_METADATA_SPEC.as_spec());
 
 // pub(crate) const LOCAL_FORWARDING_POINTER_METADATA_SPEC: VMLocalForwardingPointerSpec =
 //     VMLocalForwardingPointerSpec::side_after(MARKING_METADATA_SPEC.as_spec());
@@ -34,20 +39,78 @@ pub(crate) const LOS_METADATA_SPEC: VMLocalLOSMarkNurserySpec =
 impl ObjectModel<JuliaVM> for VMObjectModel {
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = LOGGING_SIDE_METADATA_SPEC;
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
-        VMLocalForwardingPointerSpec::in_header(0);
+        VMLocalForwardingPointerSpec::in_header(-64);
+
+    #[cfg(feature = "object_pinning")]
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
-        VMLocalForwardingBitsSpec::in_header(0);
+        VMLocalForwardingBitsSpec::side_after(LOCAL_PINNING_METADATA_BITS_SPEC.as_spec());
+    #[cfg(not(feature = "object_pinning"))]
+    const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
+        VMLocalForwardingBitsSpec::side_after(MARKING_METADATA_SPEC.as_spec());
+
     const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec = MARKING_METADATA_SPEC;
     const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec = LOS_METADATA_SPEC;
     const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = false;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
 
+    #[cfg(feature = "object_pinning")]
+    const LOCAL_PINNING_BIT_SPEC: VMLocalPinningBitSpec = LOCAL_PINNING_METADATA_BITS_SPEC;
+
     fn copy(
-        _from: ObjectReference,
-        _semantics: CopySemantics,
-        _copy_context: &mut GCWorkerCopyContext<JuliaVM>,
+        from: ObjectReference,
+        semantics: CopySemantics,
+        copy_context: &mut GCWorkerCopyContext<JuliaVM>,
     ) -> ObjectReference {
-        unimplemented!()
+        let bytes = Self::get_current_size(from);
+        let from_start_ref = ObjectReference::from_raw_address(Self::ref_to_object_start(from));
+        let header_offset =
+            from.to_raw_address().as_usize() - from_start_ref.to_raw_address().as_usize();
+
+        let dst = if header_offset == 8 {
+            // regular object
+            copy_context.alloc_copy(from_start_ref, bytes, 16, 8, semantics)
+        } else if header_offset == 16 {
+            // buffer should not be copied
+            unimplemented!();
+        } else {
+            unimplemented!()
+        };
+
+        let src = Self::ref_to_object_start(from);
+        unsafe {
+            std::ptr::copy_nonoverlapping::<u8>(src.to_ptr(), dst.to_mut_ptr(), bytes);
+        }
+        let to_obj = ObjectReference::from_raw_address(dst + header_offset);
+
+        trace!("Copying object from {} to {}", from, to_obj);
+
+        copy_context.post_copy(to_obj, bytes, semantics);
+
+        unsafe {
+            let vt = mmtk_jl_typeof(from.to_raw_address());
+
+            if (*vt).name == jl_array_typename {
+                ((*UPCALLS).update_inlined_array)(from.to_raw_address(), to_obj.to_raw_address())
+            }
+        }
+
+        // zero from_obj (for debugging purposes)
+        #[cfg(debug_assertions)]
+        {
+            use atomic::Ordering;
+            unsafe {
+                libc::memset(from_start_ref.to_raw_address().to_mut_ptr(), 0, bytes);
+            }
+
+            Self::LOCAL_FORWARDING_BITS_SPEC.store_atomic::<JuliaVM, u8>(
+                from,
+                0b10 as u8, // BEING_FORWARDED
+                None,
+                Ordering::SeqCst,
+            );
+        }
+
+        to_obj
     }
 
     fn copy_to(_from: ObjectReference, _to: ObjectReference, _region: Address) -> Address {
@@ -101,9 +164,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
     }
 
     #[inline(always)]
-    fn ref_to_header(_object: ObjectReference) -> Address {
-        unreachable!()
-        // object.to_raw_address() - 8
+    fn ref_to_header(object: ObjectReference) -> Address {
+        object.to_raw_address()
     }
 
     fn dump_object(_object: ObjectReference) {
@@ -117,42 +179,6 @@ pub fn is_object_in_los(object: &ObjectReference) -> bool {
     (*object).to_raw_address().as_usize() >= 0x600_0000_0000
         && (*object).to_raw_address().as_usize() < 0x800_0000_0000
 }
-
-const JL_GC_SIZECLASSES: [::std::os::raw::c_int; 49] = [
-    8,
-    // 16 pools at 8-byte spacing
-    // the 8-byte aligned pools are only used for Strings
-    16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136,
-    // 8 pools at 16-byte spacing
-    144, 160, 176, 192, 208, 224, 240, 256,
-    // the following tables are computed for maximum packing efficiency via the formula:
-    // pg = 2^14
-    // sz = (div.(pg-8, rng).÷16)*16; hcat(sz, (pg-8).÷sz, pg .- (pg-8).÷sz.*sz)'
-
-    // rng = 60:-4:32 (8 pools)
-    272, 288, 304, 336, 368, 400, 448, 496,
-    //   60,  56,  53,  48,  44,  40,  36,  33, /pool
-    //   64, 256, 272, 256, 192, 384, 256,  16, bytes lost
-
-    // rng = 30:-2:16 (8 pools)
-    544, 576, 624, 672, 736, 816, 896, 1008,
-    //   30,  28,  26,  24,  22,  20,  18,  16, /pool
-    //   64, 256, 160, 256, 192,  64, 256, 256, bytes lost
-
-    // rng = 15:-1:8 (8 pools)
-    1088, 1168, 1248, 1360, 1488, 1632, 1808,
-    2032, //    15,   14,   13,   12,   11,   10,    9,    8, /pool
-          //    64,   32,  160,   64,   16,   64,  112,  128, bytes lost
-];
-
-const SZCLASS_TABLE: [u8; 128] = [
-    0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 28, 29, 29, 30,
-    30, 31, 31, 31, 32, 32, 32, 33, 33, 33, 34, 34, 35, 35, 35, 36, 36, 36, 37, 37, 37, 37, 38, 38,
-    38, 38, 38, 39, 39, 39, 39, 39, 40, 40, 40, 40, 40, 40, 40, 41, 41, 41, 41, 41, 42, 42, 42, 42,
-    42, 43, 43, 43, 43, 43, 44, 44, 44, 44, 44, 44, 44, 45, 45, 45, 45, 45, 45, 45, 45, 46, 46, 46,
-    46, 46, 46, 46, 46, 46, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 48, 48, 48, 48, 48, 48, 48,
-    48, 48, 48, 48, 48, 48, 48,
-];
 
 #[inline(always)]
 pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
@@ -193,8 +219,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
                     dtsz + JULIA_HEADER_SIZE
                 );
 
-                let pool_id = mmtk_jl_gc_szclass(dtsz + JULIA_HEADER_SIZE);
-                JL_GC_SIZECLASSES[pool_id]
+                llt_align(dtsz + JULIA_HEADER_SIZE, 16)
             }
             1 | 2 => {
                 let a_ndims_words = mmtk_jl_array_ndimwords(mmtk_jl_array_ndims(a));
@@ -207,8 +232,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
                     dtsz + JULIA_HEADER_SIZE
                 );
 
-                let pool_id = mmtk_jl_gc_szclass(dtsz + JULIA_HEADER_SIZE);
-                JL_GC_SIZECLASSES[pool_id]
+                llt_align(dtsz + JULIA_HEADER_SIZE, 16)
             }
             3 => {
                 let a_ndims_words = mmtk_jl_array_ndimwords(mmtk_jl_array_ndims(a));
@@ -221,8 +245,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
                     dtsz + JULIA_HEADER_SIZE
                 );
 
-                let pool_id = mmtk_jl_gc_szclass(dtsz + JULIA_HEADER_SIZE);
-                JL_GC_SIZECLASSES[pool_id]
+                llt_align(dtsz + JULIA_HEADER_SIZE, 16)
             }
             _ => unreachable!(),
         };
@@ -238,12 +261,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        let sz = dtsz + JULIA_HEADER_SIZE;
-
-        let pool_id = mmtk_jl_gc_szclass(sz);
-        let osize = JL_GC_SIZECLASSES[pool_id];
-
-        osize as usize
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     } else if obj_type == jl_module_type {
         let dtsz = std::mem::size_of::<mmtk_jl_module_t>();
         debug_assert!(
@@ -252,10 +270,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        let pool_id = mmtk_jl_gc_szclass(dtsz + JULIA_HEADER_SIZE);
-        let osize = JL_GC_SIZECLASSES[pool_id];
-
-        osize as usize
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     } else if obj_type == jl_task_type {
         let dtsz = std::mem::size_of::<mmtk_jl_task_t>();
         debug_assert!(
@@ -264,10 +279,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        let pool_id = mmtk_jl_gc_szclass(dtsz + JULIA_HEADER_SIZE);
-        let osize = JL_GC_SIZECLASSES[pool_id];
-
-        osize as usize
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     } else if obj_type == jl_string_type {
         let length = object.to_raw_address().load::<usize>();
         let dtsz = length + std::mem::size_of::<usize>() + 1;
@@ -278,10 +290,8 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        let pool_id = mmtk_jl_gc_szclass_align8(dtsz + JULIA_HEADER_SIZE);
-        let osize = JL_GC_SIZECLASSES[pool_id];
-
-        osize as usize
+        // NB: Strings are aligned to 8 and not to 16
+        llt_align(dtsz + JULIA_HEADER_SIZE, 8)
     } else if obj_type == jl_method_type {
         let dtsz = std::mem::size_of::<mmtk_jl_method_t>();
         debug_assert!(
@@ -290,10 +300,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        let pool_id = mmtk_jl_gc_szclass(dtsz + JULIA_HEADER_SIZE);
-        let osize = JL_GC_SIZECLASSES[pool_id];
-
-        osize as usize
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     } else {
         let layout = (*obj_type).layout;
         let dtsz = (*layout).size as usize;
@@ -303,10 +310,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             dtsz + JULIA_HEADER_SIZE
         );
 
-        let pool_id = mmtk_jl_gc_szclass(dtsz + JULIA_HEADER_SIZE);
-        let osize = JL_GC_SIZECLASSES[pool_id];
-
-        osize as usize
+        llt_align(dtsz + JULIA_HEADER_SIZE, 16)
     }
 }
 
@@ -323,22 +327,8 @@ pub unsafe fn get_object_start_ref(object: ObjectReference) -> Address {
 }
 
 #[inline(always)]
-pub unsafe fn mmtk_jl_gc_szclass(sz: usize) -> usize {
-    if sz <= 8 {
-        return 0;
-    }
-
-    let klass = SZCLASS_TABLE[(sz + 15) / 16];
-    return klass as usize;
-}
-
-#[inline(always)]
-pub unsafe fn mmtk_jl_gc_szclass_align8(sz: usize) -> usize {
-    if sz >= 16 && sz <= 152 {
-        return (sz + 7) / 8 - 1;
-    }
-
-    return mmtk_jl_gc_szclass(sz);
+pub unsafe fn llt_align(size: usize, align: usize) -> usize {
+    ((size) + (align) - 1) & !((align) - 1)
 }
 
 #[inline(always)]
