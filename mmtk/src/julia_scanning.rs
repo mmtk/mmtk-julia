@@ -385,7 +385,7 @@ pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
         let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
         let mut nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
         debug_assert!(nroots.as_usize() as u32 <= UINT32_MAX);
-        let mut nr = nroots >> 2;
+        let mut nr = nroots >> 3;
 
         loop {
             let rts = Address::from_mut_ptr(s).shift::<Address>(2);
@@ -431,7 +431,7 @@ pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
             let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
             let new_nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
             nroots = new_nroots;
-            nr = nroots >> 2;
+            nr = nroots >> 3;
             continue;
         }
     }
