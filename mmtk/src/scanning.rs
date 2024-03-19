@@ -54,7 +54,7 @@ impl Scanning<JuliaVM> for VMScanning {
         use crate::julia_types::*;
 
         let ptls: &mut mmtk__jl_tls_states_t = unsafe { std::mem::transmute(mutator.mutator_tls) };
-        let mut edge_buffer = EdgeBuffer { buffer: vec![] }; // need to be transitively pinned
+        let mut tpinning_edge_buffer = EdgeBuffer { buffer: vec![] }; // need to be transitively pinned
         let mut pinning_edge_buffer = EdgeBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
         let mut node_buffer = vec![];
 
@@ -62,7 +62,7 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
             if !task.is_null() {
                 unsafe {
-                    mmtk_scan_gcstack_roots(task, &mut edge_buffer, &mut pinning_edge_buffer);
+                    mmtk_scan_gcstack_roots(task, &mut tpinning_edge_buffer, &mut pinning_edge_buffer);
                 }
                 if task_is_root {
                     // captures wrong root nodes before creating the work
@@ -129,7 +129,7 @@ impl Scanning<JuliaVM> for VMScanning {
 
         // Push work
         const CAPACITY_PER_PACKET: usize = 4096;
-        for tpinning_roots in edge_buffer
+        for tpinning_roots in tpinning_edge_buffer
             .buffer
             .chunks(CAPACITY_PER_PACKET)
             .map(|c| c.to_vec())
@@ -200,8 +200,8 @@ impl Scanning<JuliaVM> for VMScanning {
 
 pub unsafe fn mmtk_scan_gcstack_roots<EV: EdgeVisitor<JuliaVMEdge>>(
     ta: *const mmtk_jl_task_t,
-    closure: &mut EV,
-    tp_closure: &mut EV,
+    tpinned_closure: &mut EV,
+    pinned_closure: &mut EV,
 ) {
     let stkbuf = (*ta).stkbuf;
     let copy_stack = (*ta).copy_stack_custom();
@@ -235,21 +235,21 @@ pub unsafe fn mmtk_scan_gcstack_roots<EV: EdgeVisitor<JuliaVMEdge>>(
                     if (nroots.as_usize() & 1) != 0 {
                         let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                         let real_addr = get_stack_addr(slot, offset, lb, ub);
-                        process_edge(tp_closure, real_addr);
+                        process_edge(pinned_closure, real_addr);
                     } else {
                         let real_addr =
                             get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
-                        process_edge(tp_closure, real_addr);
+                        process_edge(pinned_closure, real_addr);
                     }
                 } else {
                     if (nroots.as_usize() & 1) != 0 {
                         let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                         let real_addr = get_stack_addr(slot, offset, lb, ub);
-                        process_edge(closure, real_addr);
+                        process_edge(tpinned_closure, real_addr);
                     } else {
                         let real_addr =
                             get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
-                        process_edge(closure, real_addr);
+                        process_edge(tpinned_closure, real_addr);
                     }
                 }
 
