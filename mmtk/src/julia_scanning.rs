@@ -278,6 +278,8 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
 
         let ta = obj.to_ptr::<mmtk_jl_task_t>();
 
+        // transitively pinnig of stack roots happens during root
+        // processing so it's fine to have only one closure here
         mmtk_scan_gcstack(ta, closure);
 
         let layout = (*jl_task_type).layout;
@@ -447,14 +449,14 @@ pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
 }
 
 #[inline(always)]
-unsafe fn read_stack(addr: Address, offset: isize, lb: u64, ub: u64) -> Address {
+pub unsafe fn read_stack(addr: Address, offset: isize, lb: u64, ub: u64) -> Address {
     let real_addr = get_stack_addr(addr, offset, lb, ub);
 
     real_addr.load::<Address>()
 }
 
 #[inline(always)]
-fn get_stack_addr(addr: Address, offset: isize, lb: u64, ub: u64) -> Address {
+pub fn get_stack_addr(addr: Address, offset: isize, lb: u64, ub: u64) -> Address {
     if addr.as_usize() >= lb as usize && addr.as_usize() < ub as usize {
         return addr + offset;
     } else {

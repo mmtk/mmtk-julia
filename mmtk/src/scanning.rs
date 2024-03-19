@@ -1,9 +1,11 @@
 use crate::edges::JuliaVMEdge;
+use crate::julia_scanning::{get_stack_addr, process_edge, read_stack};
+use crate::julia_types::{mmtk_jl_gcframe_t, mmtk_jl_task_t, UINT32_MAX};
 use crate::{SINGLETON, UPCALLS};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
-use mmtk::util::opaque_pointer::*;
 use mmtk::util::ObjectReference;
+use mmtk::util::{opaque_pointer::*, Address};
 use mmtk::vm::edge_shape::Edge;
 use mmtk::vm::EdgeVisitor;
 use mmtk::vm::ObjectTracerContext;
@@ -50,17 +52,17 @@ impl Scanning<JuliaVM> for VMScanning {
 
         use crate::julia_scanning::*;
         use crate::julia_types::*;
-        use mmtk::util::Address;
 
         let ptls: &mut mmtk__jl_tls_states_t = unsafe { std::mem::transmute(mutator.mutator_tls) };
-        let mut edge_buffer = EdgeBuffer { buffer: vec![] }; // need to be tpinned as they're all from the shadow stack
+        let mut edge_buffer = EdgeBuffer { buffer: vec![] }; // need to be transitively pinned
+        let mut pinning_edge_buffer = EdgeBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
         let mut node_buffer = vec![];
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
         let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
             if !task.is_null() {
                 unsafe {
-                    crate::julia_scanning::mmtk_scan_gcstack(task, &mut edge_buffer);
+                    mmtk_scan_gcstack_roots(task, &mut edge_buffer, &mut pinning_edge_buffer);
                 }
                 if task_is_root {
                     // captures wrong root nodes before creating the work
@@ -134,6 +136,13 @@ impl Scanning<JuliaVM> for VMScanning {
         {
             factory.create_process_tpinning_roots_work(tpinning_roots);
         }
+        for pinning_roots in pinning_edge_buffer
+            .buffer
+            .chunks(CAPACITY_PER_PACKET)
+            .map(|c| c.to_vec())
+        {
+            factory.create_process_pinning_roots_work(pinning_roots);
+        }
         for nodes in node_buffer.chunks(CAPACITY_PER_PACKET).map(|c| c.to_vec()) {
             factory.create_process_pinning_roots_work(nodes);
         }
@@ -186,6 +195,80 @@ impl Scanning<JuliaVM> for VMScanning {
 
         // We have pushed work. No need to repeat this method.
         false
+    }
+}
+
+pub unsafe fn mmtk_scan_gcstack_roots<EV: EdgeVisitor<JuliaVMEdge>>(
+    ta: *const mmtk_jl_task_t,
+    closure: &mut EV,
+    tp_closure: &mut EV,
+) {
+    let stkbuf = (*ta).stkbuf;
+    let copy_stack = (*ta).copy_stack_custom();
+
+    let mut s = (*ta).gcstack;
+    let (mut offset, mut lb, mut ub) = (0 as isize, 0 as u64, u64::MAX);
+
+    #[cfg(feature = "julia_copy_stack")]
+    if stkbuf != std::ptr::null_mut() && copy_stack != 0 && (*ta).ptls == std::ptr::null_mut() {
+        if ((*ta).tid as i16) < 0 {
+            panic!("tid must be positive.")
+        }
+        let stackbase = ((*UPCALLS).get_stackbase)((*ta).tid);
+        ub = stackbase as u64;
+        lb = ub - ((*ta).copy_stack() as u64);
+        offset = (*ta).stkbuf as isize - lb as isize;
+    }
+
+    if s != std::ptr::null_mut() {
+        let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
+        let mut nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
+        debug_assert!(nroots.as_usize() as u32 <= UINT32_MAX);
+        let mut nr = nroots >> 3;
+
+        loop {
+            let rts = Address::from_mut_ptr(s).shift::<Address>(2);
+            let mut i = 0;
+            while i < nr {
+                if (nroots.as_usize() & 4) != 0 {
+                    // root is pinning and not transitively pinning
+                    if (nroots.as_usize() & 1) != 0 {
+                        let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
+                        let real_addr = get_stack_addr(slot, offset, lb, ub);
+                        process_edge(tp_closure, real_addr);
+                    } else {
+                        let real_addr =
+                            get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
+                        process_edge(tp_closure, real_addr);
+                    }
+                } else {
+                    if (nroots.as_usize() & 1) != 0 {
+                        let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
+                        let real_addr = get_stack_addr(slot, offset, lb, ub);
+                        process_edge(closure, real_addr);
+                    } else {
+                        let real_addr =
+                            get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
+                        process_edge(closure, real_addr);
+                    }
+                }
+
+                i += 1;
+            }
+
+            let s_prev_address = ::std::ptr::addr_of!((*s).prev);
+            let sprev = read_stack(Address::from_ptr(s_prev_address), offset, lb, ub);
+            if sprev.is_zero() {
+                break;
+            }
+
+            s = sprev.to_mut_ptr::<mmtk_jl_gcframe_t>();
+            let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
+            let new_nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
+            nroots = new_nroots;
+            nr = nroots >> 3;
+            continue;
+        }
     }
 }
 
