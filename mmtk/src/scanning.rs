@@ -1,4 +1,5 @@
 use crate::edges::JuliaVMEdge;
+use crate::julia_scanning::process_offset_edge;
 use crate::julia_scanning::{get_stack_addr, process_edge, read_stack};
 use crate::julia_types::{mmtk_jl_gcframe_t, mmtk_jl_task_t, UINT32_MAX};
 use crate::{SINGLETON, UPCALLS};
@@ -209,12 +210,6 @@ pub unsafe fn mmtk_scan_gcstack_roots<EV: EdgeVisitor<JuliaVMEdge>>(
 ) {
     let stkbuf = (*ta).stkbuf;
     let copy_stack = (*ta).copy_stack_custom();
-
-    #[cfg(feature = "julia_copy_stack")]
-    if stkbuf != std::ptr::null_mut() && copy_stack != 0 {
-        let stkbuf_edge = Address::from_ptr(::std::ptr::addr_of!((*ta).stkbuf));
-        process_edge(closure, stkbuf_edge);
-    }
 
     let mut s = (*ta).gcstack;
     let (mut offset, mut lb, mut ub) = (0 as isize, 0 as u64, u64::MAX);
