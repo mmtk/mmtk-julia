@@ -1,7 +1,4 @@
 use crate::edges::JuliaVMEdge;
-use crate::julia_scanning::process_offset_edge;
-use crate::julia_scanning::{get_stack_addr, process_edge, read_stack};
-use crate::julia_types::{mmtk_jl_gcframe_t, mmtk_jl_task_t, UINT32_MAX};
 use crate::{SINGLETON, UPCALLS};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
@@ -63,10 +60,10 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
             if !task.is_null() {
                 unsafe {
-                    mmtk_scan_gcstack_roots(
+                    mmtk_scan_gcstack(
                         task,
                         &mut tpinning_edge_buffer,
-                        &mut pinning_edge_buffer,
+                        Some(&mut pinning_edge_buffer),
                     );
                 }
                 if task_is_root {
@@ -200,117 +197,6 @@ impl Scanning<JuliaVM> for VMScanning {
 
         // We have pushed work. No need to repeat this method.
         false
-    }
-}
-
-pub unsafe fn mmtk_scan_gcstack_roots<EV: EdgeVisitor<JuliaVMEdge>>(
-    ta: *const mmtk_jl_task_t,
-    tpinned_closure: &mut EV,
-    pinned_closure: &mut EV,
-) {
-    let stkbuf = (*ta).stkbuf;
-    let copy_stack = (*ta).copy_stack_custom();
-
-    let mut s = (*ta).gcstack;
-    let (mut offset, mut lb, mut ub) = (0 as isize, 0 as u64, u64::MAX);
-
-    #[cfg(feature = "julia_copy_stack")]
-    if stkbuf != std::ptr::null_mut() && copy_stack != 0 && (*ta).ptls == std::ptr::null_mut() {
-        if ((*ta).tid as i16) < 0 {
-            panic!("tid must be positive.")
-        }
-        let stackbase = ((*UPCALLS).get_stackbase)((*ta).tid);
-        ub = stackbase as u64;
-        lb = ub - ((*ta).copy_stack() as u64);
-        offset = (*ta).stkbuf as isize - lb as isize;
-    }
-
-    if s != std::ptr::null_mut() {
-        let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
-        let mut nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
-        debug_assert!(nroots.as_usize() as u32 <= UINT32_MAX);
-        let mut nr = nroots >> 3;
-
-        loop {
-            let rts = Address::from_mut_ptr(s).shift::<Address>(2);
-            let mut i = 0;
-            while i < nr {
-                // root should be only pinned and not transitively pinned
-                if (nroots.as_usize() & 4) != 0 {
-                    if (nroots.as_usize() & 1) != 0 {
-                        let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
-                        let real_addr = get_stack_addr(slot, offset, lb, ub);
-                        process_edge(pinned_closure, real_addr);
-                    } else {
-                        let real_addr =
-                            get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
-
-                        let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
-                        use crate::julia_finalizer::gc_ptr_tag;
-                        // malloced pointer tagged in jl_gc_add_quiescent
-                        // skip both the next element (native function), and the object
-                        if slot & 3usize == 3 {
-                            i += 2;
-                            continue;
-                        }
-
-                        // pointer is not malloced but function is native, so skip it
-                        if gc_ptr_tag(slot, 1) {
-                            process_offset_edge(pinned_closure, real_addr, 1);
-                            i += 2;
-                            continue;
-                        }
-
-                        process_edge(pinned_closure, real_addr);
-                    }
-
-                    i += 1;
-                } else {
-                    // root should be transitively pinned
-                    if (nroots.as_usize() & 1) != 0 {
-                        let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
-                        let real_addr = get_stack_addr(slot, offset, lb, ub);
-                        process_edge(tpinned_closure, real_addr);
-                    } else {
-                        let real_addr =
-                            get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
-
-                        let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
-                        use crate::julia_finalizer::gc_ptr_tag;
-                        // malloced pointer tagged in jl_gc_add_quiescent
-                        // skip both the next element (native function), and the object
-                        if slot & 3usize == 3 {
-                            i += 2;
-                            continue;
-                        }
-
-                        // pointer is not malloced but function is native, so skip it
-                        if gc_ptr_tag(slot, 1) {
-                            process_offset_edge(tpinned_closure, real_addr, 1);
-                            i += 2;
-                            continue;
-                        }
-
-                        process_edge(tpinned_closure, real_addr);
-                    }
-
-                    i += 1;
-                }
-            }
-
-            let s_prev_address = ::std::ptr::addr_of!((*s).prev);
-            let sprev = read_stack(Address::from_ptr(s_prev_address), offset, lb, ub);
-            if sprev.is_zero() {
-                break;
-            }
-
-            s = sprev.to_mut_ptr::<mmtk_jl_gcframe_t>();
-            let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
-            let new_nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
-            nroots = new_nroots;
-            nr = nroots >> 3;
-            continue;
-        }
     }
 }
 

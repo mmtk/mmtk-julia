@@ -280,7 +280,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
 
         // transitively pinnig of stack roots happens during root
         // processing so it's fine to have only one closure here
-        mmtk_scan_gcstack(ta, closure);
+        mmtk_scan_gcstack(ta, closure, None);
 
         let layout = (*jl_task_type).layout;
         debug_assert!((*layout).fielddesc_type() == 0);
@@ -356,9 +356,10 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
     }
 }
 
-pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
+pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
     ta: *const mmtk_jl_task_t,
-    closure: &mut EV,
+    mut closure: &'a mut EV,
+    mut pclosure: Option<&'a mut EV>,
 ) {
     let stkbuf = (*ta).stkbuf;
     let copy_stack = (*ta).copy_stack_custom();
@@ -390,13 +391,25 @@ pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
         let mut nr = nroots >> 3;
 
         loop {
+            // if the 'pin' bit on the root type is not set, must transitively pin
+            // and therefore use transitive pinning closure
+            let closure_to_use: &mut &mut EV = if (nroots.as_usize() & 4) == 0 {
+                &mut closure
+            } else {
+                // otherwise, use the pinning closure (if available)
+                match &mut pclosure {
+                    Some(c) => c,
+                    None => &mut closure,
+                }
+            };
+
             let rts = Address::from_mut_ptr(s).shift::<Address>(2);
             let mut i = 0;
             while i < nr {
                 if (nroots.as_usize() & 1) != 0 {
                     let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                     let real_addr = get_stack_addr(slot, offset, lb, ub);
-                    process_edge(closure, real_addr);
+                    process_edge(*closure_to_use, real_addr);
                 } else {
                     let real_addr =
                         get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
@@ -412,12 +425,12 @@ pub unsafe fn mmtk_scan_gcstack<EV: EdgeVisitor<JuliaVMEdge>>(
 
                     // pointer is not malloced but function is native, so skip it
                     if gc_ptr_tag(slot, 1) {
-                        process_offset_edge(closure, real_addr, 1);
+                        process_offset_edge(*closure_to_use, real_addr, 1);
                         i += 2;
                         continue;
                     }
 
-                    process_edge(closure, real_addr);
+                    process_edge(*closure_to_use, real_addr);
                 }
 
                 i += 1;
