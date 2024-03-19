@@ -62,7 +62,11 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
             if !task.is_null() {
                 unsafe {
-                    mmtk_scan_gcstack_roots(task, &mut tpinning_edge_buffer, &mut pinning_edge_buffer);
+                    mmtk_scan_gcstack_roots(
+                        task,
+                        &mut tpinning_edge_buffer,
+                        &mut pinning_edge_buffer,
+                    );
                 }
                 if task_is_root {
                     // captures wrong root nodes before creating the work
@@ -206,6 +210,12 @@ pub unsafe fn mmtk_scan_gcstack_roots<EV: EdgeVisitor<JuliaVMEdge>>(
     let stkbuf = (*ta).stkbuf;
     let copy_stack = (*ta).copy_stack_custom();
 
+    #[cfg(feature = "julia_copy_stack")]
+    if stkbuf != std::ptr::null_mut() && copy_stack != 0 {
+        let stkbuf_edge = Address::from_ptr(::std::ptr::addr_of!((*ta).stkbuf));
+        process_edge(closure, stkbuf_edge);
+    }
+
     let mut s = (*ta).gcstack;
     let (mut offset, mut lb, mut ub) = (0 as isize, 0 as u64, u64::MAX);
 
@@ -230,8 +240,8 @@ pub unsafe fn mmtk_scan_gcstack_roots<EV: EdgeVisitor<JuliaVMEdge>>(
             let rts = Address::from_mut_ptr(s).shift::<Address>(2);
             let mut i = 0;
             while i < nr {
+                // root should be only pinned and not transitively pinned
                 if (nroots.as_usize() & 4) != 0 {
-                    // root is pinning and not transitively pinning
                     if (nroots.as_usize() & 1) != 0 {
                         let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                         let real_addr = get_stack_addr(slot, offset, lb, ub);
@@ -239,21 +249,58 @@ pub unsafe fn mmtk_scan_gcstack_roots<EV: EdgeVisitor<JuliaVMEdge>>(
                     } else {
                         let real_addr =
                             get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
-                        process_edge(pinned_closure, real_addr);
-                    }
-                } else {
-                    if (nroots.as_usize() & 1) != 0 {
-                        let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
-                        let real_addr = get_stack_addr(slot, offset, lb, ub);
-                        process_edge(tpinned_closure, real_addr);
-                    } else {
-                        let real_addr =
-                            get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
-                        process_edge(tpinned_closure, real_addr);
-                    }
-                }
 
-                i += 1;
+                        let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
+                        use crate::julia_finalizer::gc_ptr_tag;
+                        // malloced pointer tagged in jl_gc_add_quiescent
+                        // skip both the next element (native function), and the object
+                        if slot & 3usize == 3 {
+                            i += 2;
+                            continue;
+                        }
+
+                        // pointer is not malloced but function is native, so skip it
+                        if gc_ptr_tag(slot, 1) {
+                            process_offset_edge(pinned_closure, real_addr, 1);
+                            i += 2;
+                            continue;
+                        }
+
+                        process_edge(pinned_closure, real_addr);
+                    }
+
+                    i += 1;
+                } else {
+                    // root should be transitively pinned
+                    if (nroots.as_usize() & 1) != 0 {
+                        let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
+                        let real_addr = get_stack_addr(slot, offset, lb, ub);
+                        process_edge(tpinned_closure, real_addr);
+                    } else {
+                        let real_addr =
+                            get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
+
+                        let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
+                        use crate::julia_finalizer::gc_ptr_tag;
+                        // malloced pointer tagged in jl_gc_add_quiescent
+                        // skip both the next element (native function), and the object
+                        if slot & 3usize == 3 {
+                            i += 2;
+                            continue;
+                        }
+
+                        // pointer is not malloced but function is native, so skip it
+                        if gc_ptr_tag(slot, 1) {
+                            process_offset_edge(tpinned_closure, real_addr, 1);
+                            i += 2;
+                            continue;
+                        }
+
+                        process_edge(tpinned_closure, real_addr);
+                    }
+
+                    i += 1;
+                }
             }
 
             let s_prev_address = ::std::ptr::addr_of!((*s).prev);
