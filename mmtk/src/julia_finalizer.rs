@@ -147,11 +147,11 @@ fn sweep_finalizer_list(
         let (isfreed, isold) = if gc_ptr_tag(v0, 2) {
             (true, false)
         } else {
-            let isfreed = !memory_manager::is_live_object(v);
+            let isfreed = !memory_manager::is_live_object::<JuliaVM>(v);
             let isold = finalizer_list_marked.is_some()
                 && !isfreed
                 && (mmtk_object_is_managed_by_mmtk(fin.as_usize())
-                    && memory_manager::is_live_object(ObjectReference::from_raw_address(fin))
+                    && memory_manager::is_live_object::<JuliaVM>(ObjectReference::from_raw_address(fin))
                     || !(mmtk_object_is_managed_by_mmtk(fin.as_usize())));
             (isfreed, isold)
         };

@@ -225,7 +225,7 @@ pub extern "C" fn mmtk_post_alloc(
 
 #[no_mangle]
 pub extern "C" fn mmtk_will_never_move(object: ObjectReference) -> bool {
-    !object.is_movable()
+    !object.is_movable::<JuliaVM>()
 }
 
 #[no_mangle]
@@ -256,7 +256,7 @@ pub extern "C" fn mmtk_total_bytes() -> usize {
 
 #[no_mangle]
 pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool {
-    object.is_live()
+    object.is_live::<JuliaVM>()
 }
 
 #[no_mangle]
