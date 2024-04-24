@@ -1,5 +1,6 @@
 use enum_map::Enum;
 use mmtk::util::ObjectReference;
+use crate::JuliaVM;
 
 #[repr(i32)]
 #[derive(Clone, Copy, Debug, Enum, PartialEq, Hash, Eq)]
