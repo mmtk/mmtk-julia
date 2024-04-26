@@ -76,7 +76,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         } else {
             unimplemented!()
         };
-        // `alloc_copy`` should never return zero.
+        // `alloc_copy` should never return zero.
         debug_assert!(!dst.is_zero());
 
         let src = from_start;
