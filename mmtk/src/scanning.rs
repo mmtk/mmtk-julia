@@ -2,8 +2,9 @@ use crate::edges::JuliaVMEdge;
 use crate::{SINGLETON, UPCALLS};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
+use mmtk::util::opaque_pointer::*;
+use mmtk::util::Address;
 use mmtk::util::ObjectReference;
-use mmtk::util::{opaque_pointer::*, Address};
 use mmtk::vm::edge_shape::Edge;
 use mmtk::vm::EdgeVisitor;
 use mmtk::vm::ObjectTracerContext;
@@ -32,15 +33,12 @@ impl Scanning<JuliaVM> for VMScanning {
             fn visit_edge(&mut self, edge: JuliaVMEdge) {
                 match edge {
                     JuliaVMEdge::Simple(se) => {
-                        let slot = se.as_address();
-                        let object = unsafe { slot.load::<ObjectReference>() };
-                        if !object.is_null() {
+                        if let Some(object) = se.load() {
                             self.buffer.push(object);
                         }
                     }
                     JuliaVMEdge::Offset(oe) => {
-                        let object = oe.load();
-                        if !object.is_null() {
+                        if let Some(object) = oe.load() {
                             self.buffer.push(object);
                         }
                     }
@@ -75,7 +73,11 @@ impl Scanning<JuliaVM> for VMScanning {
                         Address::from_ptr(task)
                     );
 
-                    node_buffer.push(ObjectReference::from_raw_address(Address::from_ptr(task)));
+                    // unsafe: We checked `!task.is_null()` before.
+                    let objref = unsafe {
+                        ObjectReference::from_raw_address_unchecked(Address::from_ptr(task))
+                    };
+                    node_buffer.push(objref);
                 }
             }
         };
@@ -96,9 +98,12 @@ impl Scanning<JuliaVM> for VMScanning {
         root_scan_task(ptls.next_task, true);
         root_scan_task(ptls.previous_task, true);
         if !ptls.previous_exception.is_null() {
-            node_buffer.push(ObjectReference::from_raw_address(Address::from_mut_ptr(
-                ptls.previous_exception,
-            )));
+            node_buffer.push(unsafe {
+                // unsafe: We have just checked `ptls.previous_exception` is not null.
+                ObjectReference::from_raw_address_unchecked(Address::from_mut_ptr(
+                    ptls.previous_exception,
+                ))
+            });
         }
 
         // Scan backtrace buffer: See gc_queue_bt_buf in gc.c
