@@ -240,7 +240,7 @@ impl RootsWorkClosure {
                 .map(|addr| JuliaVMSlot::Simple(SimpleSlot::from_address(addr)))
                 .collect();
             let factory: &mut F = unsafe { &mut *(factory_ptr as *mut F) };
-            factory.create_process_root_slots_work(buf);
+            factory.create_process_roots_work(buf);
         }
 
         if renew {
