@@ -154,9 +154,9 @@ fn sweep_finalizer_list(
             let isold = finalizer_list_marked.is_some()
                 && !isfreed
                 && (mmtk_object_is_managed_by_mmtk(fin.as_usize())
-                    && memory_manager::is_live_object::<JuliaVM>(
-                        unsafe { ObjectReference::from_raw_address_unchecked(fin) },
-                    )
+                    && memory_manager::is_live_object::<JuliaVM>(unsafe {
+                        ObjectReference::from_raw_address_unchecked(fin)
+                    })
                     || !(mmtk_object_is_managed_by_mmtk(fin.as_usize())));
             (isfreed, isold)
         };
