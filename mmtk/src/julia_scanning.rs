@@ -1,17 +1,20 @@
 #[cfg(not(feature = "non_moving"))]
 use crate::api::mmtk_is_pinned;
 use crate::api::mmtk_object_is_managed_by_mmtk;
-use crate::edges::JuliaVMEdge;
-use crate::edges::OffsetEdge;
 use crate::julia_types::*;
 use crate::object_model::mmtk_jl_array_ndims;
+<<<<<<< HEAD
 use crate::JuliaVM;
+=======
+use crate::slots::JuliaVMSlot;
+use crate::slots::OffsetSlot;
+>>>>>>> e776c41 (Rename edge to slot (#150))
 use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
 use memoffset::offset_of;
 use mmtk::util::{Address, ObjectReference};
-use mmtk::vm::edge_shape::SimpleEdge;
-use mmtk::vm::EdgeVisitor;
+use mmtk::vm::slot::SimpleSlot;
+use mmtk::vm::SlotVisitor;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
@@ -47,7 +50,7 @@ const PRINT_OBJ_TYPE: bool = false;
 // This function is a rewrite of `gc_mark_outrefs()` in `gc.c`
 // INFO: *_custom() functions are acessors to bitfields that do not use bindgen generated code.
 #[inline(always)]
-pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, closure: &mut EV) {
+pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, closure: &mut SV) {
     // get Julia object type
     let vt = mmtk_jl_typeof(obj);
 
@@ -91,7 +94,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         let objary_end = objary_begin.shift::<Address>(length as isize);
 
         while objary_begin < objary_end {
-            process_edge(closure, objary_begin);
+            process_slot(closure, objary_begin);
             objary_begin = objary_begin.shift::<Address>(1);
         }
     } else if (*vt).name == jl_array_typename {
@@ -112,7 +115,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
             // julia-allocated buffer that needs to be marked
             let offset = (*array).offset as usize * (*array).elsize as usize;
             let data_addr = ::std::ptr::addr_of!((*array).data);
-            process_offset_edge(closure, Address::from_ptr(data_addr), offset);
+            process_offset_slot(closure, Address::from_ptr(data_addr), offset);
         } else if flags.how_custom() == 2 {
             // malloc-allocated pointer this array object manages
             // should be processed below if it contains pointers
@@ -132,7 +135,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                 mmtk_is_pinned(owner_addr.load())
             );
 
-            process_edge(closure, owner_addr);
+            process_slot(closure, owner_addr);
             return;
         }
 
@@ -151,7 +154,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
             let objary_end = objary_begin.shift::<Address>(length as isize);
 
             while objary_begin < objary_end {
-                process_edge(closure, objary_begin);
+                process_slot(closure, objary_begin);
                 objary_begin = objary_begin.shift::<Address>(1);
             }
         } else if flags.hasptr_custom() != 0 {
@@ -166,7 +169,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
             if npointers == 1 {
                 objary_begin = objary_begin.shift::<Address>((*layout).first_ptr as isize);
                 while objary_begin < objary_end {
-                    process_edge(closure, objary_begin);
+                    process_slot(closure, objary_begin);
                     objary_begin = objary_begin.shift::<Address>(elsize as isize);
                 }
             } else if (*layout).fielddesc_type() == 0 {
@@ -179,7 +182,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                     while elem_begin < elem_end {
                         let elem_begin_loaded = elem_begin.load::<u8>();
                         let slot = objary_begin.shift::<Address>(elem_begin_loaded as isize);
-                        process_edge(closure, slot);
+                        process_slot(closure, slot);
                         elem_begin = elem_begin.shift::<u8>(1);
                     }
                     elem_begin = obj8_begin;
@@ -193,7 +196,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                     while obj16_begin < obj16_end {
                         let elem_begin_loaded = obj16_begin.load::<u16>();
                         let slot = objary_begin.shift::<Address>(elem_begin_loaded as isize);
-                        process_edge(closure, slot);
+                        process_slot(closure, slot);
                         obj16_begin = obj16_begin.shift::<u16>(1);
                     }
                     obj16_begin = mmtk_jl_dt_layout_ptrs(layout);
@@ -242,12 +245,27 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
             begin = begin.shift::<Address>(2);
         }
 
-        let parent_edge = ::std::ptr::addr_of!((*m).parent);
+        let parent_slot = ::std::ptr::addr_of!((*m).parent);
         if PRINT_OBJ_TYPE {
-            println!(" - scan parent: {:?}\n", parent_edge);
+            println!(" - scan parent: {:?}\n", parent_slot);
         }
-        process_edge(closure, Address::from_ptr(parent_edge));
+        process_slot(closure, Address::from_ptr(parent_slot));
 
+<<<<<<< HEAD
+=======
+        let bindingkeyset_slot = ::std::ptr::addr_of!((*m).bindingkeyset);
+        if PRINT_OBJ_TYPE {
+            println!(" - scan bindingkeyset: {:?}\n", bindingkeyset_slot);
+        }
+        process_slot(closure, Address::from_ptr(bindingkeyset_slot));
+
+        let bindings_slot = ::std::ptr::addr_of!((*m).bindings);
+        if PRINT_OBJ_TYPE {
+            println!(" - scan bindings: {:?}\n", bindings_slot);
+        }
+        process_slot(closure, Address::from_ptr(bindings_slot));
+
+>>>>>>> e776c41 (Rename edge to slot (#150))
         // m.usings.items may be inlined in the module when the array list size <= AL_N_INLINE (cf. arraylist_new)
         // In that case it may be an mmtk object and not a malloced address.
         // If it is an mmtk object, (*m).usings.items will then be an internal pointer to the module
@@ -255,7 +273,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         if mmtk_object_is_managed_by_mmtk((*m).usings.items as usize) {
             let offset = OFFSET_OF_INLINED_SPACE_IN_MODULE;
             let slot = Address::from_ptr(::std::ptr::addr_of!((*m).usings.items));
-            process_offset_edge(closure, slot, offset);
+            process_offset_slot(closure, slot, offset);
         }
 
         let nusings = (*m).usings.len;
@@ -267,7 +285,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                 if PRINT_OBJ_TYPE {
                     println!(" - scan usings: {:?}\n", objary_begin);
                 }
-                process_edge(closure, objary_begin);
+                process_slot(closure, objary_begin);
                 objary_begin = objary_begin.shift::<Address>(1);
             }
         }
@@ -292,7 +310,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
         while obj8_begin < obj8_end {
             let obj8_begin_loaded = obj8_begin.load::<u8>();
             let slot = obj.shift::<Address>(obj8_begin_loaded as isize);
-            process_edge(closure, slot);
+            process_slot(closure, slot);
             obj8_begin = obj8_begin.shift::<u8>(1);
         }
     } else if vt == jl_string_type {
@@ -325,7 +343,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                 while obj8_begin < obj8_end {
                     let obj8_begin_loaded = obj8_begin.load::<u8>();
                     let slot = obj.shift::<Address>(obj8_begin_loaded as isize);
-                    process_edge(closure, slot);
+                    process_slot(closure, slot);
                     obj8_begin = obj8_begin.shift::<u8>(1);
                 }
             } else if (*layout).fielddesc_type() == 1 {
@@ -335,7 +353,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                 while obj16_begin < obj16_end {
                     let obj16_begin_loaded = obj16_begin.load::<u16>();
                     let slot = obj.shift::<Address>(obj16_begin_loaded as isize);
-                    process_edge(closure, slot);
+                    process_slot(closure, slot);
                     obj16_begin = obj16_begin.shift::<u16>(1);
                 }
             } else if (*layout).fielddesc_type() == 2 {
@@ -345,7 +363,7 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
                 while obj32_begin < obj32_end {
                     let obj32_begin_loaded = obj32_begin.load::<u32>();
                     let slot = obj.shift::<Address>(obj32_begin_loaded as isize);
-                    process_edge(closure, slot);
+                    process_slot(closure, slot);
                     obj32_begin = obj32_begin.shift::<u32>(1);
                 }
             } else {
@@ -356,7 +374,11 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
     }
 }
 
+<<<<<<< HEAD
 pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
+=======
+pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
+>>>>>>> e776c41 (Rename edge to slot (#150))
     ta: *const mmtk_jl_task_t,
     mut closure: &'a mut EV,
     mut pclosure: Option<&'a mut EV>,
@@ -366,8 +388,8 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
 
     #[cfg(feature = "julia_copy_stack")]
     if stkbuf != std::ptr::null_mut() && copy_stack != 0 {
-        let stkbuf_edge = Address::from_ptr(::std::ptr::addr_of!((*ta).stkbuf));
-        process_edge(closure, stkbuf_edge);
+        let stkbuf_slot = Address::from_ptr(::std::ptr::addr_of!((*ta).stkbuf));
+        process_slot(closure, stkbuf_slot);
     }
 
     let mut s = (*ta).gcstack;
@@ -409,6 +431,7 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
                 if (nroots.as_usize() & 1) != 0 {
                     let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                     let real_addr = get_stack_addr(slot, offset, lb, ub);
+<<<<<<< HEAD
                     process_edge(*closure_to_use, real_addr);
                 } else {
                     let real_addr =
@@ -431,6 +454,13 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
                     }
 
                     process_edge(*closure_to_use, real_addr);
+=======
+                    process_slot(closure, real_addr);
+                } else {
+                    let real_addr =
+                        get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
+                    process_slot(closure, real_addr);
+>>>>>>> e776c41 (Rename edge to slot (#150))
                 }
 
                 i += 1;
@@ -456,7 +486,7 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
         ((*UPCALLS).scan_julia_exc_obj)(
             Address::from_ptr(ta),
             Address::from_mut_ptr(closure),
-            process_edge::<EV> as _,
+            process_slot::<EV> as _,
         );
     }
 }
@@ -480,6 +510,7 @@ pub fn get_stack_addr(addr: Address, offset: isize, lb: u64, ub: u64) -> Address
 use mmtk::vm::edge_shape::Edge;
 
 #[inline(always)]
+<<<<<<< HEAD
 pub fn process_edge<EV: EdgeVisitor<JuliaVMEdge>>(closure: &mut EV, slot: Address) {
     let simple_edge = SimpleEdge::from_address(slot);
     debug_assert!(
@@ -498,8 +529,37 @@ pub fn process_edge<EV: EdgeVisitor<JuliaVMEdge>>(closure: &mut EV, slot: Addres
         simple_edge.load(),
         simple_edge
     );
+=======
+pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Address) {
+    let simple_slot = SimpleSlot::from_address(slot);
 
-    closure.visit_edge(JuliaVMEdge::Simple(simple_edge));
+    #[cfg(debug_assertions)]
+    {
+        use crate::JuliaVM;
+        use mmtk::vm::slot::Slot;
+
+        if let Some(objref) = simple_slot.load() {
+            debug_assert!(
+                mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(objref),
+                "Object {:?} in slot {:?} is not mapped address",
+                objref,
+                simple_slot
+            );
+
+            let raw_addr_usize = objref.to_raw_address().as_usize();
+
+            // captures wrong slots before creating the work
+            debug_assert!(
+                raw_addr_usize % 16 == 0 || raw_addr_usize % 8 == 0,
+                "Object {:?} in slot {:?} is not aligned to 8 or 16",
+                objref,
+                simple_slot
+            );
+        }
+    }
+>>>>>>> e776c41 (Rename edge to slot (#150))
+
+    closure.visit_slot(JuliaVMSlot::Simple(simple_slot));
 }
 
 // #[inline(always)]
@@ -540,11 +600,12 @@ pub fn process_edge<EV: EdgeVisitor<JuliaVMEdge>>(closure: &mut EV, slot: Addres
 // }
 
 #[inline(always)]
-pub fn process_offset_edge<EV: EdgeVisitor<JuliaVMEdge>>(
+pub fn process_offset_slot<EV: SlotVisitor<JuliaVMSlot>>(
     closure: &mut EV,
     slot: Address,
     offset: usize,
 ) {
+<<<<<<< HEAD
     let offset_edge = OffsetEdge::new_with_offset(slot, offset);
     debug_assert!(
         offset_edge.load().is_null()
@@ -553,8 +614,25 @@ pub fn process_offset_edge<EV: EdgeVisitor<JuliaVMEdge>>(
         offset_edge.load(),
         offset_edge
     );
+=======
+    let offset_slot = OffsetSlot::new_with_offset(slot, offset);
+    #[cfg(debug_assertions)]
+    {
+        use crate::JuliaVM;
+        use mmtk::vm::slot::Slot;
 
-    closure.visit_edge(JuliaVMEdge::Offset(offset_edge));
+        if let Some(objref) = offset_slot.load() {
+            debug_assert!(
+                mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(objref),
+                "Object {:?} in slot {:?} is not mapped address",
+                objref,
+                offset_slot
+            );
+        }
+    }
+>>>>>>> e776c41 (Rename edge to slot (#150))
+
+    closure.visit_slot(JuliaVMSlot::Offset(offset_slot));
 }
 
 #[inline(always)]
