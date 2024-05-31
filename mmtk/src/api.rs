@@ -68,7 +68,12 @@ pub extern "C" fn mmtk_gc_init(
             // If MMTK_GC_TRIGGER is not set, then use the min/max heap size from the arguments.
             Err(_) => {
                 let success;
-                if min_heap_size != 0 {
+                if min_heap_size == 0 && max_heap_size == 0 {
+                    success = builder
+                        .options
+                        .gc_trigger
+                        .set(mmtk::util::options::GCTriggerSelector::Delegated);
+                } else if min_heap_size != 0 {
                     info!(
                         "Setting mmtk heap size to a variable size with min-max of {}-{} (in bytes)",
                         min_heap_size, max_heap_size
