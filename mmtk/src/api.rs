@@ -276,9 +276,9 @@ pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread, coll
         // auto
         0 => memory_manager::handle_user_collection_request::<JuliaVM>(&SINGLETON, tls),
         // full
-        1 => SINGLETON.handle_user_collection_request(tls, true, true),
+        1 => SINGLETON.handle_user_collection_request(tls, false, true),
         // incremental
-        2 => SINGLETON.handle_user_collection_request(tls, true, false),
+        2 => SINGLETON.handle_user_collection_request(tls, false, false),
         _ => unreachable!(),
     }
 }
