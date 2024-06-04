@@ -109,7 +109,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
             },
             Ordering::Relaxed,
         );
-        info!("On GC start: alloc'd = {} = reserved now {} pages - reserved after last gc {} pages = {} pages, prev_sweep = {}", self.actual_allocd.load(Ordering::Relaxed), reserved_pages_now, reserved_pages_in_last_gc, reserved_pages_now.saturating_sub(reserved_pages_in_last_gc), self.prev_sweep_full.load(Ordering::Relaxed));
+        trace!("On GC start: alloc'd = {} = reserved now {} pages - reserved after last gc {} pages = {} pages, prev_sweep = {}", self.actual_allocd.load(Ordering::Relaxed), reserved_pages_now, reserved_pages_in_last_gc, reserved_pages_now.saturating_sub(reserved_pages_in_last_gc), self.prev_sweep_full.load(Ordering::Relaxed));
     }
     fn on_gc_end(&self, mmtk: &'static MMTK<JuliaVM>) {
         use crate::mmtk::vm::ActivePlan;
@@ -123,7 +123,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
         );
         self.last_recorded_reserved_pages
             .store(reserved_pages_now, Ordering::Relaxed);
-        info!("On GC end: freed = {} = reserved before GC {} pages - reserved now {} pages = {} pages", freed, reserved_pages_before_gc, reserved_pages_now, reserved_pages_before_gc.saturating_sub(reserved_pages_now));
+        trace!("On GC end: freed = {} = reserved before GC {} pages - reserved now {} pages = {} pages", freed, reserved_pages_before_gc, reserved_pages_now, reserved_pages_before_gc.saturating_sub(reserved_pages_now));
 
         // ported from gc.c -- before sweeping in the original code.
         // ignore large frontier (large frontier means the bytes of pointers reachable from the remset is larger than the default collect interval)
@@ -133,7 +133,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
         let mut sweep_full = false;
         if gc_auto {
             if not_freed_enough {
-                info!(
+                trace!(
                     "Not freed enough: double the interval {:?} -> {:?}",
                     self.interval.load(Ordering::Relaxed),
                     self.interval.load(Ordering::Relaxed) * 2
@@ -152,7 +152,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
             }
             if self.interval.load(Ordering::Relaxed) > maxmem {
                 sweep_full = true;
-                info!(
+                trace!(
                     "Force full heap. Clamp interval back to max mem ({} > {}).",
                     self.interval.load(Ordering::Relaxed),
                     maxmem
@@ -163,11 +163,11 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
 
         let live_bytes = conversions::pages_to_bytes(reserved_pages_now);
         if live_bytes > self.max_total_memory.load(Ordering::Relaxed) {
-            info!("Force full heap. Live > max total memory");
+            trace!("Force full heap. Live > max total memory");
             sweep_full = true;
         }
         if GC_ALWAYS_SWEEP_FULL {
-            info!("Force full heap. Always");
+            trace!("Force full heap. Always");
             sweep_full = true;
         }
 
@@ -185,7 +185,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
                 let tot =
                     2f64 * (live_bytes + self.actual_allocd.load(Ordering::Relaxed)) as f64 / 3f64;
                 let _ = self.interval.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |interval| if (interval as f64) > tot {
-                    info!("Not freed enough. Decrease interval to 2/3 * (live + alloc'd) = {}", tot);
+                    trace!("Not freed enough. Decrease interval to 2/3 * (live + alloc'd) = {}", tot);
                     Some(tot as usize)
                 } else { None });
             } else {
@@ -195,7 +195,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
                     self.interval
                         .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |interval| {
                             if interval > half {
-                                info!("Decrease interval to half live bytes = {}", half);
+                                trace!("Decrease interval to half live bytes = {}", half);
                                 Some(half)
                             } else {
                                 None
@@ -208,7 +208,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
                 .interval
                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |interval| {
                     if interval < DEFAULT_COLLECT_INTERVAL {
-                        info!(
+                        trace!(
                             "Don't let interval go below default = {}",
                             DEFAULT_COLLECT_INTERVAL
                         );
@@ -222,7 +222,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
         let max_total_memory = self.max_total_memory.load(Ordering::Relaxed);
         if self.interval.load(Ordering::Relaxed) + live_bytes > max_total_memory {
             if live_bytes < max_total_memory {
-                info!(
+                trace!(
                     "About to reach max total memory. Decrease interval = {}",
                     max_total_memory.saturating_sub(live_bytes)
                 );
@@ -231,7 +231,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
                     Ordering::Relaxed,
                 );
             } else {
-                info!(
+                trace!(
                     "Reached max total memory. Use default interval = {}",
                     DEFAULT_COLLECT_INTERVAL
                 );
@@ -270,7 +270,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
             reserved_pages_now.saturating_sub(reserved_pages_before_gc),
         );
 
-        info!(
+        trace!(
             "Reserved now = {}, last recorded reserved = {}, Allocd so far: {}. interval_all_threads = {}",
             plan.get_reserved_pages(), self.last_recorded_reserved_pages.load(Ordering::Relaxed), allocd_so_far,
             self.interval_all_threads.load(Ordering::Relaxed)
