@@ -324,8 +324,8 @@ typedef struct {
     mmtk_arraylist_t *last_remset;
 
     // variables for allocating objects from pools
-#define JL_GC_N_POOLS 49
-    mmtk_jl_gc_pool_t norm_pools[JL_GC_N_POOLS];
+#define JL_GC_N_MAX_POOLS 51
+    mmtk_jl_gc_pool_t norm_pools[JL_GC_N_MAX_POOLS];
 
 #define JL_N_STACK_POOLS 16
     mmtk_small_arraylist_t free_stacks[JL_N_STACK_POOLS];
