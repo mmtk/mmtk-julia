@@ -39,7 +39,9 @@ pub struct JuliaGCTrigger {
     interval_all_threads: AtomicUsize,
     actual_allocd: AtomicUsize,
     prev_sweep_full: AtomicBool,
-
+    /// The number of pending allocation pages. The allocation requests for them have failed, and a GC is triggered.
+    /// We will need to take them into consideration so that the new heap size can accomodate those allocations.
+    pending_pages: AtomicUsize,
     last_recorded_reserved_pages: AtomicUsize,
 }
 
@@ -79,6 +81,7 @@ impl JuliaGCTrigger {
             actual_allocd: AtomicUsize::new(0),
             prev_sweep_full: AtomicBool::new(true),
             last_recorded_reserved_pages: AtomicUsize::new(0),
+            pending_pages: AtomicUsize::new(0),
         }
     }
 }
@@ -86,7 +89,10 @@ impl JuliaGCTrigger {
 impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
     fn on_gc_start(&self, mmtk: &'static MMTK<JuliaVM>) {
         let reserved_pages_in_last_gc = self.last_recorded_reserved_pages.load(Ordering::Relaxed);
-        let reserved_pages_now = mmtk.get_plan().get_reserved_pages();
+        // reserved pages now should include pending allocations
+        let reserved_pages_now =
+            mmtk.get_plan().get_reserved_pages() + self.pending_pages.load(Ordering::SeqCst);
+
         self.last_recorded_reserved_pages
             .store(reserved_pages_now, Ordering::Relaxed);
         self.actual_allocd.store(
@@ -110,7 +116,8 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
         let n_mutators = crate::active_plan::VMActivePlan::number_of_mutators();
 
         let reserved_pages_before_gc = self.last_recorded_reserved_pages.load(Ordering::Relaxed);
-        let reserved_pages_now = mmtk.get_plan().get_reserved_pages();
+        let reserved_pages_now =
+            mmtk.get_plan().get_reserved_pages() + self.pending_pages.load(Ordering::SeqCst);
         let freed = conversions::pages_to_bytes(
             reserved_pages_before_gc.saturating_sub(reserved_pages_now),
         );
@@ -122,7 +129,7 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
         // ignore large frontier (large frontier means the bytes of pointers reachable from the remset is larger than the default collect interval)
         let gc_auto = !mmtk.is_user_triggered_collection();
         let not_freed_enough = gc_auto
-            && (freed as f64) < (self.actual_allocd.load(Ordering::Relaxed) as f64 * 0.7f64);
+            && ((freed as f64) < (self.actual_allocd.load(Ordering::Relaxed) as f64 * 0.7f64));
         let mut sweep_full = false;
         if gc_auto {
             if not_freed_enough {
@@ -240,6 +247,13 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
             self.interval.load(Ordering::Relaxed) * n_mutators / 2,
             Ordering::Relaxed,
         );
+
+        // Clear pending allocation pages at the end of GC, no matter we used it or not.
+        self.pending_pages.store(0, Ordering::SeqCst);
+    }
+
+    fn on_pending_allocation(&self, pages: usize) {
+        self.pending_pages.fetch_add(pages, Ordering::SeqCst);
     }
 
     /// Is a GC required now?
@@ -249,9 +263,19 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
         space: Option<SpaceStats<JuliaVM>>,
         plan: &dyn Plan<VM = JuliaVM>,
     ) -> bool {
+        let reserved_pages_now = plan.get_reserved_pages();
+        let reserved_pages_before_gc = self.last_recorded_reserved_pages.load(Ordering::Relaxed);
+
         let allocd_so_far = conversions::pages_to_bytes(
-            plan.get_reserved_pages() - self.last_recorded_reserved_pages.load(Ordering::Relaxed),
+            reserved_pages_now.saturating_sub(reserved_pages_before_gc),
         );
+
+        trace!(
+            "Reserved now = {}, last recorded reserved = {}, Allocd so far: {}. interval_all_threads = {}",
+            plan.get_reserved_pages(), self.last_recorded_reserved_pages.load(Ordering::Relaxed), allocd_so_far,
+            self.interval_all_threads.load(Ordering::Relaxed)
+        );
+
         // Check against interval_all_threads, as we count allocation from all threads.
         if allocd_so_far > self.interval_all_threads.load(Ordering::Relaxed) {
             return true;
