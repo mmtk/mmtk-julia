@@ -246,7 +246,7 @@ pub const HT_N_INLINE: u32 = 32;
 pub const AL_N_INLINE: u32 = 29;
 pub const SMALL_AL_N_INLINE: u32 = 6;
 pub const MAX_ALIGN: u32 = 4;
-pub const JL_GC_N_POOLS: u32 = 49;
+pub const JL_GC_N_MAX_POOLS: u32 = 51;
 pub const JL_N_STACK_POOLS: u32 = 16;
 pub const JL_GC_STATE_WAITING: u32 = 1;
 pub const JL_GC_STATE_SAFE: u32 = 2;
@@ -5624,7 +5624,7 @@ pub struct mmtk_jl_thread_heap_t {
     pub remset_nptr: ::std::os::raw::c_int,
     pub remset: *mut mmtk_arraylist_t,
     pub last_remset: *mut mmtk_arraylist_t,
-    pub norm_pools: [mmtk_jl_gc_pool_t; 49usize],
+    pub norm_pools: [mmtk_jl_gc_pool_t; 51usize],
     pub free_stacks: [mmtk_small_arraylist_t; 16usize],
 }
 #[test]
@@ -5634,7 +5634,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk_jl_thread_heap_t>(),
-        3144usize,
+        3192usize,
         concat!("Size of: ", stringify!(mmtk_jl_thread_heap_t))
     );
     assert_eq!(
@@ -5754,7 +5754,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).free_stacks) as usize - ptr as usize },
-        2120usize,
+        2168usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -6059,7 +6059,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk__jl_tls_states_t>(),
-        13400usize,
+        13448usize,
         concat!("Size of: ", stringify!(mmtk__jl_tls_states_t))
     );
     assert_eq!(
@@ -6179,7 +6179,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).gc_num) as usize - ptr as usize },
-        3184usize,
+        3232usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6189,7 +6189,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).defer_signal) as usize - ptr as usize },
-        3248usize,
+        3296usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6199,7 +6199,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).current_task) as usize - ptr as usize },
-        3256usize,
+        3304usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6209,7 +6209,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).next_task) as usize - ptr as usize },
-        3264usize,
+        3312usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6219,7 +6219,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).previous_task) as usize - ptr as usize },
-        3272usize,
+        3320usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6229,7 +6229,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).root_task) as usize - ptr as usize },
-        3280usize,
+        3328usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6239,7 +6239,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).timing_stack) as usize - ptr as usize },
-        3288usize,
+        3336usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6249,7 +6249,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).stackbase) as usize - ptr as usize },
-        3296usize,
+        3344usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6259,7 +6259,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).stacksize) as usize - ptr as usize },
-        3304usize,
+        3352usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6269,7 +6269,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).sig_exception) as usize - ptr as usize },
-        3512usize,
+        3560usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6279,7 +6279,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).bt_data) as usize - ptr as usize },
-        3520usize,
+        3568usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6289,7 +6289,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).bt_size) as usize - ptr as usize },
-        3528usize,
+        3576usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6299,7 +6299,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).profiling_bt_buffer) as usize - ptr as usize },
-        3536usize,
+        3584usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6309,7 +6309,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).signal_request) as usize - ptr as usize },
-        3544usize,
+        3592usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6319,7 +6319,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).io_wait) as usize - ptr as usize },
-        3548usize,
+        3596usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6329,7 +6329,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).signal_stack) as usize - ptr as usize },
-        3552usize,
+        3600usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6339,7 +6339,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).system_id) as usize - ptr as usize },
-        3560usize,
+        3608usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6349,7 +6349,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).finalizers) as usize - ptr as usize },
-        3568usize,
+        3616usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6359,7 +6359,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).page_metadata_allocd) as usize - ptr as usize },
-        3824usize,
+        3872usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6369,7 +6369,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).page_metadata_buffered) as usize - ptr as usize },
-        3832usize,
+        3880usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6379,7 +6379,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mark_queue) as usize - ptr as usize },
-        3840usize,
+        3888usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6389,7 +6389,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).gc_cache) as usize - ptr as usize },
-        4144usize,
+        4192usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6399,7 +6399,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).sweep_objs) as usize - ptr as usize },
-        12360usize,
+        12408usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6409,7 +6409,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).gc_sweeps_requested) as usize - ptr as usize },
-        12616usize,
+        12664usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6419,7 +6419,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).previous_exception) as usize - ptr as usize },
-        12624usize,
+        12672usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6429,7 +6429,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).locks) as usize - ptr as usize },
-        12632usize,
+        12680usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6439,7 +6439,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mmtk_mutator) as usize - ptr as usize },
-        12696usize,
+        12744usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6449,7 +6449,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).malloc_sz_since_last_poll) as usize - ptr as usize },
-        13392usize,
+        13440usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),

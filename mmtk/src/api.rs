@@ -68,7 +68,12 @@ pub extern "C" fn mmtk_gc_init(
             // If MMTK_GC_TRIGGER is not set, then use the min/max heap size from the arguments.
             Err(_) => {
                 let success;
-                if min_heap_size != 0 {
+                if min_heap_size == 0 && max_heap_size == 0 {
+                    success = builder
+                        .options
+                        .gc_trigger
+                        .set(mmtk::util::options::GCTriggerSelector::Delegated);
+                } else if min_heap_size != 0 {
                     info!(
                         "Setting mmtk heap size to a variable size with min-max of {}-{} (in bytes)",
                         min_heap_size, max_heap_size
@@ -271,9 +276,9 @@ pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread, coll
         // auto
         0 => memory_manager::handle_user_collection_request::<JuliaVM>(&SINGLETON, tls),
         // full
-        1 => SINGLETON.handle_user_collection_request(tls, true, true),
+        1 => SINGLETON.handle_user_collection_request(tls, false, true),
         // incremental
-        2 => SINGLETON.handle_user_collection_request(tls, true, false),
+        2 => SINGLETON.handle_user_collection_request(tls, false, false),
         _ => unreachable!(),
     }
 }
