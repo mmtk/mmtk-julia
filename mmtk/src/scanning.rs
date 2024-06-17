@@ -1,14 +1,15 @@
-use crate::edges::JuliaVMEdge;
+use crate::slots::JuliaVMSlot;
 use crate::{SINGLETON, UPCALLS};
 use mmtk::memory_manager;
 use mmtk::scheduler::*;
+use mmtk::util::opaque_pointer::*;
+use mmtk::util::Address;
 use mmtk::util::ObjectReference;
-use mmtk::util::{opaque_pointer::*, Address};
-use mmtk::vm::edge_shape::Edge;
-use mmtk::vm::EdgeVisitor;
+use mmtk::vm::slot::Slot;
 use mmtk::vm::ObjectTracerContext;
 use mmtk::vm::RootsWorkFactory;
 use mmtk::vm::Scanning;
+use mmtk::vm::SlotVisitor;
 use mmtk::vm::VMBinding;
 use mmtk::Mutator;
 use mmtk::MMTK;
@@ -21,26 +22,23 @@ impl Scanning<JuliaVM> for VMScanning {
     fn scan_roots_in_mutator_thread(
         _tls: VMWorkerThread,
         mutator: &'static mut Mutator<JuliaVM>,
-        mut factory: impl RootsWorkFactory<JuliaVMEdge>,
+        mut factory: impl RootsWorkFactory<JuliaVMSlot>,
     ) {
-        // This allows us to reuse mmtk_scan_gcstack which expectes an EdgeVisitor
+        // This allows us to reuse mmtk_scan_gcstack which expectes an SlotVisitor
         // Push the nodes as they need to be transitively pinned
-        struct EdgeBuffer {
+        struct SlotBuffer {
             pub buffer: Vec<ObjectReference>,
         }
-        impl mmtk::vm::EdgeVisitor<JuliaVMEdge> for EdgeBuffer {
-            fn visit_edge(&mut self, edge: JuliaVMEdge) {
-                match edge {
-                    JuliaVMEdge::Simple(se) => {
-                        let slot = se.as_address();
-                        let object = unsafe { slot.load::<ObjectReference>() };
-                        if !object.is_null() {
+        impl mmtk::vm::SlotVisitor<JuliaVMSlot> for SlotBuffer {
+            fn visit_slot(&mut self, slot: JuliaVMSlot) {
+                match slot {
+                    JuliaVMSlot::Simple(se) => {
+                        if let Some(object) = se.load() {
                             self.buffer.push(object);
                         }
                     }
-                    JuliaVMEdge::Offset(oe) => {
-                        let object = oe.load();
-                        if !object.is_null() {
+                    JuliaVMSlot::Offset(oe) => {
+                        if let Some(object) = oe.load() {
                             self.buffer.push(object);
                         }
                     }
@@ -52,8 +50,8 @@ impl Scanning<JuliaVM> for VMScanning {
         use crate::julia_types::*;
 
         let ptls: &mut mmtk__jl_tls_states_t = unsafe { std::mem::transmute(mutator.mutator_tls) };
-        let mut tpinning_edge_buffer = EdgeBuffer { buffer: vec![] }; // need to be transitively pinned
-        let mut pinning_edge_buffer = EdgeBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
+        let mut tpinning_slot_buffer = SlotBuffer { buffer: vec![] }; // need to be transitively pinned
+        let mut pinning_slot_buffer = SlotBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
         let mut node_buffer = vec![];
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
@@ -62,8 +60,8 @@ impl Scanning<JuliaVM> for VMScanning {
                 unsafe {
                     mmtk_scan_gcstack(
                         task,
-                        &mut tpinning_edge_buffer,
-                        Some(&mut pinning_edge_buffer),
+                        &mut tpinning_slot_buffer,
+                        Some(&mut pinning_slot_buffer),
                     );
                 }
                 if task_is_root {
@@ -75,7 +73,11 @@ impl Scanning<JuliaVM> for VMScanning {
                         Address::from_ptr(task)
                     );
 
-                    node_buffer.push(ObjectReference::from_raw_address(Address::from_ptr(task)));
+                    // unsafe: We checked `!task.is_null()` before.
+                    let objref = unsafe {
+                        ObjectReference::from_raw_address_unchecked(Address::from_ptr(task))
+                    };
+                    node_buffer.push(objref);
                 }
             }
         };
@@ -96,9 +98,12 @@ impl Scanning<JuliaVM> for VMScanning {
         root_scan_task(ptls.next_task, true);
         root_scan_task(ptls.previous_task, true);
         if !ptls.previous_exception.is_null() {
-            node_buffer.push(ObjectReference::from_raw_address(Address::from_mut_ptr(
-                ptls.previous_exception,
-            )));
+            node_buffer.push(unsafe {
+                // unsafe: We have just checked `ptls.previous_exception` is not null.
+                ObjectReference::from_raw_address_unchecked(Address::from_mut_ptr(
+                    ptls.previous_exception,
+                ))
+            });
         }
 
         // Scan backtrace buffer: See gc_queue_bt_buf in gc.c
@@ -131,14 +136,14 @@ impl Scanning<JuliaVM> for VMScanning {
 
         // Push work
         const CAPACITY_PER_PACKET: usize = 4096;
-        for tpinning_roots in tpinning_edge_buffer
+        for tpinning_roots in tpinning_slot_buffer
             .buffer
             .chunks(CAPACITY_PER_PACKET)
             .map(|c| c.to_vec())
         {
             factory.create_process_tpinning_roots_work(tpinning_roots);
         }
-        for pinning_roots in pinning_edge_buffer
+        for pinning_roots in pinning_slot_buffer
             .buffer
             .chunks(CAPACITY_PER_PACKET)
             .map(|c| c.to_vec())
@@ -152,21 +157,21 @@ impl Scanning<JuliaVM> for VMScanning {
 
     fn scan_vm_specific_roots(
         _tls: VMWorkerThread,
-        mut factory: impl RootsWorkFactory<JuliaVMEdge>,
+        mut factory: impl RootsWorkFactory<JuliaVMSlot>,
     ) {
-        use crate::edges::RootsWorkClosure;
+        use crate::slots::RootsWorkClosure;
         let mut roots_closure = RootsWorkClosure::from_roots_work_factory(&mut factory);
         unsafe {
             ((*UPCALLS).scan_vm_specific_roots)(&mut roots_closure as _);
         }
     }
 
-    fn scan_object<EV: EdgeVisitor<JuliaVMEdge>>(
+    fn scan_object<SV: SlotVisitor<JuliaVMSlot>>(
         _tls: VMWorkerThread,
         object: ObjectReference,
-        edge_visitor: &mut EV,
+        slot_visitor: &mut SV,
     ) {
-        process_object(object, edge_visitor);
+        process_object(object, slot_visitor);
     }
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
         let sweep_vm_specific_work = SweepVMSpecific::new();
@@ -200,7 +205,7 @@ impl Scanning<JuliaVM> for VMScanning {
     }
 }
 
-pub fn process_object<EV: EdgeVisitor<JuliaVMEdge>>(object: ObjectReference, closure: &mut EV) {
+pub fn process_object<EV: SlotVisitor<JuliaVMSlot>>(object: ObjectReference, closure: &mut EV) {
     let addr = object.to_raw_address();
     unsafe {
         crate::julia_scanning::scan_julia_object(addr, closure);
