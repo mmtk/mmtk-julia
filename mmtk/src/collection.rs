@@ -84,7 +84,7 @@ impl Collection<JuliaVM> for VMCollection {
 
     fn spawn_gc_thread(_tls: VMThread, ctx: GCThreadContext<JuliaVM>) {
         // Just drop the join handle. The thread will run until the process quits.
-        let _ = std::thread::spawn(move || {
+        let _ = std::thread::Builder::new().name("MMTk Worker".to_string()).spawn(move || {
             use mmtk::util::opaque_pointer::*;
             use mmtk::util::Address;
             let worker_tls = VMWorkerThread(VMThread(OpaquePointer::from_address(unsafe {
@@ -144,6 +144,37 @@ pub extern "C" fn mmtk_block_thread_for_gc(gc_n_threads: u16) {
     let mut count = lock.lock().unwrap();
 
     info!("Blocking for GC!");
+
+    unsafe {
+        use libc::{pthread_attr_getstack, pthread_getattr_np, pthread_self, pthread_attr_destroy};
+        use std::ptr;
+        use std::mem;
+
+        let mut attr: libc::pthread_attr_t = mem::zeroed();
+        let mut stack_addr: *mut libc::c_void = ptr::null_mut();
+        let mut stack_size: libc::size_t = 0;
+
+        // Get the current pthread
+        let thread = pthread_self();
+
+        // Initialize thread attributes
+        if pthread_getattr_np(thread, &mut attr) != 0 {
+            eprintln!("Failed to get thread attributes");
+            return;
+        }
+
+        // Get stack information
+        if pthread_attr_getstack(&attr, &mut stack_addr, &mut stack_size) != 0 {
+            eprintln!("Failed to get stack information");
+            pthread_attr_destroy(&mut attr); // Clean up
+            return;
+        }
+
+        println!("Thread blocked in Rust: thread {:x}, stack {:?} (lo), {:?} (hi), stack size {}", thread, stack_addr, (stack_addr as *mut i8).add(stack_size), stack_size);
+
+        // Destroy the thread attributes object
+        pthread_attr_destroy(&mut attr);
+    }
 
     debug_assert!(
         gc_n_threads as usize == crate::active_plan::VMActivePlan::number_of_mutators(),

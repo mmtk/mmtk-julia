@@ -52,6 +52,7 @@ impl Scanning<JuliaVM> for VMScanning {
         use crate::julia_types::*;
 
         let ptls: &mut mmtk__jl_tls_states_t = unsafe { std::mem::transmute(mutator.mutator_tls) };
+        let pthread = ptls.system_id;
         let mut tpinning_edge_buffer = EdgeBuffer { buffer: vec![] }; // need to be transitively pinned
         let mut pinning_edge_buffer = EdgeBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
         let mut node_buffer = vec![];
@@ -59,12 +60,18 @@ impl Scanning<JuliaVM> for VMScanning {
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
         let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
             if !task.is_null() {
+                // Scan shadow stack
                 unsafe {
                     mmtk_scan_gcstack(
                         task,
                         &mut tpinning_edge_buffer,
                         Some(&mut pinning_edge_buffer),
                     );
+                }
+                // Conservatively scan native stacks to make sure we won't move objects that the runtime is using.
+                log::debug!("Scanning ptls {:?}, pthread {:x}", mutator.mutator_tls, pthread);
+                unsafe {
+                    mmtk_conservative_scan_native_stack(task);
                 }
                 if task_is_root {
                     // captures wrong root nodes before creating the work

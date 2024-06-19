@@ -461,6 +461,53 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
     }
 }
 
+pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
+    use libc::c_void;
+    let scan_stack = |hi: *mut c_void, low: *mut c_void| {
+        use mmtk::util::constants::BYTES_IN_ADDRESS;
+        let hi = Address::from_mut_ptr(hi).align_down(BYTES_IN_ADDRESS);
+        let low = Address::from_mut_ptr(low).align_up(BYTES_IN_ADDRESS);
+        log::debug!("Scan {} {}", hi, low);
+
+        let mut cursor = hi;
+        while cursor > low {
+            let addr = cursor.load::<Address>();
+            if is_potential_mmtk_object(addr) {
+                // Do something here
+            }
+            cursor -= BYTES_IN_ADDRESS;
+        }
+    };
+    
+    let ptls = (*ta).ptls as *mut mmtk__jl_tls_states_t;
+
+    // See the implementation of 'is_addr_on_stack' in Julia.
+    // Also see: gc_scrub_task
+    if (*ta).copy_stack() != 0 {
+        log::debug!("Scan copy stack: ptls {:?}", ptls);
+        let low = ((*ptls).stackbase as *mut i8).sub((*ptls).stacksize) as *mut _;
+        let hi = (*ptls).stackbase;
+        scan_stack(hi, low);
+    } else {
+        log::debug!("Scan normal stack: ptls {:?}", ptls);
+        const JL_GUARD_SIZE: usize = 4096 * 8;
+        log::debug!("Start without guard page: {:?}", (*ta).stkbuf as *mut i8);
+        let low = ((*ta).stkbuf as *mut i8).add(JL_GUARD_SIZE) as *mut _;
+        let hi = ((*ta).stkbuf as *mut i8).add((*ta).bufsz) as *mut _;
+        scan_stack(hi, low);
+    }
+}
+
+pub fn is_potential_mmtk_object(addr: Address) -> bool {
+    if addr.is_zero() {
+        return false;
+    }
+    // Just quickly check if the addr is in the MMTk space.
+    // FIXME: We should use VO bit and is_mmtk_object here.
+    let potential_object = ObjectReference::from_raw_address(addr);
+    mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(potential_object)
+}
+
 #[inline(always)]
 pub unsafe fn read_stack(addr: Address, offset: isize, lb: u64, ub: u64) -> Address {
     let real_addr = get_stack_addr(addr, offset, lb, ub);
