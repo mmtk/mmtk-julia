@@ -462,15 +462,20 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
 }
 
 pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
-    use libc::c_void;
-    let scan_stack = |hi: *mut c_void, low: *mut c_void| {
+    let scan_stack = |lo: Address, hi: Address| {
         use mmtk::util::constants::BYTES_IN_ADDRESS;
-        let hi = Address::from_mut_ptr(hi).align_down(BYTES_IN_ADDRESS);
-        let low = Address::from_mut_ptr(low).align_up(BYTES_IN_ADDRESS);
-        log::debug!("Scan {} {}", hi, low);
+        let hi = hi.align_down(BYTES_IN_ADDRESS);
+        let lo = lo.align_up(BYTES_IN_ADDRESS);
+        log::debug!("Scan {} (lo) {} (hi)", lo, hi);
+
+        // See jl_guard_size
+        // TODO: Are we sure there are always guard pages we need to skip?
+        const JL_GUARD_PAGE: usize = 4096 * 8;
+        log::debug!("Skip guard page: {}, {}", lo, lo + JL_GUARD_PAGE);
+        let lo = lo + JL_GUARD_PAGE;
 
         let mut cursor = hi;
-        while cursor > low {
+        while cursor > lo {
             let addr = cursor.load::<Address>();
             if is_potential_mmtk_object(addr) {
                 // Do something here
@@ -478,24 +483,11 @@ pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
             cursor -= BYTES_IN_ADDRESS;
         }
     };
-    
-    let ptls = (*ta).ptls as *mut mmtk__jl_tls_states_t;
-
-    // See the implementation of 'is_addr_on_stack' in Julia.
-    // Also see: gc_scrub_task
-    if (*ta).copy_stack() != 0 {
-        log::debug!("Scan copy stack: ptls {:?}", ptls);
-        let low = ((*ptls).stackbase as *mut i8).sub((*ptls).stacksize) as *mut _;
-        let hi = (*ptls).stackbase;
-        scan_stack(hi, low);
-    } else {
-        log::debug!("Scan normal stack: ptls {:?}", ptls);
-        const JL_GUARD_SIZE: usize = 4096 * 8;
-        log::debug!("Start without guard page: {:?}", (*ta).stkbuf as *mut i8);
-        let low = ((*ta).stkbuf as *mut i8).add(JL_GUARD_SIZE) as *mut _;
-        let hi = ((*ta).stkbuf as *mut i8).add((*ta).bufsz) as *mut _;
-        scan_stack(hi, low);
-    }
+    let mut size: u64 = 0;
+    let mut ptid: i32 = 0;
+    let stk = unsafe { ((*UPCALLS).mmtk_jl_task_stack_buffer)(ta, &mut size as *mut _, &mut ptid as *mut _) };
+    log::debug!("std = {}, size = {}, ptid = {:x}", stk, size, ptid);
+    scan_stack(stk, stk + size as usize);
 }
 
 pub fn is_potential_mmtk_object(addr: Address) -> bool {

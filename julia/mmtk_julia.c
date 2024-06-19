@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "gc.h"
+#include "julia_gcext.h"
 
 extern int64_t perm_scanned_bytes;
 extern void run_finalizer(jl_task_t *ct, void *o, void *ff);
@@ -581,6 +582,11 @@ uint64_t mmtk_jl_hrtime(void) JL_NOTSAFEPOINT
     return uv_hrtime();
 }
 
+JL_DLLEXPORT void *mmtk_jl_task_stack_buffer(void *task, size_t *size, int *ptid)
+{
+    return jl_task_stack_buffer((jl_task_t *)task, size, ptid);
+}
+
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
@@ -608,4 +614,5 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .mmtk_get_total_memory = mmtk_get_total_memory,
     .mmtk_get_constrained_memory = mmtk_get_constrained_memory,
     .mmtk_get_heap_size_hint = mmtk_get_heap_size_hint,
+    .mmtk_jl_task_stack_buffer = mmtk_jl_task_stack_buffer,
 };
