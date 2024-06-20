@@ -461,9 +461,35 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
     }
 }
 
+use std::sync::Mutex;
+use std::collections::HashSet;
+use mmtk::util::constants::BYTES_IN_ADDRESS;
+
+lazy_static!{
+    pub static ref CONSERVATIVE_ROOTS: Mutex<HashSet<ObjectReference>> = Mutex::new(HashSet::new());
+}
+
+pub fn pin_conservative_roots() {
+    let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
+    let n_roots = roots.len();
+    roots.retain(|obj| mmtk::memory_manager::pin_object::<JuliaVM>(*obj));
+    let n_pinned = roots.len();
+    log::debug!("Conservative roots: {}, pinned: {}", n_roots, n_pinned);
+}
+
+pub fn unpin_conservative_roots() {
+    let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
+    let n_pinned = roots.len();
+    let mut n_live = 0;
+    roots.drain().for_each(|obj| if mmtk::memory_manager::is_live_object::<JuliaVM>(obj) {
+        n_live += 1;
+        mmtk::memory_manager::unpin_object::<JuliaVM>(obj);
+    });
+    log::debug!("Conservative roots: pinned: {}, unpinned/live {}", n_pinned, n_live);
+}
+
 pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
     let scan_stack = |lo: Address, hi: Address| {
-        use mmtk::util::constants::BYTES_IN_ADDRESS;
         let hi = hi.align_down(BYTES_IN_ADDRESS);
         let lo = lo.align_up(BYTES_IN_ADDRESS);
         log::debug!("Scan {} (lo) {} (hi)", lo, hi);
@@ -477,8 +503,8 @@ pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
         let mut cursor = hi;
         while cursor > lo {
             let addr = cursor.load::<Address>();
-            if is_potential_mmtk_object(addr) {
-                // Do something here
+            if let Some(obj) = is_potential_mmtk_object(addr) {
+                CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
             }
             cursor -= BYTES_IN_ADDRESS;
         }
@@ -490,14 +516,24 @@ pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
     scan_stack(stk, stk + size as usize);
 }
 
-pub fn is_potential_mmtk_object(addr: Address) -> bool {
+pub fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
     if addr.is_zero() {
-        return false;
+        return None;
+    }
+    if !addr.is_aligned_to(BYTES_IN_ADDRESS) {
+        return None;
+    }
+    if !mmtk::memory_manager::is_mapped_address(addr) {
+        return None;
     }
     // Just quickly check if the addr is in the MMTk space.
     // FIXME: We should use VO bit and is_mmtk_object here.
     let potential_object = ObjectReference::from_raw_address(addr);
-    mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(potential_object)
+    if mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(potential_object) {
+        Some(potential_object)
+    } else {
+        None
+    }
 }
 
 #[inline(always)]

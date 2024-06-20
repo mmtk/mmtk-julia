@@ -175,7 +175,11 @@ impl Scanning<JuliaVM> for VMScanning {
     ) {
         process_object(object, edge_visitor);
     }
+
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
+        // pin concservative roots from stack scanning
+        crate::julia_scanning::pin_conservative_roots();
+
         let sweep_vm_specific_work = SweepVMSpecific::new();
         memory_manager::add_work_packet(
             &SINGLETON,
@@ -183,6 +187,7 @@ impl Scanning<JuliaVM> for VMScanning {
             sweep_vm_specific_work,
         );
     }
+
     fn supports_return_barrier() -> bool {
         unimplemented!()
     }
