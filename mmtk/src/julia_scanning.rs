@@ -356,21 +356,67 @@ pub unsafe fn scan_julia_object<EV: EdgeVisitor<JuliaVMEdge>>(obj: Address, clos
     }
 }
 
+pub unsafe fn mmtk_scan_gcpreserve_stack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
+    ta: *const mmtk_jl_task_t,
+    closure: &'a mut EV,
+) {
+    // process transitively pinning stack
+    let mut s = (*ta).gcpreserve_stack;
+    let (offset, lb, ub) = (0 as isize, 0 as u64, u64::MAX);
+
+    if s != std::ptr::null_mut() {
+        let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
+        let mut nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
+        debug_assert!(nroots.as_usize() as u32 <= UINT32_MAX);
+        let mut nr = nroots >> 3;
+
+        loop {
+            let rts = Address::from_mut_ptr(s).shift::<Address>(2);
+            let mut i = 0;
+
+            while i < nr {
+                let real_addr = get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
+
+                let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
+                use crate::julia_finalizer::gc_ptr_tag;
+                // malloced pointer tagged in jl_gc_add_quiescent
+                // skip both the next element (native function), and the object
+                if slot & 3usize == 3 {
+                    i += 2;
+                    continue;
+                }
+
+                // pointer is not malloced but function is native, so skip it
+                if gc_ptr_tag(slot, 1) {
+                    i += 2;
+                    continue;
+                }
+
+                process_edge(closure, real_addr);
+                i += 1;
+            }
+
+            let s_prev_address = ::std::ptr::addr_of!((*s).prev);
+            let sprev = read_stack(Address::from_ptr(s_prev_address), offset, lb, ub);
+            if sprev.is_zero() {
+                break;
+            }
+
+            s = sprev.to_mut_ptr::<mmtk_jl_gcframe_t>();
+            let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
+            let new_nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
+            nroots = new_nroots;
+            nr = nroots >> 3;
+            continue;
+        }
+    }
+}
+
 pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
     ta: *const mmtk_jl_task_t,
     closure: &'a mut EV,
     pclosure: Option<&'a mut EV>,
 ) {
-    // process transitively pinning stack first
-    let pinning_closure = if let Some(c) = pclosure {
-        // only do this when scanning stack roots
-        // will not need the pinning closure, since everything on this stack will have to be transitively pinning
-        scan_stack((*ta).tpin_gcstack, 0, u64::MAX, 0, closure, None);
-        Some(c)
-    } else {
-        None
-    };
-
     // process Julia's standard shadow (GC) stack
     let stkbuf = (*ta).stkbuf;
     let copy_stack = (*ta).copy_stack_custom();
@@ -395,7 +441,7 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: EdgeVisitor<JuliaVMEdge>>(
     }
 
     // process Julia's gc shadow stack
-    scan_stack((*ta).gcstack, lb, ub, offset, closure, pinning_closure);
+    scan_stack((*ta).gcstack, lb, ub, offset, closure, pclosure);
 
     // just call into C, since the code is cold
     if (*ta).excstack != std::ptr::null_mut() {
