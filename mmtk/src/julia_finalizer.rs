@@ -112,7 +112,9 @@ impl ArrayListT {
 }
 
 fn gc_ptr_clear_tag(addr: Address, tag: usize) -> ObjectReference {
-    ObjectReference::from_raw_address(unsafe { Address::from_usize(addr & !tag) })
+    let addr = unsafe { Address::from_usize(addr & !tag) };
+    debug_assert!(!addr.is_zero());
+    unsafe { ObjectReference::from_raw_address_unchecked(addr) }
 }
 
 pub fn gc_ptr_tag(addr: Address, tag: usize) -> bool {
@@ -148,12 +150,13 @@ fn sweep_finalizer_list(
             (true, false)
         } else {
             let isfreed = !memory_manager::is_live_object::<JuliaVM>(v);
+            debug_assert!(!fin.is_zero());
             let isold = finalizer_list_marked.is_some()
                 && !isfreed
                 && (mmtk_object_is_managed_by_mmtk(fin.as_usize())
-                    && memory_manager::is_live_object::<JuliaVM>(
-                        ObjectReference::from_raw_address(fin),
-                    )
+                    && memory_manager::is_live_object::<JuliaVM>(unsafe {
+                        ObjectReference::from_raw_address_unchecked(fin)
+                    })
                     || !(mmtk_object_is_managed_by_mmtk(fin.as_usize())));
             (isfreed, isold)
         };
@@ -208,7 +211,8 @@ fn mark_finlist<T: ObjectTracer>(list: &mut ArrayListT, start: usize, tracer: &m
             cur_tag = 1;
             gc_ptr_clear_tag(cur, 1)
         } else {
-            ObjectReference::from_raw_address(cur)
+            // unsafe: We checked `cur.is_zero()` before.
+            unsafe { ObjectReference::from_raw_address_unchecked(cur) }
         };
         if gc_ptr_tag(cur, 2) {
             i += 1;
