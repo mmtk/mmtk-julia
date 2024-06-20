@@ -489,31 +489,38 @@ pub fn unpin_conservative_roots() {
 }
 
 pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
-    let scan_stack = |lo: Address, hi: Address| {
-        let hi = hi.align_down(BYTES_IN_ADDRESS);
-        let lo = lo.align_up(BYTES_IN_ADDRESS);
-        log::debug!("Scan {} (lo) {} (hi)", lo, hi);
+    let mut size: u64 = 0;
+    let mut ptid: i32 = 0;
+    let stk = unsafe { ((*UPCALLS).mmtk_jl_task_stack_buffer)(ta, &mut size as *mut _, &mut ptid as *mut _) };
+    log::debug!("stk = {}, size = {}, ptid = {:x}", stk, size, ptid);
+    if !stk.is_zero() {
+        log::debug!("Conservatively scan the stack");
 
         // See jl_guard_size
         // TODO: Are we sure there are always guard pages we need to skip?
         const JL_GUARD_PAGE: usize = 4096 * 8;
-        log::debug!("Skip guard page: {}, {}", lo, lo + JL_GUARD_PAGE);
-        let lo = lo + JL_GUARD_PAGE;
+        let guard_page_start = stk + JL_GUARD_PAGE;
+        log::debug!("Skip guard page: {}, {}", stk, guard_page_start);
 
-        let mut cursor = hi;
-        while cursor > lo {
-            let addr = cursor.load::<Address>();
-            if let Some(obj) = is_potential_mmtk_object(addr) {
-                CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
-            }
-            cursor -= BYTES_IN_ADDRESS;
+        conservative_scan_range(guard_page_start, stk + size as usize);
+    } else {
+        log::warn!("Skip stack for {:?}", ta);
+    }
+}
+
+pub fn conservative_scan_range(lo: Address, hi: Address) {
+    let hi = hi.align_down(BYTES_IN_ADDRESS);
+    let lo = lo.align_up(BYTES_IN_ADDRESS);
+    log::debug!("Scan {} (lo) {} (hi)", lo, hi);
+
+    let mut cursor = hi;
+    while cursor > lo {
+        let addr = unsafe { cursor.load::<Address>() };
+        if let Some(obj) = is_potential_mmtk_object(addr) {
+            CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
         }
-    };
-    let mut size: u64 = 0;
-    let mut ptid: i32 = 0;
-    let stk = unsafe { ((*UPCALLS).mmtk_jl_task_stack_buffer)(ta, &mut size as *mut _, &mut ptid as *mut _) };
-    log::debug!("std = {}, size = {}, ptid = {:x}", stk, size, ptid);
-    scan_stack(stk, stk + size as usize);
+        cursor -= BYTES_IN_ADDRESS;
+    }
 }
 
 pub fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
