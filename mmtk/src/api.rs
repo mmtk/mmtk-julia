@@ -446,6 +446,11 @@ pub extern "C" fn mmtk_object_reference_write_slow(
 pub static MMTK_SIDE_LOG_BIT_BASE_ADDRESS: Address =
     mmtk::util::metadata::side_metadata::GLOBAL_SIDE_METADATA_VM_BASE_ADDRESS;
 
+/// VO bit base address
+#[no_mangle]
+pub static MMTK_SIDE_VO_BIT_BASE_ADDRESS: Address =
+    mmtk::util::metadata::side_metadata::VO_BIT_SIDE_METADATA_ADDR;
+
 #[no_mangle]
 pub extern "C" fn mmtk_object_is_managed_by_mmtk(addr: usize) -> bool {
     crate::api::mmtk_is_mapped_address(unsafe { Address::from_usize(addr) })
