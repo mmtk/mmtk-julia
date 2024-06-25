@@ -6478,6 +6478,7 @@ pub struct mmtk__jl_task_t {
     pub tid: u16,
     pub threadpoolid: i8,
     pub gcstack: *mut mmtk_jl_gcframe_t,
+    pub gcpreserve_stack: *mut mmtk_jl_gcframe_t,
     pub world_age: usize,
     pub ptls: *mut ::std::os::raw::c_void,
     pub excstack: *mut mmtk_jl_excstack_t,
@@ -6497,7 +6498,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk__jl_task_t>(),
-        376usize,
+        384usize,
         concat!("Size of: ", stringify!(mmtk__jl_task_t))
     );
     assert_eq!(
@@ -6656,8 +6657,18 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).world_age) as usize - ptr as usize },
+        unsafe { ::std::ptr::addr_of!((*ptr).gcpreserve_stack) as usize - ptr as usize },
         112usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(mmtk__jl_task_t),
+            "::",
+            stringify!(gcpreserve_stack)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).world_age) as usize - ptr as usize },
+        120usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6667,7 +6678,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).ptls) as usize - ptr as usize },
-        120usize,
+        128usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6677,7 +6688,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).excstack) as usize - ptr as usize },
-        128usize,
+        136usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6687,7 +6698,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).eh) as usize - ptr as usize },
-        136usize,
+        144usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6697,7 +6708,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).ctx) as usize - ptr as usize },
-        144usize,
+        152usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6707,7 +6718,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).stkbuf) as usize - ptr as usize },
-        344usize,
+        352usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6717,7 +6728,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).bufsz) as usize - ptr as usize },
-        352usize,
+        360usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6727,7 +6738,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).inference_start_time) as usize - ptr as usize },
-        360usize,
+        368usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6737,7 +6748,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).reentrant_inference) as usize - ptr as usize },
-        368usize,
+        376usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),
@@ -6747,7 +6758,7 @@ fn bindgen_test_layout_mmtk__jl_task_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).reentrant_timing) as usize - ptr as usize },
-        370usize,
+        378usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_task_t),

@@ -58,6 +58,10 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
             if !task.is_null() {
                 unsafe {
+                    // process gc preserve stack
+                    mmtk_scan_gcpreserve_stack(task, &mut tpinning_slot_buffer);
+
+                    // process gc stack
                     mmtk_scan_gcstack(
                         task,
                         &mut tpinning_slot_buffer,
