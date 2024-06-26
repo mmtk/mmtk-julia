@@ -400,6 +400,8 @@ pub extern "C" fn mmtk_memory_region_copy(
 pub extern "C" fn mmtk_immortal_region_post_alloc(start: Address, size: usize) {
     #[cfg(feature = "stickyimmix")]
     set_side_log_bit_for_region(start, size);
+    #[cfg(feature = "is_mmtk_object")]
+    set_side_vo_bit_for_region(start, size);
 }
 
 #[cfg(feature = "stickyimmix")]
@@ -410,6 +412,12 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
         mmtk::util::metadata::MetadataSpec::OnSide(side) => side.bset_metadata(start, size),
         _ => unimplemented!(),
     }
+}
+
+#[cfg(feature = "is_mmtk_object")]
+fn set_side_vo_bit_for_region(start: Address, size: usize) {
+    debug!("Bulk set VO bit {} to {} ({} bytes)", start, start + size, size);
+    mmtk::util::metadata::side_metadata::bset_vo_bit(start, size);
 }
 
 #[no_mangle]

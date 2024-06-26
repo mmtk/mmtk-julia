@@ -10,7 +10,7 @@ edition = "2018"
 [package.metadata.julia]
 # Our CI matches the following line and extract mmtk/julia. If this line is updated, please check ci yaml files and make sure it works.
 julia_repo = "https://github.com/udesou/julia.git"
-julia_version = "b5b58a2f12b2407b8e054697a2686c2161561ab6"
+julia_version = "b405838d49d79db5c945f061c3da9e8d4f022b3f"
 
 [lib]
 crate-type = ["cdylib"]
@@ -31,7 +31,7 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "56b2521d2b99848ee0613a0a5288fe6d81b754ba" }
+mmtk = { git = "https://github.com/udesou/mmtk-core.git", rev = "a3cb0bce434ddfefbc8e1cd40b2d745e3415d773" }
 # Uncomment the following to build locally
 # mmtk = { path = "../../mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
