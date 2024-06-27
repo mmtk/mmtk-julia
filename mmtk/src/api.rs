@@ -226,6 +226,16 @@ pub extern "C" fn mmtk_post_alloc(
     bytes: usize,
     semantics: AllocationSemantics,
 ) {
+    #[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
+    if semantics == AllocationSemantics::Default {
+        // clearing pinning bits
+        use crate::mmtk::vm::ObjectModel;
+        use crate::object_model::VMObjectModel;
+        use mmtk::util::metadata::MetadataSpec;
+        if let MetadataSpec::OnSide(side) = *VMObjectModel::LOCAL_PINNING_BIT_SPEC {
+            side.bzero_metadata(refer.to_raw_address(), bytes);
+        }
+    }
     memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
 }
 
@@ -390,6 +400,8 @@ pub extern "C" fn mmtk_memory_region_copy(
 pub extern "C" fn mmtk_immortal_region_post_alloc(start: Address, size: usize) {
     #[cfg(feature = "stickyimmix")]
     set_side_log_bit_for_region(start, size);
+    #[cfg(feature = "is_mmtk_object")]
+    set_side_vo_bit_for_region(start, size);
 }
 
 #[cfg(feature = "stickyimmix")]
@@ -400,6 +412,17 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
         mmtk::util::metadata::MetadataSpec::OnSide(side) => side.bset_metadata(start, size),
         _ => unimplemented!(),
     }
+}
+
+#[cfg(feature = "is_mmtk_object")]
+fn set_side_vo_bit_for_region(start: Address, size: usize) {
+    debug!(
+        "Bulk set VO bit {} to {} ({} bytes)",
+        start,
+        start + size,
+        size
+    );
+    mmtk::util::metadata::side_metadata::bset_vo_bit(start, size);
 }
 
 #[no_mangle]
@@ -435,6 +458,11 @@ pub extern "C" fn mmtk_object_reference_write_slow(
 #[no_mangle]
 pub static MMTK_SIDE_LOG_BIT_BASE_ADDRESS: Address =
     mmtk::util::metadata::side_metadata::GLOBAL_SIDE_METADATA_VM_BASE_ADDRESS;
+
+/// VO bit base address
+#[no_mangle]
+pub static MMTK_SIDE_VO_BIT_BASE_ADDRESS: Address =
+    mmtk::util::metadata::side_metadata::VO_BIT_SIDE_METADATA_ADDR;
 
 #[no_mangle]
 pub extern "C" fn mmtk_object_is_managed_by_mmtk(addr: usize) -> bool {
