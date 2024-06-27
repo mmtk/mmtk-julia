@@ -416,7 +416,12 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
 
 #[cfg(feature = "is_mmtk_object")]
 fn set_side_vo_bit_for_region(start: Address, size: usize) {
-    debug!("Bulk set VO bit {} to {} ({} bytes)", start, start + size, size);
+    debug!(
+        "Bulk set VO bit {} to {} ({} bytes)",
+        start,
+        start + size,
+        size
+    );
     mmtk::util::metadata::side_metadata::bset_vo_bit(start, size);
 }
 
