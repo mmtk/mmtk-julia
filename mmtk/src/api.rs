@@ -226,16 +226,6 @@ pub extern "C" fn mmtk_post_alloc(
     bytes: usize,
     semantics: AllocationSemantics,
 ) {
-    #[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
-    if semantics == AllocationSemantics::Default {
-        // clearing pinning bits
-        use crate::mmtk::vm::ObjectModel;
-        use crate::object_model::VMObjectModel;
-        use mmtk::util::metadata::MetadataSpec;
-        if let MetadataSpec::OnSide(side) = *VMObjectModel::LOCAL_PINNING_BIT_SPEC {
-            side.bzero_metadata(refer.to_raw_address(), bytes);
-        }
-    }
     memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
 }
 

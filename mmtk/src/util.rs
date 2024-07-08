@@ -158,6 +158,9 @@ pub extern "C" fn mmtk_get_possibly_forwared(object: ObjectReference) -> ObjectR
 }
 
 // Functions to set the side metadata for the VO bit (copied from mmtk-core)
+pub const VO_BIT_LOG_NUM_OF_BITS: i32 = 0;
+pub const VO_BIT_LOG_BYTES_PER_REGION: usize = mmtk::util::constants::LOG_MIN_OBJECT_SIZE as usize;
+
 pub fn bulk_update_vo_bit(
     start: Address,
     size: usize,
@@ -198,27 +201,23 @@ pub fn address_to_meta_address(data_addr: Address) -> Address {
 
 /// Performs address translation in contiguous metadata spaces (e.g. global and policy-specific in 64-bits, and global in 32-bits)
 pub fn address_to_contiguous_meta_address(data_addr: Address) -> Address {
-    let log_bits_num = 0 as i32; // VO_BIT log_num_of_bits
-    let log_bytes_in_region = mmtk::util::constants::LOG_MIN_OBJECT_SIZE as usize; // VO_BIT log_bytes_in_region
-
-    let rshift = (mmtk::util::constants::LOG_BITS_IN_BYTE as i32) - log_bits_num;
+    let rshift = (mmtk::util::constants::LOG_BITS_IN_BYTE as i32) - VO_BIT_LOG_NUM_OF_BITS;
 
     if rshift >= 0 {
-        MMTK_SIDE_VO_BIT_BASE_ADDRESS + ((data_addr >> log_bytes_in_region) >> rshift)
+        MMTK_SIDE_VO_BIT_BASE_ADDRESS + ((data_addr >> VO_BIT_LOG_BYTES_PER_REGION) >> rshift)
     } else {
-        MMTK_SIDE_VO_BIT_BASE_ADDRESS + ((data_addr >> log_bytes_in_region) << (-rshift))
+        MMTK_SIDE_VO_BIT_BASE_ADDRESS + ((data_addr >> VO_BIT_LOG_BYTES_PER_REGION) << (-rshift))
     }
 }
 
 pub fn meta_byte_lshift(data_addr: Address) -> u8 {
-    let log_bytes_in_region = mmtk::util::constants::LOG_MIN_OBJECT_SIZE as usize; // VO_BIT log_bytes_in_region
-    let bits_num_log = 0 as i32; // VO_BIT log_num_of_bits
-    if bits_num_log >= 3 {
+    if VO_BIT_LOG_NUM_OF_BITS >= 3 {
         return 0;
     }
     let rem_shift = mmtk::util::constants::BITS_IN_WORD as i32
-        - ((mmtk::util::constants::LOG_BITS_IN_BYTE as i32) - bits_num_log);
-    ((((data_addr >> log_bytes_in_region) << rem_shift) >> rem_shift) << bits_num_log) as u8
+        - ((mmtk::util::constants::LOG_BITS_IN_BYTE as i32) - VO_BIT_LOG_NUM_OF_BITS);
+    ((((data_addr >> VO_BIT_LOG_BYTES_PER_REGION) << rem_shift) >> rem_shift)
+        << VO_BIT_LOG_NUM_OF_BITS) as u8
 }
 
 /// This method is used for bulk updating side metadata for a data address range. As we cannot guarantee
