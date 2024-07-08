@@ -422,7 +422,8 @@ fn set_side_vo_bit_for_region(start: Address, size: usize) {
         start + size,
         size
     );
-    mmtk::util::metadata::side_metadata::bset_vo_bit(start, size);
+
+    crate::util::bulk_update_vo_bit(start, size, &crate::util::set_meta_bits)
 }
 
 #[no_mangle]
