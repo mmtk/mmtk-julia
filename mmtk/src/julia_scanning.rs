@@ -9,6 +9,7 @@ use crate::JuliaVM;
 use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
 use memoffset::offset_of;
+use mmtk::memory_manager;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::slot::SimpleSlot;
 use mmtk::vm::SlotVisitor;
@@ -524,28 +525,7 @@ pub fn conservative_scan_range(lo: Address, hi: Address) {
 }
 
 pub fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
-    if addr.is_zero() {
-        return None;
-    }
-    if !addr.is_aligned_to(BYTES_IN_ADDRESS) {
-        return None;
-    }
-    if !mmtk::memory_manager::is_mapped_address(addr) {
-        return None;
-    }
-    // Just quickly check if the addr is in the MMTk space.
-    // FIXME: We should use VO bit and is_mmtk_object here.
-    let potential_object = ObjectReference::from_raw_address(addr);
-    match potential_object {
-        Some(obj) => {
-            if mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(obj) {
-                Some(obj)
-            } else {
-                None
-            }
-        }
-        None => None,
-    }
+    memory_manager::find_object_from_internal_pointer::<JuliaVM>(addr, usize::MAX)
 }
 
 #[inline(always)]
