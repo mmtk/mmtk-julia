@@ -5,6 +5,7 @@ use crate::julia_types::*;
 use crate::object_model::mmtk_jl_array_ndims;
 use crate::slots::JuliaVMSlot;
 use crate::slots::OffsetSlot;
+use crate::JuliaVM;
 use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
 use memoffset::offset_of;
@@ -535,10 +536,15 @@ pub fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
     // Just quickly check if the addr is in the MMTk space.
     // FIXME: We should use VO bit and is_mmtk_object here.
     let potential_object = ObjectReference::from_raw_address(addr);
-    if mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(potential_object) {
-        Some(potential_object)
-    } else {
-        None
+    match potential_object {
+        Some(obj) => {
+            if mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(obj) {
+                Some(obj)
+            } else {
+                None
+            }
+        }
+        None => None,
     }
 }
 
