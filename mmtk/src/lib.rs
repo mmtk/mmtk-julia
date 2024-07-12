@@ -116,7 +116,11 @@ pub struct Julia_Upcalls {
     pub mmtk_get_total_memory: extern "C" fn() -> u64,
     pub mmtk_get_constrained_memory: extern "C" fn() -> u64,
     pub mmtk_get_heap_size_hint: extern "C" fn() -> u64,
-    pub mmtk_jl_task_stack_buffer: extern "C" fn(task: *const crate::julia_types::mmtk_jl_task_t, size: *mut u64, ptid: *mut i32) -> Address,
+    pub mmtk_jl_task_stack_buffer: extern "C" fn(
+        task: *const crate::julia_types::mmtk_jl_task_t,
+        size: *mut u64,
+        ptid: *mut i32,
+    ) -> Address,
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();

@@ -87,18 +87,20 @@ impl Collection<JuliaVM> for VMCollection {
 
     fn spawn_gc_thread(_tls: VMThread, ctx: GCThreadContext<JuliaVM>) {
         // Just drop the join handle. The thread will run until the process quits.
-        let _ = std::thread::Builder::new().name("MMTk Worker".to_string()).spawn(move || {
-            use mmtk::util::opaque_pointer::*;
-            use mmtk::util::Address;
-            let worker_tls = VMWorkerThread(VMThread(OpaquePointer::from_address(unsafe {
-                Address::from_usize(thread_id::get())
-            })));
-            match ctx {
-                GCThreadContext::Worker(w) => {
-                    mmtk::memory_manager::start_worker(&SINGLETON, worker_tls, w)
+        let _ = std::thread::Builder::new()
+            .name("MMTk Worker".to_string())
+            .spawn(move || {
+                use mmtk::util::opaque_pointer::*;
+                use mmtk::util::Address;
+                let worker_tls = VMWorkerThread(VMThread(OpaquePointer::from_address(unsafe {
+                    Address::from_usize(thread_id::get())
+                })));
+                match ctx {
+                    GCThreadContext::Worker(w) => {
+                        mmtk::memory_manager::start_worker(&SINGLETON, worker_tls, w)
+                    }
                 }
-            }
-        });
+            });
     }
 
     fn schedule_finalization(_tls: VMWorkerThread) {}
@@ -144,8 +146,8 @@ pub extern "C" fn mmtk_block_thread_for_gc(gc_n_threads: u16) {
     // Force all callee-saved registers to be saved to an array
     #[cfg(target_arch = "x86_64")]
     unsafe {
-        use mmtk::util::Address;
         use mmtk::util::constants::BYTES_IN_ADDRESS;
+        use mmtk::util::Address;
         let mut registers: [u64; 7] = [0; 7];
         std::arch::asm!(
             "mov {}, rbx",
@@ -176,9 +178,9 @@ pub extern "C" fn mmtk_block_thread_for_gc(gc_n_threads: u16) {
     info!("Blocking for GC!");
 
     unsafe {
-        use libc::{pthread_attr_getstack, pthread_getattr_np, pthread_self, pthread_attr_destroy};
-        use std::ptr;
+        use libc::{pthread_attr_destroy, pthread_attr_getstack, pthread_getattr_np, pthread_self};
         use std::mem;
+        use std::ptr;
 
         let mut attr: libc::pthread_attr_t = mem::zeroed();
         let mut stack_addr: *mut libc::c_void = ptr::null_mut();
@@ -200,7 +202,13 @@ pub extern "C" fn mmtk_block_thread_for_gc(gc_n_threads: u16) {
             return;
         }
 
-        println!("Thread blocked in Rust: thread {:x}, stack {:?} (lo), {:?} (hi), stack size {}", thread, stack_addr, (stack_addr as *mut i8).add(stack_size), stack_size);
+        println!(
+            "Thread blocked in Rust: thread {:x}, stack {:?} (lo), {:?} (hi), stack size {}",
+            thread,
+            stack_addr,
+            (stack_addr as *mut i8).add(stack_size),
+            stack_size
+        );
 
         // Destroy the thread attributes object
         pthread_attr_destroy(&mut attr);

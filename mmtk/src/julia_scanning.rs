@@ -452,11 +452,11 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: SlotVisitor<JuliaVMSlot>>(
     }
 }
 
-use std::sync::Mutex;
-use std::collections::HashSet;
 use mmtk::util::constants::BYTES_IN_ADDRESS;
+use std::collections::HashSet;
+use std::sync::Mutex;
 
-lazy_static!{
+lazy_static! {
     pub static ref CONSERVATIVE_ROOTS: Mutex<HashSet<ObjectReference>> = Mutex::new(HashSet::new());
 }
 
@@ -472,17 +472,25 @@ pub fn unpin_conservative_roots() {
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
     let n_pinned = roots.len();
     let mut n_live = 0;
-    roots.drain().for_each(|obj| if mmtk::memory_manager::is_live_object::<JuliaVM>(obj) {
-        n_live += 1;
-        mmtk::memory_manager::unpin_object::<JuliaVM>(obj);
+    roots.drain().for_each(|obj| {
+        if mmtk::memory_manager::is_live_object::<JuliaVM>(obj) {
+            n_live += 1;
+            mmtk::memory_manager::unpin_object::<JuliaVM>(obj);
+        }
     });
-    log::debug!("Conservative roots: pinned: {}, unpinned/live {}", n_pinned, n_live);
+    log::debug!(
+        "Conservative roots: pinned: {}, unpinned/live {}",
+        n_pinned,
+        n_live
+    );
 }
 
 pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
     let mut size: u64 = 0;
     let mut ptid: i32 = 0;
-    let stk = unsafe { ((*UPCALLS).mmtk_jl_task_stack_buffer)(ta, &mut size as *mut _, &mut ptid as *mut _) };
+    let stk = unsafe {
+        ((*UPCALLS).mmtk_jl_task_stack_buffer)(ta, &mut size as *mut _, &mut ptid as *mut _)
+    };
     log::debug!("stk = {}, size = {}, ptid = {:x}", stk, size, ptid);
     if !stk.is_zero() {
         log::debug!("Conservatively scan the stack");

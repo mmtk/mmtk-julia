@@ -71,7 +71,11 @@ impl Scanning<JuliaVM> for VMScanning {
                     );
                 }
                 // Conservatively scan native stacks to make sure we won't move objects that the runtime is using.
-                log::debug!("Scanning ptls {:?}, pthread {:x}", mutator.mutator_tls, pthread);
+                log::debug!(
+                    "Scanning ptls {:?}, pthread {:x}",
+                    mutator.mutator_tls,
+                    pthread
+                );
                 unsafe {
                     mmtk_conservative_scan_native_stack(task);
                 }
