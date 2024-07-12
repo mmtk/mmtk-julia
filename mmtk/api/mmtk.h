@@ -11,8 +11,8 @@ extern "C" {
 
 typedef void* MMTk_Mutator;
 typedef void* MMTk_TraceLocal;
-typedef void (*ProcessEdgeFn)(void* closure, void* slot);
-typedef void (*ProcessOffsetEdgeFn)(void* closure, void* slot, int offset);
+typedef void (*ProcessSlotFn)(void* closure, void* slot);
+typedef void (*ProcessOffsetSlotFn)(void* closure, void* slot, int offset);
 
 typedef struct {
     void** ptr;
@@ -20,7 +20,7 @@ typedef struct {
 } RootsWorkBuffer;
 
 typedef struct {
-    RootsWorkBuffer (*report_edges_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
+    RootsWorkBuffer (*report_slots_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
     RootsWorkBuffer (*report_nodes_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
     RootsWorkBuffer (*report_tpinned_nodes_func)(void** buf, size_t size, size_t cap, void* data, bool renew);
     void* data;
@@ -52,6 +52,7 @@ extern void mmtk_unreachable(void);
 extern unsigned char mmtk_pin_object(void* obj);
 extern bool mmtk_is_pinned(void* obj);
 
+
 extern void mmtk_set_vm_space(void* addr, size_t size);
 extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
 
@@ -60,6 +61,7 @@ extern void mmtk_memory_region_copy(MMTk_Mutator mutator, void* src_obj, void* s
 extern void mmtk_object_reference_write_post(MMTk_Mutator mutator, const void* src, const void* target);
 extern void mmtk_object_reference_write_slow(MMTk_Mutator mutator, const void* src, const void* target);
 extern const void* MMTK_SIDE_LOG_BIT_BASE_ADDRESS;
+extern const void* MMTK_SIDE_VO_BIT_BASE_ADDRESS;
 
 extern uintptr_t JULIA_MALLOC_BYTES;
 
@@ -71,7 +73,7 @@ extern uintptr_t JULIA_MALLOC_BYTES;
 // * int is 4 bytes
 // * size_t is 8 bytes
 typedef struct {
-    void (* scan_julia_exc_obj) (void* obj, void* closure, ProcessEdgeFn process_edge);
+    void (* scan_julia_exc_obj) (void* obj, void* closure, ProcessSlotFn process_slot);
     void* (* get_stackbase) (int16_t tid);
     void (* mmtk_jl_run_finalizers) (void* tls);
     void (* mmtk_jl_throw_out_of_memory_error) (void);

@@ -334,13 +334,13 @@ void scan_vm_specific_roots(RootsWorkClosure* closure)
     (closure->report_tpinned_nodes_func)(tpinned_buf.ptr, tpinned_len, tpinned_buf.cap, closure->data, false);
 }
 
-JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn process_edge) {
+JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessSlotFn process_slot) {
     jl_task_t *ta = (jl_task_t*)obj_raw;
 
     if (ta->excstack) { // inlining label `excstack` from mark_loop
         // if it is not managed by MMTk, nothing needs to be done because the object does not need to be scanned
         if (mmtk_object_is_managed_by_mmtk(ta->excstack)) {
-            process_edge(closure, &ta->excstack);
+            process_slot(closure, &ta->excstack);
         }
         jl_excstack_t *excstack = ta->excstack;
         size_t itr = ta->excstack->top;
@@ -356,19 +356,19 @@ JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessEdgeFn
                 // GC-managed values inside.
                 size_t njlvals = jl_bt_num_jlvals(bt_entry);
                 while (jlval_index < njlvals) {
-                    jl_value_t** new_obj_edge = &bt_entry[2 + jlval_index].jlvalue;
+                    jl_value_t** new_obj_slot = &bt_entry[2 + jlval_index].jlvalue;
                     jlval_index += 1;
-                    process_edge(closure, new_obj_edge);
+                    process_slot(closure, new_obj_slot);
                 }
                 jlval_index = 0;
             }
 
             jl_bt_element_t *stack_raw = (jl_bt_element_t *)(excstack+1);
-            jl_value_t** stack_obj_edge = &stack_raw[itr-1].jlvalue;
+            jl_value_t** stack_obj_slot = &stack_raw[itr-1].jlvalue;
 
             itr = jl_excstack_next(excstack, itr);
             jlval_index = 0;
-            process_edge(closure, stack_obj_edge);
+            process_slot(closure, stack_obj_slot);
         }
     }
 }

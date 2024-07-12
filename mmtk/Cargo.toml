@@ -10,7 +10,7 @@ edition = "2018"
 [package.metadata.julia]
 # Our CI matches the following line and extract mmtk/julia. If this line is updated, please check ci yaml files and make sure it works.
 julia_repo = "https://github.com/mmtk/julia.git"
-julia_version = "88fea475d9639820488f6dd50fcb08c60a011899"
+julia_version = "045bf87050653aa4ae996d3cdc052b1f3fcad7e6"
 
 [lib]
 crate-type = ["cdylib"]
@@ -31,7 +31,7 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev="5a01555b5aee984b634f81e9d137f1ae0410fd39" }
+mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "56b2521d2b99848ee0613a0a5288fe6d81b754ba" }
 # Uncomment the following to build locally
 # mmtk = { path = "../../mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
@@ -44,7 +44,7 @@ memoffset = "*"
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 
 [features]
-default = ["mmtk/vm_space", "julia_copy_stack", "object_pinning"]
+default = ["mmtk/vm_space", "julia_copy_stack", "object_pinning", "is_mmtk_object"]
 
 # Plans
 nogc = []
@@ -56,3 +56,5 @@ object_pinning = ["mmtk/object_pinning"]
 # This feature disables moving
 non_moving = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
 julia_copy_stack = []
+# Feature necessary to support conservative stack scanning
+is_mmtk_object = ["mmtk/is_mmtk_object"]

@@ -12,6 +12,7 @@ use libc::c_char;
 use log::*;
 use mmtk::memory_manager;
 use mmtk::scheduler::GCWorker;
+use mmtk::util::api_util::NullableObjectReference;
 use mmtk::util::opaque_pointer::*;
 use mmtk::util::{Address, ObjectReference, OpaquePointer};
 use mmtk::AllocationSemantics;
@@ -369,7 +370,7 @@ pub extern "C" fn mmtk_memory_region_copy(
     dst_addr: Address,
     count: usize,
 ) {
-    use crate::edges::JuliaMemorySlice;
+    use crate::slots::JuliaMemorySlice;
     let src = JuliaMemorySlice {
         owner: src_obj,
         start: src_addr,
@@ -389,6 +390,8 @@ pub extern "C" fn mmtk_memory_region_copy(
 pub extern "C" fn mmtk_immortal_region_post_alloc(start: Address, size: usize) {
     #[cfg(feature = "stickyimmix")]
     set_side_log_bit_for_region(start, size);
+    #[cfg(feature = "is_mmtk_object")]
+    set_side_vo_bit_for_region(start, size);
 }
 
 #[cfg(feature = "stickyimmix")]
@@ -401,20 +404,30 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
     }
 }
 
+#[cfg(feature = "is_mmtk_object")]
+fn set_side_vo_bit_for_region(start: Address, size: usize) {
+    debug!(
+        "Bulk set VO bit {} to {} ({} bytes)",
+        start,
+        start + size,
+        size
+    );
+
+    crate::util::bulk_update_vo_bit(start, size, &crate::util::set_meta_bits)
+}
+
 #[no_mangle]
 pub extern "C" fn mmtk_object_reference_write_post(
     mutator: *mut Mutator<JuliaVM>,
     src: ObjectReference,
-    target: ObjectReference,
+    target: NullableObjectReference,
 ) {
     let mutator = unsafe { &mut *mutator };
     memory_manager::object_reference_write_post(
         mutator,
         src,
-        crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(
-            Address::ZERO,
-        )),
-        target,
+        crate::slots::JuliaVMSlot::Simple(mmtk::vm::slot::SimpleSlot::from_address(Address::ZERO)),
+        target.into(),
     )
 }
 
@@ -422,15 +435,13 @@ pub extern "C" fn mmtk_object_reference_write_post(
 pub extern "C" fn mmtk_object_reference_write_slow(
     mutator: &'static mut Mutator<JuliaVM>,
     src: ObjectReference,
-    target: ObjectReference,
+    target: NullableObjectReference,
 ) {
     use mmtk::MutatorContext;
     mutator.barrier().object_reference_write_slow(
         src,
-        crate::edges::JuliaVMEdge::Simple(mmtk::vm::edge_shape::SimpleEdge::from_address(
-            Address::ZERO,
-        )),
-        target,
+        crate::slots::JuliaVMSlot::Simple(mmtk::vm::slot::SimpleSlot::from_address(Address::ZERO)),
+        target.into(),
     );
 }
 
@@ -438,6 +449,11 @@ pub extern "C" fn mmtk_object_reference_write_slow(
 #[no_mangle]
 pub static MMTK_SIDE_LOG_BIT_BASE_ADDRESS: Address =
     mmtk::util::metadata::side_metadata::GLOBAL_SIDE_METADATA_VM_BASE_ADDRESS;
+
+/// VO bit base address
+#[no_mangle]
+pub static MMTK_SIDE_VO_BIT_BASE_ADDRESS: Address =
+    mmtk::util::metadata::side_metadata::VO_BIT_SIDE_METADATA_ADDR;
 
 #[no_mangle]
 pub extern "C" fn mmtk_object_is_managed_by_mmtk(addr: usize) -> bool {
