@@ -516,12 +516,17 @@ pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
 }
 
 pub fn conservative_scan_range(lo: Address, hi: Address) {
-    let hi = hi.align_down(BYTES_IN_ADDRESS);
+    // The high address is exclusive
+    let hi = if hi.is_aligned_to(BYTES_IN_ADDRESS) {
+        hi - BYTES_IN_ADDRESS
+    } else {
+        hi.align_down(BYTES_IN_ADDRESS)
+    };
     let lo = lo.align_up(BYTES_IN_ADDRESS);
     log::info!("Scan {} (lo) {} (hi)", lo, hi);
 
     let mut cursor = hi;
-    while cursor > lo {
+    while cursor >= lo {
         let addr = unsafe { cursor.load::<Address>() };
         if let Some(obj) = is_potential_mmtk_object(addr) {
             CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
