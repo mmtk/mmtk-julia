@@ -498,6 +498,15 @@ bool check_is_collection_disabled(void) {
     return (jl_atomic_load_acquire(&jl_gc_disable_counter) > 0);
 }
 
+size_t get_lo_size(void* obj_raw) 
+{
+    jl_value_t* obj = (jl_value_t*) obj_raw;
+    jl_taggedvalue_t *v = jl_astaggedvalue(obj);
+    // bigval_header: but we cannot access the function here. So use container_of instead.
+    bigval_t* hdr = container_of(v, bigval_t, header);
+    return hdr->sz;
+}
+
 uint64_t mmtk_get_total_memory(void) {
     return uv_get_total_memory();
 }
@@ -599,6 +608,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .sweep_weak_refs = sweep_weak_refs,
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
+    .get_lo_size = get_lo_size,
     .mmtk_jl_hrtime = mmtk_jl_hrtime,
     .update_gc_stats = update_gc_stats,
     .get_abi_structs_checksum_c = get_abi_structs_checksum_c,

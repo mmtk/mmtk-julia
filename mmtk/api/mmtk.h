@@ -83,6 +83,7 @@ typedef struct {
     void (* sweep_weak_refs) (void);
     void (* wait_in_a_safepoint) (void);
     void (* exit_from_safepoint) (int8_t old_state);
+    size_t (* get_lo_size) (void*);
     uint64_t (* mmtk_jl_hrtime) (void);
     void (* update_gc_stats) (uint64_t, size_t, bool);
     uintptr_t (* get_abi_structs_checksum_c) (void);

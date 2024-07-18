@@ -490,18 +490,24 @@ pub fn unpin_conservative_roots() {
 pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
     let mut size: u64 = 0;
     let mut ptid: i32 = 0;
+    log::info!("mmtk_conservative_scan_native_stack begin ta = {:?}", ta);
     let stk = unsafe {
         ((*UPCALLS).mmtk_jl_task_stack_buffer)(ta, &mut size as *mut _, &mut ptid as *mut _)
     };
-    log::debug!("stk = {}, size = {}, ptid = {:x}", stk, size, ptid);
+    log::info!(
+        "mmtk_conservative_scan_native_stack continue stk = {}, size = {}, ptid = {:x}",
+        stk,
+        size,
+        ptid
+    );
     if !stk.is_zero() {
-        log::debug!("Conservatively scan the stack");
+        log::info!("Conservatively scan the stack");
 
         // See jl_guard_size
         // TODO: Are we sure there are always guard pages we need to skip?
         const JL_GUARD_PAGE: usize = 4096 * 8;
         let guard_page_start = stk + JL_GUARD_PAGE;
-        log::debug!("Skip guard page: {}, {}", stk, guard_page_start);
+        log::info!("Skip guard page: {}, {}", stk, guard_page_start);
 
         conservative_scan_range(guard_page_start, stk + size as usize);
     } else {
@@ -512,7 +518,7 @@ pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
 pub fn conservative_scan_range(lo: Address, hi: Address) {
     let hi = hi.align_down(BYTES_IN_ADDRESS);
     let lo = lo.align_up(BYTES_IN_ADDRESS);
-    log::debug!("Scan {} (lo) {} (hi)", lo, hi);
+    log::info!("Scan {} (lo) {} (hi)", lo, hi);
 
     let mut cursor = hi;
     while cursor > lo {
@@ -627,7 +633,6 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
 
     #[cfg(debug_assertions)]
     {
-        use crate::JuliaVM;
         use mmtk::vm::slot::Slot;
 
         if let Some(objref) = simple_slot.load() {
@@ -699,7 +704,6 @@ pub fn process_offset_slot<EV: SlotVisitor<JuliaVMSlot>>(
     let offset_slot = OffsetSlot::new_with_offset(slot, offset);
     #[cfg(debug_assertions)]
     {
-        use crate::JuliaVM;
         use mmtk::vm::slot::Slot;
 
         if let Some(objref) = offset_slot.load() {

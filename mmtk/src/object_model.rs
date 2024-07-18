@@ -121,9 +121,17 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
     }
 
     fn get_current_size(object: ObjectReference) -> usize {
-        // not being called by objects in LOS
-        debug_assert!(!is_object_in_los(&object));
-        unsafe { get_so_object_size(object) }
+        if is_object_in_los(&object) {
+            unsafe { ((*UPCALLS).get_lo_size)(object) }
+        } else if is_object_in_immixspace(&object) {
+            unsafe { get_so_object_size(object) }
+        } else {
+            // FIXME: conservative stack scanning won't work for immortal space or vm space.
+            // The problem is that we might ask for the size of buffer objects
+            // which can only be obtained by querying their parent object
+            // (this is fixed in the immixspace by allocating the size before the buffer)
+            0
+        }
     }
 
     fn get_size_when_copied(_object: ObjectReference) -> usize {
@@ -173,6 +181,13 @@ pub fn is_object_in_los(object: &ObjectReference) -> bool {
     // FIXME: get the range from MMTk. Or at least assert at boot time to make sure those constants are correct.
     (*object).to_raw_address().as_usize() >= 0x600_0000_0000
         && (*object).to_raw_address().as_usize() < 0x800_0000_0000
+}
+
+#[inline(always)]
+pub fn is_object_in_immixspace(object: &ObjectReference) -> bool {
+    // FIXME: get the range from MMTk. Or at least assert at boot time to make sure those constants are correct.
+    (*object).to_raw_address().as_usize() >= 0x200_0000_0000
+        && (*object).to_raw_address().as_usize() < 0x400_0000_0000
 }
 
 #[inline(always)]

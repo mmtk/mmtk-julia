@@ -5,7 +5,8 @@ extern crate mmtk;
 extern crate lazy_static;
 
 use mmtk::util::opaque_pointer::*;
-use mmtk::util::Address;
+use mmtk::util::{Address, ObjectReference};
+
 use mmtk::vm::VMBinding;
 use mmtk::MMTKBuilder;
 use mmtk::MMTK;
@@ -101,6 +102,7 @@ pub struct Julia_Upcalls {
     pub mmtk_sweep_weak_refs: extern "C" fn(),
     pub wait_in_a_safepoint: extern "C" fn(),
     pub exit_from_safepoint: extern "C" fn(old_state: i8),
+    pub get_lo_size: extern "C" fn(object: ObjectReference) -> usize,
     pub jl_hrtime: extern "C" fn() -> u64,
     pub update_gc_stats: extern "C" fn(u64, usize, bool),
     pub get_abi_structs_checksum_c: extern "C" fn() -> usize,
