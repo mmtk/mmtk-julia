@@ -177,43 +177,6 @@ pub extern "C" fn mmtk_block_thread_for_gc(gc_n_threads: u16) {
 
     info!("Blocking for GC!");
 
-    unsafe {
-        use libc::{pthread_attr_destroy, pthread_attr_getstack, pthread_getattr_np, pthread_self};
-        use std::mem;
-        use std::ptr;
-
-        let mut attr: libc::pthread_attr_t = mem::zeroed();
-        let mut stack_addr: *mut libc::c_void = ptr::null_mut();
-        let mut stack_size: libc::size_t = 0;
-
-        // Get the current pthread
-        let thread = pthread_self();
-
-        // Initialize thread attributes
-        if pthread_getattr_np(thread, &mut attr) != 0 {
-            eprintln!("Failed to get thread attributes");
-            return;
-        }
-
-        // Get stack information
-        if pthread_attr_getstack(&attr, &mut stack_addr, &mut stack_size) != 0 {
-            eprintln!("Failed to get stack information");
-            pthread_attr_destroy(&mut attr); // Clean up
-            return;
-        }
-
-        println!(
-            "Thread blocked in Rust: thread {:x}, stack {:?} (lo), {:?} (hi), stack size {}",
-            thread,
-            stack_addr,
-            (stack_addr as *mut i8).add(stack_size),
-            stack_size
-        );
-
-        // Destroy the thread attributes object
-        pthread_attr_destroy(&mut attr);
-    }
-
     debug_assert!(
         gc_n_threads as usize == crate::active_plan::VMActivePlan::number_of_mutators(),
         "gc_nthreads = {} != number_of_mutators = {}",

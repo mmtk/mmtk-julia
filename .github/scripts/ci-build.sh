@@ -15,6 +15,12 @@ plan=$2
 # moving vs non-moving
 is_moving=$3
 
+if [ "$is_moving" == "Default" ]; then
+    conservative=1
+else
+    conservative=0
+fi
+
 # helloworld.jl
 HELLO_WORLD_JL=$BINDING_PATH/.github/scripts/hello_world.jl
 
@@ -36,6 +42,6 @@ cd $JULIA_PATH
 make cleanall
 # Build
 cp $BINDING_PATH/.github/scripts/Make.user $JULIA_PATH/
-MMTK_PLAN=$plan MMTK_BUILD=$build_type make
+MMTK_PLAN=$plan MMTK_BUILD=$build_type MMTK_CONSERVATIVE=$conservative make
 # Run hello world
 $JULIA_PATH/julia $HELLO_WORLD_JL
