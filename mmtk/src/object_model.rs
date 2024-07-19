@@ -1,8 +1,7 @@
-use crate::api::{mmtk_get_obj_size, mmtk_object_is_managed_by_mmtk};
+use crate::api::mmtk_get_obj_size;
 use crate::julia_scanning::{
     jl_array_typename, jl_method_type, jl_module_type, jl_simplevector_type, jl_string_type,
-    jl_task_type, mmtk_jl_array_len, mmtk_jl_array_ndimwords, mmtk_jl_tparam0, mmtk_jl_typeof,
-    mmtk_jl_typetagof,
+    jl_task_type, mmtk_jl_typeof, mmtk_jl_typetagof,
 };
 use crate::{julia_types::*, UPCALLS};
 use crate::{JuliaVM, JULIA_BUFF_TAG, JULIA_HEADER_SIZE};
@@ -183,69 +182,8 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
     if obj_type as usize == JULIA_BUFF_TAG {
         mmtk_get_obj_size(object)
     } else if (*obj_type).name == jl_array_typename {
-        let a = obj_address.to_ptr::<mmtk_jl_array_t>();
-        let osize = match (*a).flags.how_custom() {
-            0 => {
-                let a_ndims_words = mmtk_jl_array_ndimwords(mmtk_jl_array_ndims(a));
-                let mut dtsz = std::mem::size_of::<mmtk_jl_array_t>()
-                    + a_ndims_words * std::mem::size_of::<usize>();
-                let data = (*a).data;
-                let data_addr = Address::from_mut_ptr(data);
-
-                if mmtk_object_is_managed_by_mmtk(data_addr.as_usize()) {
-                    let pre_data_bytes = (data_addr.as_usize()
-                        - (*a).offset as usize * (*a).elsize as usize)
-                        - a as usize;
-
-                    if pre_data_bytes > 0 {
-                        // a->data is allocated after a
-                        dtsz = pre_data_bytes;
-                        dtsz += mmtk_jl_array_nbytes(a);
-                    }
-                    if dtsz + JULIA_HEADER_SIZE > 2032 {
-                        // if it's too large to be inlined (a->data and a are disjoint objects)
-                        dtsz = std::mem::size_of::<mmtk_jl_array_t>()
-                            + a_ndims_words * std::mem::size_of::<usize>();
-                    }
-                }
-                debug_assert!(
-                    dtsz + JULIA_HEADER_SIZE <= 2032,
-                    "size {} greater than minimum!",
-                    dtsz + JULIA_HEADER_SIZE
-                );
-
-                llt_align(dtsz + JULIA_HEADER_SIZE, 16)
-            }
-            1 | 2 => {
-                let a_ndims_words = mmtk_jl_array_ndimwords(mmtk_jl_array_ndims(a));
-                let dtsz = std::mem::size_of::<mmtk_jl_array_t>()
-                    + a_ndims_words * std::mem::size_of::<usize>();
-
-                debug_assert!(
-                    dtsz + JULIA_HEADER_SIZE <= 2032,
-                    "size {} greater than minimum!",
-                    dtsz + JULIA_HEADER_SIZE
-                );
-
-                llt_align(dtsz + JULIA_HEADER_SIZE, 16)
-            }
-            3 => {
-                let a_ndims_words = mmtk_jl_array_ndimwords(mmtk_jl_array_ndims(a));
-                let dtsz = std::mem::size_of::<mmtk_jl_array_t>()
-                    + a_ndims_words * std::mem::size_of::<usize>()
-                    + std::mem::size_of::<Address>();
-                debug_assert!(
-                    dtsz + JULIA_HEADER_SIZE <= 2032,
-                    "size {} greater than minimum!",
-                    dtsz + JULIA_HEADER_SIZE
-                );
-
-                llt_align(dtsz + JULIA_HEADER_SIZE, 16)
-            }
-            _ => unreachable!(),
-        };
-
-        osize as usize
+        // let a = obj_address.to_ptr::<mmtk_jl_array_t>();
+        unimplemented!();
     } else if obj_type == jl_simplevector_type {
         let length = (*obj_address.to_ptr::<mmtk_jl_svec_t>()).length as usize;
         let dtsz = length * std::mem::size_of::<Address>() + std::mem::size_of::<mmtk_jl_svec_t>();
@@ -327,42 +265,12 @@ pub unsafe fn llt_align(size: usize, align: usize) -> usize {
 }
 
 #[inline(always)]
-pub unsafe fn mmtk_jl_array_nbytes(a: *const mmtk_jl_array_t) -> usize {
-    let mut sz;
-
-    let isbitsunion = mmtk_jl_array_isbitunion(a);
-
-    if mmtk_jl_array_ndims(a) == 1 {
-        let elsize_is_one = if (*a).elsize == 1 && !isbitsunion {
-            1
-        } else {
-            0
-        };
-        sz = (*a).elsize as usize * (*a).__bindgen_anon_1.maxsize + elsize_is_one;
-    } else {
-        sz = (*a).elsize as usize * (*a).length;
-    }
-
-    if isbitsunion {
-        sz += mmtk_jl_array_len(a);
-    }
-
-    sz
-}
-
-#[inline(always)]
-pub unsafe fn mmtk_jl_array_ndims(a: *const mmtk_jl_array_t) -> u32 {
-    (*a).flags.ndims_custom() as u32
-}
-
-#[inline(always)]
-pub unsafe fn mmtk_jl_array_isbitunion(a: *const mmtk_jl_array_t) -> bool {
-    ((*a).flags.ptrarray_custom()) == 0
-        && mmtk_jl_is_uniontype(mmtk_jl_tparam0(mmtk_jl_typeof(Address::from_ptr(a))))
+pub unsafe fn mmtk_jl_array_ndims(_a: *const mmtk_jl_array_t) -> u32 {
+    unimplemented!();
 }
 
 #[inline(always)]
 pub unsafe fn mmtk_jl_is_uniontype(t: *const mmtk_jl_datatype_t) -> bool {
     mmtk_jl_typetagof(Address::from_ptr(t)).as_usize()
-        == (mmtk_jlsmall_typeof_tags_mmtk_jl_uniontype_tag << 4) as usize
+        == (mmtk_jl_small_typeof_tags_mmtk_jl_uniontype_tag << 4) as usize
 }

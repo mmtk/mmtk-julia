@@ -13,7 +13,11 @@ struct mmtk__jl_taggedvalue_bits {
     uintptr_t gc:2;
     uintptr_t in_image:1;
     uintptr_t unused:1;
+#ifdef _P64
     uintptr_t tag:60;
+#else
+    uintptr_t tag:28;
+#endif
 };
 
 typedef struct mmtk__jl_value_t mmtk_jl_value_t;
@@ -30,31 +34,22 @@ struct mmtk__jl_taggedvalue_t {
 };
 
 typedef struct {
-    /*
-      how - allocation style
-      0 = data is inlined, or a foreign pointer we don't manage
-      1 = julia-allocated buffer that needs to be marked
-      2 = malloc-allocated pointer this array object manages
-      3 = has a pointer to the object that owns the data
-    */
-    unsigned short int how:2;
-    unsigned short int ndims:9;
-    unsigned short int pooled:1;
-    unsigned short int ptrarray:1; // representation is pointer array
-    unsigned short int hasptr:1; // representation has embedded pointers
-    unsigned short int isshared:1; // data is shared by multiple Arrays
-    unsigned short int isaligned:1; // data allocated with memalign
-} mmtk_jl_array_flags_t;
-
-typedef struct {
     uint32_t size;
     uint32_t nfields;
     uint32_t npointers; // number of pointers embedded inside
     int32_t first_ptr; // index of the first pointer (or -1)
     uint16_t alignment; // strictest alignment over all fields
-    uint16_t haspadding : 1; // has internal undefined bytes
-    uint16_t fielddesc_type : 2; // 0 -> 8, 1 -> 16, 2 -> 32, 3 -> foreign type
-    uint16_t padding : 13;
+    struct { // combine these fields into a struct so that we can take addressof them
+        uint16_t haspadding : 1; // has internal undefined bytes
+        uint16_t fielddesc_type : 2; // 0 -> 8, 1 -> 16, 2 -> 32, 3 -> foreign type
+        // metadata bit only for GenericMemory eltype layout
+        uint16_t arrayelem_isboxed : 1;
+        uint16_t arrayelem_isunion : 1;
+        // If set, this type's egality can be determined entirely by comparing
+        // the non-padding bits of this datatype.
+        uint16_t isbitsegal : 1;
+        uint16_t padding : 10;
+    } flags;
     // union {
     //     jl_fielddesc8_t field8[nfields];
     //     jl_fielddesc16_t field16[nfields];
@@ -120,22 +115,33 @@ typedef struct mmtk__jl_datatype_t {
 } mmtk_jl_datatype_t;
 
 typedef struct {
-    void *data;
     size_t length;
-    mmtk_jl_array_flags_t flags;
-    uint16_t elsize;  // element size including alignment (dim 1 memory stride)
-    uint32_t offset;  // for 1-d only. does not need to get big.
-    size_t nrows;
-    union {
-        // 1d
-        size_t maxsize;
-        // Nd
-        size_t ncols;
-    };
-    // other dim sizes go here for ndims > 2
+    void *ptr;
+    // followed by padding and inline data, or owner pointer
+#ifdef _P64
+    // union {
+    //     jl_value_t *owner;
+    //     T inl[];
+    // };
+#else
+    //
+    // jl_value_t *owner;
+    // size_t padding[1];
+    // T inl[];
+#endif
+} mmtk_jl_genericmemory_t;
 
-    // followed by alignment padding and inline data, or owner pointer
+
+typedef struct {
+    void *ptr_or_offset;
+    mmtk_jl_genericmemory_t *mem;
+} mmtk_jl_genericmemoryref_t;
+
+typedef struct {
+    mmtk_jl_genericmemoryref_t ref;
+    size_t dimsize[]; // length for 1-D, otherwise length is mem->length
 } mmtk_jl_array_t;
+
 
 typedef struct mmtk__jl_sym_t {
     _Atomic(void *) left;
@@ -145,17 +151,17 @@ typedef struct mmtk__jl_sym_t {
 } mmtk_jl_sym_t;
 
 typedef struct {
-    // not first-class
     _Atomic(void*) value;
     void* globalref;  // cached GlobalRef for this binding
     struct mmtk__jl_binding_t* owner;  // for individual imported bindings -- TODO: make _Atomic
     _Atomic(void*) ty;  // binding type
     uint8_t constp:1;
     uint8_t exportp:1;
+    uint8_t publicp:1; // exportp without publicp is not allowed.
     uint8_t imported:1;
     uint8_t usingfailed:1;
     uint8_t deprecated:2; // 0=not deprecated, 1=renamed, 2=moved to another package
-    uint8_t padding:2;
+    uint8_t padding:1;
 } mmtk_jl_binding_t;
 
 #define HT_N_INLINE 32
@@ -197,13 +203,12 @@ typedef struct {
 typedef struct mmtk__jl_module_t {
     void *name;
     struct mmtk__jl_module_t *parent;
+    _Atomic(mmtk_jl_svec_t)* bindings;
+    _Atomic(mmtk_jl_genericmemory_t)* bindingkeyset; // index lookup by name into bindings
     // hidden fields:
-    mmtk_jl_svec_t* bindings;
-    mmtk_jl_array_t* bindingkeyset; // index lookup by name into bindings
     mmtk_arraylist_t usings;  // modules with all bindings potentially imported
     mmtk_jl_uuid_t build_id;
     mmtk_jl_uuid_t uuid;
-    size_t primary_world;
     _Atomic(uint32_t) counter;
     int32_t nospecialize;  // global bit flags: initialization for new methods
     int8_t optlevel;
@@ -301,20 +306,21 @@ typedef struct {
 
 typedef struct {
     _Atomic(int64_t) allocd;
-    _Atomic(int64_t) freed;
+    _Atomic(int64_t) pool_live_bytes;
     _Atomic(uint64_t) malloc;
     _Atomic(uint64_t) realloc;
     _Atomic(uint64_t) poolalloc;
     _Atomic(uint64_t) bigalloc;
-    _Atomic(uint64_t) freecall;
+    _Atomic(int64_t) free_acc;
+    _Atomic(uint64_t) alloc_acc;
 } mmtk_jl_thread_gc_num_t;
 
 typedef struct {
     // variable for tracking weak references
-    mmtk_arraylist_t weak_refs;
+    mmtk_small_arraylist_t weak_refs;
     // live tasks started on this thread
     // that are holding onto a stack from the pool
-    mmtk_arraylist_t live_tasks;
+    mmtk_small_arraylist_t live_tasks;
 
     // variables for tracking malloc'd arrays
     struct _mallocarray_t *mallocarrays;
@@ -323,16 +329,13 @@ typedef struct {
     // variables for tracking big objects
     struct _bigval_t *big_objects;
 
-    // variables for tracking "remembered set"
-    mmtk_arraylist_t _remset[2]; // contains jl_value_t*
     // lower bound of the number of pointers inside remembered values
     int remset_nptr;
     mmtk_arraylist_t *remset;
-    mmtk_arraylist_t *last_remset;
 
     // variables for allocating objects from pools
-#define JL_GC_N_POOLS 49
-    mmtk_jl_gc_pool_t norm_pools[JL_GC_N_POOLS];
+#define JL_GC_N_MAX_POOLS 51 // conservative. must be kept in sync with `src/julia_internal.h`
+    mmtk_jl_gc_pool_t norm_pools[JL_GC_N_MAX_POOLS];
 
 #define JL_N_STACK_POOLS 16
     mmtk_arraylist_t free_stacks[JL_N_STACK_POOLS];
@@ -353,6 +356,12 @@ typedef struct {
     mmtk_arraylist_t reclaim_set;
 } mmtk_jl_gc_markqueue_t;
 
+
+typedef struct {
+    _Atomic(struct mmtk__jl_gc_pagemeta_t *) bottom;
+} mmtk_jl_gc_page_stack_t;
+
+
 typedef struct {
     // thread local increment of `perm_scanned_bytes`
     size_t perm_scanned_bytes;
@@ -371,31 +380,47 @@ typedef struct {
     void *big_obj[1024];
 } mmtk_jl_gc_mark_cache_t;
 
+typedef struct {
+    mmtk_jl_thread_heap_t heap;
+    mmtk_jl_gc_page_stack_t page_metadata_allocd;
+    mmtk_jl_thread_gc_num_t gc_num;
+    mmtk_jl_gc_markqueue_t mark_queue;
+    mmtk_jl_gc_mark_cache_t gc_cache;
+    _Atomic(size_t) gc_sweeps_requested;
+    mmtk_arraylist_t sweep_objs;
+} mmtk_jl_gc_tls_states_t;
+
 typedef struct mmtk__jl_tls_states_t {
     int16_t tid;
     int8_t threadpoolid;
     uint64_t rngseed;
-    volatile size_t *safepoint;
+    _Atomic(volatile size_t *) safepoint;
     _Atomic(int8_t) sleep_check_state; // read/write from foreign threads
     // Whether it is safe to execute GC at the same time.
+#define JL_GC_STATE_UNSAFE 0
+    // gc_state = 0 means the thread is running Julia code and is not
+    //              safe to run concurrently to the GC
 #define JL_GC_STATE_WAITING 1
     // gc_state = 1 means the thread is doing GC or is waiting for the GC to
     //              finish.
 #define JL_GC_STATE_SAFE 2
     // gc_state = 2 means the thread is running unmanaged code that can be
     //              execute at the same time with the GC.
+#define JL_GC_PARALLEL_COLLECTOR_THREAD 3
+    // gc_state = 3 means the thread is a parallel collector thread (i.e. never runs Julia code)
+#define JL_GC_CONCURRENT_COLLECTOR_THREAD 4
+    // gc_state = 4 means the thread is a concurrent collector thread (background sweeper thread that never runs Julia code)
     _Atomic(int8_t) gc_state; // read from foreign threads
     // execution of certain certain impure
     // statements is prohibited from certain
     // callbacks (such as generated functions)
     // as it may make compilation undecidable
-    int8_t in_pure_callback;
-    int8_t in_finalizer;
-    int8_t disable_gc;
+    int16_t in_pure_callback;
+    int16_t in_finalizer;
+    int16_t disable_gc;
     // Counter to disable finalizer **on the current thread**
     int finalizers_inhibited;
-    mmtk_jl_thread_heap_t heap; // this is very large, and the offset is baked into codegen
-    mmtk_jl_thread_gc_num_t gc_num;
+    mmtk_jl_gc_tls_states_t gc_tls; // this is very large, and the offset of the first member is baked into codegen
     volatile sig_atomic_t defer_signal;
     _Atomic(struct mmtk__jl_task_t*) current_task;
     struct mmtk__jl_task_t *next_task;
@@ -423,17 +448,17 @@ typedef struct mmtk__jl_tls_states_t {
     // we can make this more general (similar to defer_signal) if necessary
     volatile sig_atomic_t io_wait;
     void *signal_stack;
+    size_t signal_stack_size;
     mmtk_jl_thread_t system_id;
+    _Atomic(int16_t) suspend_count;
     mmtk_arraylist_t finalizers;
-    mmtk_jl_gc_markqueue_t mark_queue;
-    mmtk_jl_gc_mark_cache_t gc_cache;
-    mmtk_arraylist_t sweep_objs;
     // Saved exception for previous *external* API call or NULL if cleared.
     // Access via jl_exception_occurred().
     struct _jl_value_t *previous_exception;
 
     // currently-held locks, to be released when an exception is thrown
     mmtk_small_arraylist_t locks;
+    size_t engine_nqueued;
 
     // JULIA_DEBUG_SLEEPWAKE(
     //     uint64_t uv_run_enter;
@@ -455,7 +480,7 @@ typedef struct mmtk__jl_task_t {
     void *tls;
     void *donenotify;
     void *result;
-    void *logstate;
+    void *scope;
     void *start;
     uint64_t rngState[JL_RNG_SIZE];
     _Atomic(uint8_t) _state;
@@ -498,19 +523,22 @@ typedef struct {
 // the following mirrors `struct EffectsOverride` in `base/compiler/effects.jl`
 typedef union mmtk___jl_purity_overrides_t {
     struct {
-        uint8_t ipo_consistent          : 1;
-        uint8_t ipo_effect_free         : 1;
-        uint8_t ipo_nothrow             : 1;
-        uint8_t ipo_terminates_globally : 1;
+        uint16_t ipo_consistent          : 1;
+        uint16_t ipo_effect_free         : 1;
+        uint16_t ipo_nothrow             : 1;
+        uint16_t ipo_terminates_globally : 1;
         // Weaker form of `terminates` that asserts
         // that any control flow syntactically in the method
         // is guaranteed to terminate, but does not make
         // assertions about any called functions.
-        uint8_t ipo_terminates_locally  : 1;
-        uint8_t ipo_notaskstate         : 1;
-        uint8_t ipo_inaccessiblememonly : 1;
+        uint16_t ipo_terminates_locally  : 1;
+        uint16_t ipo_notaskstate         : 1;
+        uint16_t ipo_inaccessiblememonly : 1;
+        uint16_t ipo_noub                : 1;
+        uint16_t ipo_noub_if_noinbounds  : 1;
+        uint16_t ipo_consistent_overlay  : 1;
     } overrides;
-    uint8_t bits;
+    uint16_t bits;
 } mmtk__jl_purity_overrides_t;
 
 // This type describes a single method definition, and stores data
@@ -533,6 +561,7 @@ typedef struct mmtk__jl_method_t {
     void *slot_syms; // compacted list of slot names (String)
     void *external_mt; // reference to the method table this method is part of, null if part of the internal table
     void *source;  // original code template (jl_code_info_t, but may be compressed), null for builtins
+    void *debuginfo;  // fixed linetable from the source argument, null if not available
     _Atomic(void*) unspecialized;  // unspecialized executable method instance, or null
     void *generator;  // executable code-generating function if available
     void *roots;  // pointers in generated code (shared to reduce memory), or null
@@ -561,6 +590,8 @@ typedef struct mmtk__jl_method_t {
     // various boolean properties
     uint8_t isva;
     uint8_t is_for_opaque_closure;
+
+    uint8_t nospecializeinfer;
     // uint8 settings
     uint8_t constprop;      // 0x00 = use heuristic; 0x01 = aggressive; 0x02 = none
     uint8_t max_varargs;    // 0xFF = use heuristic; otherwise, max # of args to expand
@@ -610,7 +641,7 @@ typedef struct mmtk__jl_method_t {
     /* XX(slotnumber) */ \
     /* XX(ssavalue) */ \
     /* end of JL_SMALL_TYPEOF */
-enum mmtk_jlsmall_typeof_tags {
+enum mmtk_jl_small_typeof_tags {
     mmtk_jl_null_tag = 0,
 #define XX(name) mmtk_jl_##name##_tag,
     JL_SMALL_TYPEOF(XX)

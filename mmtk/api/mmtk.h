@@ -72,9 +72,8 @@ extern uintptr_t JULIA_MALLOC_BYTES;
 typedef struct {
     void (* scan_julia_exc_obj) (void* obj, void* closure, ProcessSlotFn process_slot);
     void* (* get_stackbase) (int16_t tid);
-    void (* mmtk_jl_run_finalizers) (void* tls);
     void (* jl_throw_out_of_memory_error) (void);
-    void (* sweep_malloced_array) (void);
+    void (* sweep_malloced_memory) (void);
     void (* sweep_stack_pools) (void);
     void (* wait_in_a_safepoint) (void);
     void (* exit_from_safepoint) (int8_t old_state);

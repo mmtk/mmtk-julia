@@ -99,7 +99,6 @@ pub struct Julia_Upcalls {
     pub scan_julia_exc_obj:
         extern "C" fn(obj: Address, closure: Address, process_slot: ProcessSlotFn),
     pub get_stackbase: extern "C" fn(tid: u16) -> usize,
-    pub mmtk_jl_run_finalizers: extern "C" fn(tls: OpaquePointer),
     pub jl_throw_out_of_memory_error: extern "C" fn(),
     pub mmtk_sweep_malloced_array: extern "C" fn(),
     pub mmtk_sweep_stack_pools: extern "C" fn(),
