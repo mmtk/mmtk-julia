@@ -55,6 +55,9 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut pinning_slot_buffer = SlotBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
         let mut node_buffer = vec![];
 
+        // Conservatively scan registers saved with the thread
+        mmtk_conservative_scan_ptls_registers(ptls);
+
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
         let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
             if !task.is_null() {
@@ -76,9 +79,10 @@ impl Scanning<JuliaVM> for VMScanning {
                     mutator.mutator_tls,
                     pthread
                 );
-                unsafe {
-                    mmtk_conservative_scan_native_stack(task);
-                }
+                // Conservative scan stack and registers
+                mmtk_conservative_scan_native_stack(task);
+                mmtk_conservative_scan_task_registers(task);
+
                 if task_is_root {
                     // captures wrong root nodes before creating the work
                     debug_assert!(

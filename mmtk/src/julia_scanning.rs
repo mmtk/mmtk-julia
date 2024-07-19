@@ -487,7 +487,7 @@ pub fn unpin_conservative_roots() {
     );
 }
 
-pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
+pub fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
     let mut size: u64 = 0;
     let mut ptid: i32 = 0;
     log::info!("mmtk_conservative_scan_native_stack begin ta = {:?}", ta);
@@ -513,6 +513,24 @@ pub unsafe fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
     } else {
         log::warn!("Skip stack for {:?}", ta);
     }
+}
+
+pub fn mmtk_conservative_scan_task_registers(ta: *const mmtk_jl_task_t) {
+    let (lo, hi) = get_range(&unsafe { &*ta }.ctx);
+    conservative_scan_range(lo, hi);
+}
+
+pub fn mmtk_conservative_scan_ptls_registers(ptls: &mut mmtk_jl_tls_states_t) {
+    let (lo, hi) = get_range(&ptls.ctx_at_the_time_gc_started);
+    conservative_scan_range(lo, hi);
+}
+
+// TODO: This scans the entire context type, which is slower.
+// We actually only need to scan registers.
+pub fn get_range<T>(ctx: &T) -> (Address, Address) {
+    let start = Address::from_ptr(ctx);
+    let ty_size = std::mem::size_of::<T>();
+    (start, start + ty_size)
 }
 
 pub fn conservative_scan_range(lo: Address, hi: Address) {

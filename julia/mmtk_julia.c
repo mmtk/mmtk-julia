@@ -210,6 +210,8 @@ JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
     gc_num.total_time_to_safepoint += duration;
 
     if (!jl_atomic_load_acquire(&jl_gc_disable_counter)) {
+        jl_save_context_for_conservative_scanning(ptls, NULL);
+
         JL_LOCK_NOGC(&finalizers_lock); // all the other threads are stopped, so this does not make sense, right? otherwise, failing that, this seems like plausibly a deadlock
         combine_thread_gc_counts(&gc_num);
         mmtk_block_thread_for_gc(gc_n_threads);
