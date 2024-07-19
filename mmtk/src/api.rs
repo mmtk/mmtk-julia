@@ -492,7 +492,7 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
     }
 }
 
-#[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
+#[cfg(feature = "object_pinning")]
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
     if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
@@ -503,7 +503,7 @@ pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
     }
 }
 
-#[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
+#[cfg(feature = "object_pinning")]
 #[no_mangle]
 pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
     if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
@@ -514,7 +514,7 @@ pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
     }
 }
 
-#[cfg(all(feature = "object_pinning", not(feature = "non_moving")))]
+#[cfg(feature = "object_pinning")]
 #[no_mangle]
 pub extern "C" fn mmtk_is_pinned(object: ObjectReference) -> bool {
     if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
@@ -526,19 +526,19 @@ pub extern "C" fn mmtk_is_pinned(object: ObjectReference) -> bool {
 }
 
 // If the `non-moving` feature is selected, pinning/unpinning is a noop and simply returns false
-#[cfg(all(feature = "object_pinning", feature = "non_moving"))]
+#[cfg(not(feature = "object_pinning"))]
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(_object: ObjectReference) -> bool {
     false
 }
 
-#[cfg(all(feature = "object_pinning", feature = "non_moving"))]
+#[cfg(not(feature = "object_pinning"))]
 #[no_mangle]
 pub extern "C" fn mmtk_unpin_object(_object: ObjectReference) -> bool {
     false
 }
 
-#[cfg(all(feature = "object_pinning", feature = "non_moving"))]
+#[cfg(not(feature = "object_pinning"))]
 #[no_mangle]
 pub extern "C" fn mmtk_is_pinned(_object: ObjectReference) -> bool {
     false

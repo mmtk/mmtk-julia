@@ -34,6 +34,9 @@ pub mod julia_scanning;
 #[allow(non_snake_case)]
 pub mod julia_types;
 
+#[cfg(feature = "conservative")]
+pub mod conservative;
+
 #[derive(Default)]
 pub struct JuliaVM;
 

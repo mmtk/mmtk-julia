@@ -44,17 +44,17 @@ memoffset = "*"
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 
 [features]
-default = ["mmtk/vm_space", "julia_copy_stack", "object_pinning", "is_mmtk_object"]
+default = ["mmtk/vm_space", "julia_copy_stack"]
 
 # Plans
 nogc = []
 immix = []
 stickyimmix = ["mmtk/sticky_immix_non_moving_nursery", "mmtk/immix_smaller_block"]
 marksweep = []
-object_pinning = ["mmtk/object_pinning"]
 
 # This feature disables moving
 non_moving = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
+object_pinning = ["mmtk/object_pinning"]
+conservative = ["mmtk/is_mmtk_object"]
+moving = ["conservative", "object_pinning"]
 julia_copy_stack = []
-# Feature necessary to support conservative stack scanning
-is_mmtk_object = ["mmtk/is_mmtk_object"]

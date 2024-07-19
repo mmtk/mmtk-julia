@@ -48,7 +48,8 @@ impl Collection<JuliaVM> for VMCollection {
 
     fn resume_mutators(_tls: VMWorkerThread) {
         // unpin conservative roots
-        crate::julia_scanning::unpin_conservative_roots();
+        #[cfg(feature = "conservative")]
+        crate::conservative::unpin_conservative_roots();
 
         // Get the end time of the GC
         let end = unsafe { ((*UPCALLS).jl_hrtime)() };
@@ -143,33 +144,6 @@ pub fn is_current_gc_nursery() -> bool {
 
 #[no_mangle]
 pub extern "C" fn mmtk_block_thread_for_gc(gc_n_threads: u16) {
-    // Force all callee-saved registers to be saved to an array
-    #[cfg(target_arch = "x86_64")]
-    unsafe {
-        use mmtk::util::constants::BYTES_IN_ADDRESS;
-        use mmtk::util::Address;
-        let mut registers: [u64; 7] = [0; 7];
-        std::arch::asm!(
-            "mov {}, rbx",
-            "mov {}, rsp",
-            "mov {}, rbp",
-            "mov {}, r12",
-            "mov {}, r13",
-            "mov {}, r14",
-            "mov {}, r15",
-            out(reg) registers[0],
-            out(reg) registers[1],
-            out(reg) registers[2],
-            out(reg) registers[3],
-            out(reg) registers[4],
-            out(reg) registers[5],
-            out(reg) registers[6],
-        );
-        let registers_start = Address::from_ptr(registers.as_ptr());
-        let registers_end = registers_start + BYTES_IN_ADDRESS * registers.len();
-        crate::julia_scanning::conservative_scan_range(registers_start, registers_end);
-    }
-
     AtomicBool::store(&BLOCK_FOR_GC, true, Ordering::SeqCst);
 
     let &(ref lock, ref cvar) = &*STW_COND.clone();

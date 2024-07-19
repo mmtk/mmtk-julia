@@ -56,7 +56,8 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut node_buffer = vec![];
 
         // Conservatively scan registers saved with the thread
-        mmtk_conservative_scan_ptls_registers(ptls);
+        #[cfg(feature = "conservative")]
+        crate::conservative::mmtk_conservative_scan_ptls_registers(ptls);
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
         let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
@@ -80,8 +81,11 @@ impl Scanning<JuliaVM> for VMScanning {
                     pthread
                 );
                 // Conservative scan stack and registers
-                mmtk_conservative_scan_native_stack(task);
-                mmtk_conservative_scan_task_registers(task);
+                #[cfg(feature = "conservative")]
+                {
+                    crate::conservative::mmtk_conservative_scan_native_stack(task);
+                    crate::conservative::mmtk_conservative_scan_task_registers(task);
+                }
 
                 if task_is_root {
                     // captures wrong root nodes before creating the work
@@ -195,7 +199,8 @@ impl Scanning<JuliaVM> for VMScanning {
 
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
         // pin concservative roots from stack scanning
-        crate::julia_scanning::pin_conservative_roots();
+        #[cfg(feature = "conservative")]
+        crate::conservative::pin_conservative_roots();
 
         let sweep_vm_specific_work = SweepVMSpecific::new();
         memory_manager::add_work_packet(
