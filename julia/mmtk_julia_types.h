@@ -4,6 +4,7 @@
 #include <setjmp.h>	
 #include <stdint.h>
 #include <pthread.h>
+#include <ucontext.h>
 #include "mmtkMutator.h"
 
 typedef __SIZE_TYPE__ size_t;
@@ -437,6 +438,8 @@ typedef struct mmtk__jl_tls_states_t {
 
     MMTkMutatorContext mmtk_mutator;
     size_t malloc_sz_since_last_poll;
+
+    ucontext_t ctx_at_the_time_gc_started;
 
     // JULIA_DEBUG_SLEEPWAKE(
     //     uint64_t uv_run_enter;
