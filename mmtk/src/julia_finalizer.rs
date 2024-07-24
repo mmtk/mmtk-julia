@@ -111,10 +111,10 @@ impl ArrayListT {
     }
 }
 
-fn gc_ptr_clear_tag(addr: Address, tag: usize) -> ObjectReference {
+fn gc_ptr_clear_tag(addr: Address, tag: usize) -> Address {
     let addr = unsafe { Address::from_usize(addr & !tag) };
     debug_assert!(!addr.is_zero());
-    unsafe { ObjectReference::from_raw_address_unchecked(addr) }
+    addr
 }
 
 pub fn gc_ptr_tag(addr: Address, tag: usize) -> bool {
@@ -138,7 +138,7 @@ fn sweep_finalizer_list(
     let mut j = 0;
     while i < list.len {
         let v0: Address = list.get(i);
-        let v = gc_ptr_clear_tag(v0, 3);
+        let v = unsafe { ObjectReference::from_raw_address_unchecked(gc_ptr_clear_tag(v0, 3)) };
         if v0.is_zero() {
             i += 2;
             // remove from this list
@@ -204,21 +204,21 @@ fn mark_finlist<T: ObjectTracer>(list: &mut ArrayListT, start: usize, tracer: &m
             continue;
         }
 
-        let new_obj = if gc_ptr_tag(cur, 1) {
+        let new_obj_addr = if gc_ptr_tag(cur, 1) {
             // Skip next
             i += 1;
             debug_assert!(i < list.len);
             cur_tag = 1;
             gc_ptr_clear_tag(cur, 1)
         } else {
-            // unsafe: We checked `cur.is_zero()` before.
-            unsafe { ObjectReference::from_raw_address_unchecked(cur) }
+            cur
         };
         if gc_ptr_tag(cur, 2) {
             i += 1;
             continue;
         }
 
+        let new_obj = unsafe { ObjectReference::from_raw_address_unchecked(new_obj_addr) };
         let traced = tracer.trace_object(new_obj);
         // if object has moved, update the list applying the tag
         list.set(cur_i, unsafe {
