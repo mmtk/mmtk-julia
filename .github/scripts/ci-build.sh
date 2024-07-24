@@ -26,7 +26,7 @@ fi
 
 plan_feature=${plan,,}
 moving_feature=${is_moving,,}
-if [ "$is_moving" == "Default" ]; then
+if [ "$is_moving" == "Moving" ]; then
     tpin_roots=1
     conservative=1
 else
