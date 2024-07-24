@@ -15,7 +15,7 @@ plan=$2
 # moving vs non-moving
 is_moving=$3
 
-if [ "$is_moving" == "Moving" ]; then
+if [ "$is_moving" == "Default" ]; then
     conservative=1
 else
     conservative=0
