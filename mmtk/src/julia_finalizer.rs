@@ -139,7 +139,6 @@ fn sweep_finalizer_list(
     while i < list.len {
         let v0: Address = list.get(i);
         let v = unsafe { ObjectReference::from_raw_address_unchecked(gc_ptr_clear_tag(v0, 3)) };
-
         if v0.is_zero() {
             i += 2;
             // remove from this list
@@ -212,7 +211,6 @@ fn mark_finlist<T: ObjectTracer>(list: &mut ArrayListT, start: usize, tracer: &m
             cur_tag = 1;
             gc_ptr_clear_tag(cur, 1)
         } else {
-            // unsafe: We checked `cur.is_zero()` before.
             cur
         };
         if gc_ptr_tag(cur, 2) {
@@ -221,7 +219,6 @@ fn mark_finlist<T: ObjectTracer>(list: &mut ArrayListT, start: usize, tracer: &m
         }
 
         let new_obj = unsafe { ObjectReference::from_raw_address_unchecked(new_obj_addr) };
-
         let traced = tracer.trace_object(new_obj);
         // if object has moved, update the list applying the tag
         list.set(cur_i, unsafe {
