@@ -126,10 +126,13 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         } else if is_object_in_immixspace(&object) {
             unsafe { get_so_object_size(object) }
         } else {
-            // FIXME: conservative stack scanning won't work for immortal space or vm space.
-            // The problem is that we might ask for the size of buffer objects
-            // which can only be obtained by querying their parent object
-            // (this is fixed in the immixspace by allocating the size before the buffer)
+            // This is hacky but it should work.
+            // This covers the cases for immortal space and VM space.
+            // For those spaces, we only query object size when we try to find the base reference for an internal pointer.
+            // For those two spaces, we bulk set VO bits so we cannot find the base reference at all.
+            // We return 0 as the object size, so MMTk core won't find the base reference.
+            // As we only use the base reference to pin the objects, we cannot pin the objects. But it is fine,
+            // as objects in those spaces won't be moved.
             0
         }
     }

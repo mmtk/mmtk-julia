@@ -102,5 +102,6 @@ pub fn conservative_scan_range(lo: Address, hi: Address) {
 }
 
 pub fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
+    // TODO: if addr is in a non-moving space, we dont need to find the base reference at all.
     memory_manager::find_object_from_internal_pointer::<JuliaVM>(addr, usize::MAX)
 }
