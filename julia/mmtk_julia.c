@@ -12,6 +12,7 @@ extern int gc_n_threads;
 extern jl_ptls_t* gc_all_tls_states;
 extern jl_value_t *cmpswap_names JL_GLOBALLY_ROOTED;
 extern jl_genericmemory_t *jl_global_roots_list JL_GLOBALLY_ROOTED;
+extern jl_genericmemory_t *jl_global_roots_keyset JL_GLOBALLY_ROOTED;
 extern jl_typename_t *jl_array_typename JL_GLOBALLY_ROOTED;
 extern void jl_gc_free_memory(jl_value_t *v, int isaligned);
 extern long BI_METADATA_START_ALIGNED_DOWN;
@@ -27,6 +28,7 @@ extern void free_stack(void *stkbuf, size_t bufsz);
 extern jl_mutex_t finalizers_lock;
 extern void jl_gc_wait_for_the_world(jl_ptls_t* gc_all_tls_states, int gc_n_threads);
 extern void mmtk_block_thread_for_gc(void);
+extern int64_t live_bytes;
 
 
 extern void* new_mutator_iterator(void);
@@ -315,13 +317,15 @@ void scan_vm_specific_roots(RootsWorkClosure* closure)
     add_node_to_roots_buffer(closure, &buf, &len, cmpswap_names);
 
     // jl_global_roots_table must be transitively pinned 
-    RootsWorkBuffer tpinned_buf = (closure->report_tpinned_nodes_func)((void**)0, 0, 0, closure->data, true);
-    size_t tpinned_len = 0;
-    add_node_to_tpinned_roots_buffer(closure, &tpinned_buf, &tpinned_len, jl_global_roots_list);
+    // RootsWorkBuffer tpinned_buf = (closure->report_tpinned_nodes_func)((void**)0, 0, 0, closure->data, true);
+    // size_t tpinned_len = 0;
+    // add_node_to_tpinned_roots_buffer(closure, &tpinned_buf, &tpinned_len, jl_global_roots_list);
+    add_node_to_roots_buffer(closure, &buf, &len, jl_global_roots_list);
+    add_node_to_roots_buffer(closure, &buf, &len, jl_global_roots_keyset);
 
     // Push the result of the work.
     (closure->report_nodes_func)(buf.ptr, len, buf.cap, closure->data, false);
-    (closure->report_tpinned_nodes_func)(tpinned_buf.ptr, tpinned_len, tpinned_buf.cap, closure->data, false);
+    // (closure->report_tpinned_nodes_func)(tpinned_buf.ptr, tpinned_len, tpinned_buf.cap, closure->data, false);
 }
 
 JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessSlotFn process_slot) {
@@ -481,8 +485,6 @@ void mmtk_sweep_stack_pools(void)
     }
 }
 
-#define jl_array_data_owner_addr(a) (((jl_value_t**)((char*)a + jl_array_data_owner_offset(jl_array_ndims(a)))))
-
 JL_DLLEXPORT void* get_stackbase(int16_t tid) {
     assert(tid >= 0);
     jl_ptls_t ptls2 = jl_all_tls_states[tid];
@@ -491,8 +493,13 @@ JL_DLLEXPORT void* get_stackbase(int16_t tid) {
 
 const bool PRINT_OBJ_TYPE = false;
 
-void update_gc_time(uint64_t inc) {
+void update_gc_stats(uint64_t inc, size_t mmtk_live_bytes, bool is_nursery_gc) {
     gc_num.total_time += inc;
+    gc_num.pause += 1;
+    gc_num.full_sweep += !(is_nursery_gc);
+    gc_num.total_allocd += gc_num.allocd;
+    gc_num.allocd = 0;
+    live_bytes = mmtk_live_bytes;
 }
 
 #define assert_size(ty_a, ty_b) \
@@ -563,7 +570,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
     .jl_hrtime = jl_hrtime,
-    .update_gc_time = update_gc_time,
+    .update_gc_stats = update_gc_stats,
     .get_abi_structs_checksum_c = get_abi_structs_checksum_c,
     .get_thread_finalizer_list = get_thread_finalizer_list,
     .get_to_finalize_list = get_to_finalize_list,

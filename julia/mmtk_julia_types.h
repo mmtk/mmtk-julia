@@ -331,23 +331,23 @@ typedef struct {
 
     // lower bound of the number of pointers inside remembered values
     int remset_nptr;
-    mmtk_arraylist_t *remset;
+    mmtk_arraylist_t remset;
 
     // variables for allocating objects from pools
 #define JL_GC_N_MAX_POOLS 51 // conservative. must be kept in sync with `src/julia_internal.h`
     mmtk_jl_gc_pool_t norm_pools[JL_GC_N_MAX_POOLS];
 
 #define JL_N_STACK_POOLS 16
-    mmtk_arraylist_t free_stacks[JL_N_STACK_POOLS];
+    mmtk_small_arraylist_t free_stacks[JL_N_STACK_POOLS];
 } mmtk_jl_thread_heap_t;
 
 // handle to reference an OS thread
 typedef pthread_t mmtk_jl_thread_t;
 
 typedef struct {
-    _Atomic(int64_t) top;
-    _Atomic(int64_t) bottom;
-    _Atomic(void *) array;
+    alignas(64) _Atomic(int64_t) top;
+    alignas(64) _Atomic(int64_t) bottom;
+    alignas(64) _Atomic(void *) array;
 } mmtk_ws_queue_t;
 
 typedef struct {

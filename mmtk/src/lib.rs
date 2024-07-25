@@ -105,7 +105,7 @@ pub struct Julia_Upcalls {
     pub wait_in_a_safepoint: extern "C" fn(),
     pub exit_from_safepoint: extern "C" fn(old_state: i8),
     pub jl_hrtime: extern "C" fn() -> u64,
-    pub update_gc_time: extern "C" fn(u64),
+    pub update_gc_stats: extern "C" fn(u64, usize, bool),
     pub get_abi_structs_checksum_c: extern "C" fn() -> usize,
     pub get_thread_finalizer_list: extern "C" fn(tls: OpaquePointer) -> Address,
     pub get_to_finalize_list: extern "C" fn() -> Address,

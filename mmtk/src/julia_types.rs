@@ -112,27 +112,45 @@ impl<T> ::std::fmt::Debug for __IncompleteArrayField<T> {
 }
 pub const _SETJMP_H: u32 = 1;
 pub const _FEATURES_H: u32 = 1;
+pub const _ISOC95_SOURCE: u32 = 1;
+pub const _ISOC99_SOURCE: u32 = 1;
+pub const _ISOC11_SOURCE: u32 = 1;
+pub const _ISOC2X_SOURCE: u32 = 1;
+pub const _POSIX_SOURCE: u32 = 1;
+pub const _POSIX_C_SOURCE: u32 = 200809;
+pub const _XOPEN_SOURCE: u32 = 700;
+pub const _XOPEN_SOURCE_EXTENDED: u32 = 1;
+pub const _LARGEFILE64_SOURCE: u32 = 1;
 pub const _DEFAULT_SOURCE: u32 = 1;
-pub const __GLIBC_USE_ISOC2X: u32 = 0;
+pub const _ATFILE_SOURCE: u32 = 1;
+pub const _DYNAMIC_STACK_SIZE_SOURCE: u32 = 1;
+pub const __GLIBC_USE_ISOC2X: u32 = 1;
 pub const __USE_ISOC11: u32 = 1;
 pub const __USE_ISOC99: u32 = 1;
 pub const __USE_ISOC95: u32 = 1;
-pub const __USE_POSIX_IMPLICITLY: u32 = 1;
-pub const _POSIX_SOURCE: u32 = 1;
-pub const _POSIX_C_SOURCE: u32 = 200809;
+pub const __USE_ISOCXX11: u32 = 1;
 pub const __USE_POSIX: u32 = 1;
 pub const __USE_POSIX2: u32 = 1;
 pub const __USE_POSIX199309: u32 = 1;
 pub const __USE_POSIX199506: u32 = 1;
 pub const __USE_XOPEN2K: u32 = 1;
 pub const __USE_XOPEN2K8: u32 = 1;
-pub const _ATFILE_SOURCE: u32 = 1;
+pub const __USE_XOPEN: u32 = 1;
+pub const __USE_XOPEN_EXTENDED: u32 = 1;
+pub const __USE_UNIX98: u32 = 1;
+pub const _LARGEFILE_SOURCE: u32 = 1;
+pub const __USE_XOPEN2K8XSI: u32 = 1;
+pub const __USE_XOPEN2KXSI: u32 = 1;
+pub const __USE_LARGEFILE: u32 = 1;
+pub const __USE_LARGEFILE64: u32 = 1;
 pub const __WORDSIZE: u32 = 64;
 pub const __WORDSIZE_TIME64_COMPAT32: u32 = 1;
 pub const __SYSCALL_WORDSIZE: u32 = 64;
 pub const __TIMESIZE: u32 = 64;
 pub const __USE_MISC: u32 = 1;
 pub const __USE_ATFILE: u32 = 1;
+pub const __USE_DYNAMIC_STACK_SIZE: u32 = 1;
+pub const __USE_GNU: u32 = 1;
 pub const __USE_FORTIFY_LEVEL: u32 = 0;
 pub const __GLIBC_USE_DEPRECATED_GETS: u32 = 0;
 pub const __GLIBC_USE_DEPRECATED_SCANF: u32 = 0;
@@ -148,17 +166,17 @@ pub const __GLIBC_MINOR__: u32 = 35;
 pub const _SYS_CDEFS_H: u32 = 1;
 pub const __glibc_c99_flexarr_available: u32 = 1;
 pub const __LDOUBLE_REDIRECTS_TO_FLOAT128_ABI: u32 = 0;
-pub const __HAVE_GENERIC_SELECTION: u32 = 1;
+pub const __HAVE_GENERIC_SELECTION: u32 = 0;
 pub const _BITS_SETJMP_H: u32 = 1;
 pub const __jmp_buf_tag_defined: u32 = 1;
 pub const _STDINT_H: u32 = 1;
-pub const __GLIBC_USE_LIB_EXT2: u32 = 0;
-pub const __GLIBC_USE_IEC_60559_BFP_EXT: u32 = 0;
-pub const __GLIBC_USE_IEC_60559_BFP_EXT_C2X: u32 = 0;
-pub const __GLIBC_USE_IEC_60559_EXT: u32 = 0;
-pub const __GLIBC_USE_IEC_60559_FUNCS_EXT: u32 = 0;
-pub const __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X: u32 = 0;
-pub const __GLIBC_USE_IEC_60559_TYPES_EXT: u32 = 0;
+pub const __GLIBC_USE_LIB_EXT2: u32 = 1;
+pub const __GLIBC_USE_IEC_60559_BFP_EXT: u32 = 1;
+pub const __GLIBC_USE_IEC_60559_BFP_EXT_C2X: u32 = 1;
+pub const __GLIBC_USE_IEC_60559_EXT: u32 = 1;
+pub const __GLIBC_USE_IEC_60559_FUNCS_EXT: u32 = 1;
+pub const __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X: u32 = 1;
+pub const __GLIBC_USE_IEC_60559_TYPES_EXT: u32 = 1;
 pub const _BITS_TYPES_H: u32 = 1;
 pub const _BITS_TYPESIZES_H: u32 = 1;
 pub const __OFF_T_MATCHES_OFF64_T: u32 = 1;
@@ -208,6 +226,39 @@ pub const SIG_ATOMIC_MAX: u32 = 2147483647;
 pub const SIZE_MAX: i32 = -1;
 pub const WINT_MIN: u32 = 0;
 pub const WINT_MAX: u32 = 4294967295;
+pub const INT8_WIDTH: u32 = 8;
+pub const UINT8_WIDTH: u32 = 8;
+pub const INT16_WIDTH: u32 = 16;
+pub const UINT16_WIDTH: u32 = 16;
+pub const INT32_WIDTH: u32 = 32;
+pub const UINT32_WIDTH: u32 = 32;
+pub const INT64_WIDTH: u32 = 64;
+pub const UINT64_WIDTH: u32 = 64;
+pub const INT_LEAST8_WIDTH: u32 = 8;
+pub const UINT_LEAST8_WIDTH: u32 = 8;
+pub const INT_LEAST16_WIDTH: u32 = 16;
+pub const UINT_LEAST16_WIDTH: u32 = 16;
+pub const INT_LEAST32_WIDTH: u32 = 32;
+pub const UINT_LEAST32_WIDTH: u32 = 32;
+pub const INT_LEAST64_WIDTH: u32 = 64;
+pub const UINT_LEAST64_WIDTH: u32 = 64;
+pub const INT_FAST8_WIDTH: u32 = 8;
+pub const UINT_FAST8_WIDTH: u32 = 8;
+pub const INT_FAST16_WIDTH: u32 = 64;
+pub const UINT_FAST16_WIDTH: u32 = 64;
+pub const INT_FAST32_WIDTH: u32 = 64;
+pub const UINT_FAST32_WIDTH: u32 = 64;
+pub const INT_FAST64_WIDTH: u32 = 64;
+pub const UINT_FAST64_WIDTH: u32 = 64;
+pub const INTPTR_WIDTH: u32 = 64;
+pub const UINTPTR_WIDTH: u32 = 64;
+pub const INTMAX_WIDTH: u32 = 64;
+pub const UINTMAX_WIDTH: u32 = 64;
+pub const PTRDIFF_WIDTH: u32 = 64;
+pub const SIG_ATOMIC_WIDTH: u32 = 32;
+pub const SIZE_WIDTH: u32 = 64;
+pub const WCHAR_WIDTH: u32 = 32;
+pub const WINT_WIDTH: u32 = 32;
 pub const _PTHREAD_H: u32 = 1;
 pub const _SCHED_H: u32 = 1;
 pub const __time_t_defined: u32 = 1;
@@ -223,9 +274,40 @@ pub const _BITS_SCHED_H: u32 = 1;
 pub const SCHED_OTHER: u32 = 0;
 pub const SCHED_FIFO: u32 = 1;
 pub const SCHED_RR: u32 = 2;
+pub const SCHED_BATCH: u32 = 3;
+pub const SCHED_ISO: u32 = 4;
+pub const SCHED_IDLE: u32 = 5;
+pub const SCHED_DEADLINE: u32 = 6;
+pub const SCHED_RESET_ON_FORK: u32 = 1073741824;
+pub const CSIGNAL: u32 = 255;
+pub const CLONE_VM: u32 = 256;
+pub const CLONE_FS: u32 = 512;
+pub const CLONE_FILES: u32 = 1024;
+pub const CLONE_SIGHAND: u32 = 2048;
+pub const CLONE_PIDFD: u32 = 4096;
+pub const CLONE_PTRACE: u32 = 8192;
+pub const CLONE_VFORK: u32 = 16384;
+pub const CLONE_PARENT: u32 = 32768;
+pub const CLONE_THREAD: u32 = 65536;
+pub const CLONE_NEWNS: u32 = 131072;
+pub const CLONE_SYSVSEM: u32 = 262144;
+pub const CLONE_SETTLS: u32 = 524288;
+pub const CLONE_PARENT_SETTID: u32 = 1048576;
+pub const CLONE_CHILD_CLEARTID: u32 = 2097152;
+pub const CLONE_DETACHED: u32 = 4194304;
+pub const CLONE_UNTRACED: u32 = 8388608;
+pub const CLONE_CHILD_SETTID: u32 = 16777216;
+pub const CLONE_NEWCGROUP: u32 = 33554432;
+pub const CLONE_NEWUTS: u32 = 67108864;
+pub const CLONE_NEWIPC: u32 = 134217728;
+pub const CLONE_NEWUSER: u32 = 268435456;
+pub const CLONE_NEWPID: u32 = 536870912;
+pub const CLONE_NEWNET: u32 = 1073741824;
+pub const CLONE_IO: u32 = 2147483648;
 pub const _BITS_TYPES_STRUCT_SCHED_PARAM: u32 = 1;
 pub const _BITS_CPU_SET_H: u32 = 1;
 pub const __CPU_SETSIZE: u32 = 1024;
+pub const CPU_SETSIZE: u32 = 1024;
 pub const _TIME_H: u32 = 1;
 pub const _BITS_TIME_H: u32 = 1;
 pub const CLOCK_REALTIME: u32 = 0;
@@ -240,6 +322,49 @@ pub const CLOCK_REALTIME_ALARM: u32 = 8;
 pub const CLOCK_BOOTTIME_ALARM: u32 = 9;
 pub const CLOCK_TAI: u32 = 11;
 pub const TIMER_ABSTIME: u32 = 1;
+pub const _BITS_TIMEX_H: u32 = 1;
+pub const __timeval_defined: u32 = 1;
+pub const ADJ_OFFSET: u32 = 1;
+pub const ADJ_FREQUENCY: u32 = 2;
+pub const ADJ_MAXERROR: u32 = 4;
+pub const ADJ_ESTERROR: u32 = 8;
+pub const ADJ_STATUS: u32 = 16;
+pub const ADJ_TIMECONST: u32 = 32;
+pub const ADJ_TAI: u32 = 128;
+pub const ADJ_SETOFFSET: u32 = 256;
+pub const ADJ_MICRO: u32 = 4096;
+pub const ADJ_NANO: u32 = 8192;
+pub const ADJ_TICK: u32 = 16384;
+pub const ADJ_OFFSET_SINGLESHOT: u32 = 32769;
+pub const ADJ_OFFSET_SS_READ: u32 = 40961;
+pub const MOD_OFFSET: u32 = 1;
+pub const MOD_FREQUENCY: u32 = 2;
+pub const MOD_MAXERROR: u32 = 4;
+pub const MOD_ESTERROR: u32 = 8;
+pub const MOD_STATUS: u32 = 16;
+pub const MOD_TIMECONST: u32 = 32;
+pub const MOD_CLKB: u32 = 16384;
+pub const MOD_CLKA: u32 = 32769;
+pub const MOD_TAI: u32 = 128;
+pub const MOD_MICRO: u32 = 4096;
+pub const MOD_NANO: u32 = 8192;
+pub const STA_PLL: u32 = 1;
+pub const STA_PPSFREQ: u32 = 2;
+pub const STA_PPSTIME: u32 = 4;
+pub const STA_FLL: u32 = 8;
+pub const STA_INS: u32 = 16;
+pub const STA_DEL: u32 = 32;
+pub const STA_UNSYNC: u32 = 64;
+pub const STA_FREQHOLD: u32 = 128;
+pub const STA_PPSSIGNAL: u32 = 256;
+pub const STA_PPSJITTER: u32 = 512;
+pub const STA_PPSWANDER: u32 = 1024;
+pub const STA_PPSERROR: u32 = 2048;
+pub const STA_CLOCKERR: u32 = 4096;
+pub const STA_NANO: u32 = 8192;
+pub const STA_MODE: u32 = 16384;
+pub const STA_CLK: u32 = 32768;
+pub const STA_RONLY: u32 = 65280;
 pub const __clock_t_defined: u32 = 1;
 pub const __struct_tm_defined: u32 = 1;
 pub const __clockid_t_defined: u32 = 1;
@@ -263,9 +388,10 @@ pub const __SIZEOF_PTHREAD_BARRIERATTR_T: u32 = 4;
 pub const _THREAD_MUTEX_INTERNAL_H: u32 = 1;
 pub const __PTHREAD_MUTEX_HAVE_PREV: u32 = 1;
 pub const __have_pthread_attr_t: u32 = 1;
-pub const PTHREAD_STACK_MIN: u32 = 16384;
+pub const __SC_THREAD_STACK_MIN_VALUE: u32 = 75;
 pub const PTHREAD_ONCE_INIT: u32 = 0;
 pub const PTHREAD_BARRIER_SERIAL_THREAD: i32 = -1;
+pub const PTHREAD_ATTR_NO_SIGMASK_NP: i32 = -1;
 pub const MAX_BUMP_ALLOCATORS: u32 = 6;
 pub const MAX_LARGE_OBJECT_ALLOCATORS: u32 = 2;
 pub const MAX_MALLOC_ALLOCATORS: u32 = 1;
@@ -573,6 +699,35 @@ fn bindgen_test_layout_sched_param() {
         )
     );
 }
+extern "C" {
+    pub fn clone(
+        __fn: ::std::option::Option<
+            unsafe extern "C" fn(__arg: *mut ::std::os::raw::c_void) -> ::std::os::raw::c_int,
+        >,
+        __child_stack: *mut ::std::os::raw::c_void,
+        __flags: ::std::os::raw::c_int,
+        __arg: *mut ::std::os::raw::c_void,
+        ...
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn unshare(__flags: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sched_getcpu() -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn getcpu(
+        arg1: *mut ::std::os::raw::c_uint,
+        arg2: *mut ::std::os::raw::c_uint,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn setns(
+        __fd: ::std::os::raw::c_int,
+        __nstype: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
 pub type __cpu_mask = ::std::os::raw::c_ulong;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -640,6 +795,305 @@ extern "C" {
 }
 extern "C" {
     pub fn sched_rr_get_interval(__pid: __pid_t, __t: *mut timespec) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sched_setaffinity(
+        __pid: __pid_t,
+        __cpusetsize: usize,
+        __cpuset: *const cpu_set_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sched_getaffinity(
+        __pid: __pid_t,
+        __cpusetsize: usize,
+        __cpuset: *mut cpu_set_t,
+    ) -> ::std::os::raw::c_int;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct timeval {
+    pub tv_sec: __time_t,
+    pub tv_usec: __suseconds_t,
+}
+#[test]
+fn bindgen_test_layout_timeval() {
+    const UNINIT: ::std::mem::MaybeUninit<timeval> = ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<timeval>(),
+        16usize,
+        concat!("Size of: ", stringify!(timeval))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<timeval>(),
+        8usize,
+        concat!("Alignment of ", stringify!(timeval))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).tv_sec) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timeval),
+            "::",
+            stringify!(tv_sec)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).tv_usec) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timeval),
+            "::",
+            stringify!(tv_usec)
+        )
+    );
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct timex {
+    pub modes: ::std::os::raw::c_uint,
+    pub offset: __syscall_slong_t,
+    pub freq: __syscall_slong_t,
+    pub maxerror: __syscall_slong_t,
+    pub esterror: __syscall_slong_t,
+    pub status: ::std::os::raw::c_int,
+    pub constant: __syscall_slong_t,
+    pub precision: __syscall_slong_t,
+    pub tolerance: __syscall_slong_t,
+    pub time: timeval,
+    pub tick: __syscall_slong_t,
+    pub ppsfreq: __syscall_slong_t,
+    pub jitter: __syscall_slong_t,
+    pub shift: ::std::os::raw::c_int,
+    pub stabil: __syscall_slong_t,
+    pub jitcnt: __syscall_slong_t,
+    pub calcnt: __syscall_slong_t,
+    pub errcnt: __syscall_slong_t,
+    pub stbcnt: __syscall_slong_t,
+    pub tai: ::std::os::raw::c_int,
+    pub _bitfield_align_1: [u8; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 44usize]>,
+}
+#[test]
+fn bindgen_test_layout_timex() {
+    const UNINIT: ::std::mem::MaybeUninit<timex> = ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<timex>(),
+        208usize,
+        concat!("Size of: ", stringify!(timex))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<timex>(),
+        8usize,
+        concat!("Alignment of ", stringify!(timex))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).modes) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(modes)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).offset) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(offset)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).freq) as usize - ptr as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(freq)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).maxerror) as usize - ptr as usize },
+        24usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(maxerror)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).esterror) as usize - ptr as usize },
+        32usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(esterror)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).status) as usize - ptr as usize },
+        40usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(status)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).constant) as usize - ptr as usize },
+        48usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(constant)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).precision) as usize - ptr as usize },
+        56usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(precision)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).tolerance) as usize - ptr as usize },
+        64usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(tolerance)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).time) as usize - ptr as usize },
+        72usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(time)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).tick) as usize - ptr as usize },
+        88usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(tick)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).ppsfreq) as usize - ptr as usize },
+        96usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(ppsfreq)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).jitter) as usize - ptr as usize },
+        104usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(jitter)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).shift) as usize - ptr as usize },
+        112usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(shift)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).stabil) as usize - ptr as usize },
+        120usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(stabil)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).jitcnt) as usize - ptr as usize },
+        128usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(jitcnt)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).calcnt) as usize - ptr as usize },
+        136usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(calcnt)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).errcnt) as usize - ptr as usize },
+        144usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(errcnt)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).stbcnt) as usize - ptr as usize },
+        152usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(stbcnt)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).tai) as usize - ptr as usize },
+        160usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(timex),
+            "::",
+            stringify!(tai)
+        )
+    );
+}
+extern "C" {
+    pub fn clock_adjtime(__clock_id: __clockid_t, __utx: *mut timex) -> ::std::os::raw::c_int;
 }
 pub type clock_t = __clock_t;
 #[repr(C)]
@@ -927,6 +1381,13 @@ extern "C" {
     ) -> usize;
 }
 extern "C" {
+    pub fn strptime(
+        __s: *const ::std::os::raw::c_char,
+        __fmt: *const ::std::os::raw::c_char,
+        __tp: *mut tm,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
     pub fn strftime_l(
         __s: *mut ::std::os::raw::c_char,
         __maxsize: usize,
@@ -934,6 +1395,14 @@ extern "C" {
         __tp: *const tm,
         __loc: locale_t,
     ) -> usize;
+}
+extern "C" {
+    pub fn strptime_l(
+        __s: *const ::std::os::raw::c_char,
+        __fmt: *const ::std::os::raw::c_char,
+        __tp: *mut tm,
+        __loc: locale_t,
+    ) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
     pub fn gmtime(__timer: *const time_t) -> *mut tm;
@@ -1049,6 +1518,24 @@ extern "C" {
     pub fn timespec_get(
         __ts: *mut timespec,
         __base: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn timespec_getres(
+        __ts: *mut timespec,
+        __base: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub static mut getdate_err: ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn getdate(__string: *const ::std::os::raw::c_char) -> *mut tm;
+}
+extern "C" {
+    pub fn getdate_r(
+        __string: *const ::std::os::raw::c_char,
+        __resbufp: *mut tm,
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
@@ -2007,6 +2494,9 @@ fn bindgen_test_layout_pthread_barrierattr_t() {
         )
     );
 }
+extern "C" {
+    pub fn __sysconf(__name: ::std::os::raw::c_int) -> ::std::os::raw::c_long;
+}
 pub const PTHREAD_CREATE_JOINABLE: _bindgen_ty_1 = 0;
 pub const PTHREAD_CREATE_DETACHED: _bindgen_ty_1 = 1;
 pub type _bindgen_ty_1 = ::std::os::raw::c_uint;
@@ -2018,6 +2508,7 @@ pub const PTHREAD_MUTEX_NORMAL: _bindgen_ty_2 = 0;
 pub const PTHREAD_MUTEX_RECURSIVE: _bindgen_ty_2 = 1;
 pub const PTHREAD_MUTEX_ERRORCHECK: _bindgen_ty_2 = 2;
 pub const PTHREAD_MUTEX_DEFAULT: _bindgen_ty_2 = 0;
+pub const PTHREAD_MUTEX_FAST_NP: _bindgen_ty_2 = 0;
 pub type _bindgen_ty_2 = ::std::os::raw::c_uint;
 pub const PTHREAD_MUTEX_STALLED: _bindgen_ty_3 = 0;
 pub const PTHREAD_MUTEX_STALLED_NP: _bindgen_ty_3 = 0;
@@ -2129,6 +2620,27 @@ extern "C" {
     pub fn pthread_join(
         __th: pthread_t,
         __thread_return: *mut *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_tryjoin_np(
+        __th: pthread_t,
+        __thread_return: *mut *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_timedjoin_np(
+        __th: pthread_t,
+        __thread_return: *mut *mut ::std::os::raw::c_void,
+        __abstime: *const timespec,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_clockjoin_np(
+        __th: pthread_t,
+        __thread_return: *mut *mut ::std::os::raw::c_void,
+        __clockid: clockid_t,
+        __abstime: *const timespec,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
@@ -2257,6 +2769,44 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn pthread_attr_setaffinity_np(
+        __attr: *mut pthread_attr_t,
+        __cpusetsize: usize,
+        __cpuset: *const cpu_set_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_attr_getaffinity_np(
+        __attr: *const pthread_attr_t,
+        __cpusetsize: usize,
+        __cpuset: *mut cpu_set_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_getattr_default_np(__attr: *mut pthread_attr_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_attr_setsigmask_np(
+        __attr: *mut pthread_attr_t,
+        sigmask: *const __sigset_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_attr_getsigmask_np(
+        __attr: *const pthread_attr_t,
+        sigmask: *mut __sigset_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_setattr_default_np(__attr: *const pthread_attr_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_getattr_np(
+        __th: pthread_t,
+        __attr: *mut pthread_attr_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn pthread_setschedparam(
         __target_thread: pthread_t,
         __policy: ::std::os::raw::c_int,
@@ -2274,6 +2824,42 @@ extern "C" {
     pub fn pthread_setschedprio(
         __target_thread: pthread_t,
         __prio: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_getname_np(
+        __target_thread: pthread_t,
+        __buf: *mut ::std::os::raw::c_char,
+        __buflen: usize,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_setname_np(
+        __target_thread: pthread_t,
+        __name: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_getconcurrency() -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_setconcurrency(__level: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_yield() -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_setaffinity_np(
+        __th: pthread_t,
+        __cpusetsize: usize,
+        __cpuset: *const cpu_set_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_getaffinity_np(
+        __th: pthread_t,
+        __cpusetsize: usize,
+        __cpuset: *mut cpu_set_t,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
@@ -2448,14 +3034,70 @@ fn bindgen_test_layout___pthread_cleanup_frame() {
         )
     );
 }
-extern "C" {
-    pub fn __pthread_register_cancel(__buf: *mut __pthread_unwind_buf_t);
+#[repr(C)]
+#[derive(Debug)]
+pub struct __pthread_cleanup_class {
+    pub __cancel_routine:
+        ::std::option::Option<unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void)>,
+    pub __cancel_arg: *mut ::std::os::raw::c_void,
+    pub __do_it: ::std::os::raw::c_int,
+    pub __cancel_type: ::std::os::raw::c_int,
 }
-extern "C" {
-    pub fn __pthread_unregister_cancel(__buf: *mut __pthread_unwind_buf_t);
-}
-extern "C" {
-    pub fn __pthread_unwind_next(__buf: *mut __pthread_unwind_buf_t) -> !;
+#[test]
+fn bindgen_test_layout___pthread_cleanup_class() {
+    const UNINIT: ::std::mem::MaybeUninit<__pthread_cleanup_class> =
+        ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<__pthread_cleanup_class>(),
+        24usize,
+        concat!("Size of: ", stringify!(__pthread_cleanup_class))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<__pthread_cleanup_class>(),
+        8usize,
+        concat!("Alignment of ", stringify!(__pthread_cleanup_class))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).__cancel_routine) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(__pthread_cleanup_class),
+            "::",
+            stringify!(__cancel_routine)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).__cancel_arg) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(__pthread_cleanup_class),
+            "::",
+            stringify!(__cancel_arg)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).__do_it) as usize - ptr as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(__pthread_cleanup_class),
+            "::",
+            stringify!(__do_it)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).__cancel_type) as usize - ptr as usize },
+        20usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(__pthread_cleanup_class),
+            "::",
+            stringify!(__cancel_type)
+        )
+    );
 }
 extern "C" {
     pub fn pthread_mutex_init(
@@ -2475,6 +3117,13 @@ extern "C" {
 extern "C" {
     pub fn pthread_mutex_timedlock(
         __mutex: *mut pthread_mutex_t,
+        __abstime: *const timespec,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_mutex_clocklock(
+        __mutex: *mut pthread_mutex_t,
+        __clockid: clockid_t,
         __abstime: *const timespec,
     ) -> ::std::os::raw::c_int;
 }
@@ -2585,6 +3234,13 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn pthread_rwlock_clockrdlock(
+        __rwlock: *mut pthread_rwlock_t,
+        __clockid: clockid_t,
+        __abstime: *const timespec,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn pthread_rwlock_wrlock(__rwlock: *mut pthread_rwlock_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
@@ -2593,6 +3249,13 @@ extern "C" {
 extern "C" {
     pub fn pthread_rwlock_timedwrlock(
         __rwlock: *mut pthread_rwlock_t,
+        __abstime: *const timespec,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_rwlock_clockwrlock(
+        __rwlock: *mut pthread_rwlock_t,
+        __clockid: clockid_t,
         __abstime: *const timespec,
     ) -> ::std::os::raw::c_int;
 }
@@ -2654,6 +3317,14 @@ extern "C" {
     pub fn pthread_cond_timedwait(
         __cond: *mut pthread_cond_t,
         __mutex: *mut pthread_mutex_t,
+        __abstime: *const timespec,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pthread_cond_clockwait(
+        __cond: *mut pthread_cond_t,
+        __mutex: *mut pthread_mutex_t,
+        __clock_id: __clockid_t,
         __abstime: *const timespec,
     ) -> ::std::os::raw::c_int;
 }
@@ -5742,9 +6413,9 @@ pub struct mmtk_jl_thread_heap_t {
     pub mafreelist: *mut _mallocarray_t,
     pub big_objects: *mut _bigval_t,
     pub remset_nptr: ::std::os::raw::c_int,
-    pub remset: *mut mmtk_arraylist_t,
+    pub remset: mmtk_arraylist_t,
     pub norm_pools: [mmtk_jl_gc_pool_t; 51usize],
-    pub free_stacks: [mmtk_arraylist_t; 16usize],
+    pub free_stacks: [mmtk_small_arraylist_t; 16usize],
 }
 #[test]
 fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
@@ -5753,7 +6424,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk_jl_thread_heap_t>(),
-        5488usize,
+        2664usize,
         concat!("Size of: ", stringify!(mmtk_jl_thread_heap_t))
     );
     assert_eq!(
@@ -5833,7 +6504,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).norm_pools) as usize - ptr as usize },
-        168usize,
+        416usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5843,7 +6514,7 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).free_stacks) as usize - ptr as usize },
-        1392usize,
+        1640usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_thread_heap_t),
@@ -5854,10 +6525,13 @@ fn bindgen_test_layout_mmtk_jl_thread_heap_t() {
 }
 pub type mmtk_jl_thread_t = pthread_t;
 #[repr(C)]
+#[repr(align(64))]
 #[derive(Debug, Copy, Clone)]
 pub struct mmtk_ws_queue_t {
     pub top: u64,
+    pub __bindgen_padding_0: [u64; 7usize],
     pub bottom: u64,
+    pub __bindgen_padding_1: [u64; 7usize],
     pub array: u64,
 }
 #[test]
@@ -5866,12 +6540,12 @@ fn bindgen_test_layout_mmtk_ws_queue_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk_ws_queue_t>(),
-        24usize,
+        192usize,
         concat!("Size of: ", stringify!(mmtk_ws_queue_t))
     );
     assert_eq!(
         ::std::mem::align_of::<mmtk_ws_queue_t>(),
-        8usize,
+        64usize,
         concat!("Alignment of ", stringify!(mmtk_ws_queue_t))
     );
     assert_eq!(
@@ -5886,7 +6560,7 @@ fn bindgen_test_layout_mmtk_ws_queue_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).bottom) as usize - ptr as usize },
-        8usize,
+        64usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_ws_queue_t),
@@ -5896,7 +6570,7 @@ fn bindgen_test_layout_mmtk_ws_queue_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).array) as usize - ptr as usize },
-        16usize,
+        128usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_ws_queue_t),
@@ -5906,6 +6580,7 @@ fn bindgen_test_layout_mmtk_ws_queue_t() {
     );
 }
 #[repr(C)]
+#[repr(align(64))]
 #[derive(Debug, Copy, Clone)]
 pub struct mmtk_jl_gc_markqueue_t {
     pub chunk_queue: mmtk_ws_queue_t,
@@ -5919,12 +6594,12 @@ fn bindgen_test_layout_mmtk_jl_gc_markqueue_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk_jl_gc_markqueue_t>(),
-        304usize,
+        640usize,
         concat!("Size of: ", stringify!(mmtk_jl_gc_markqueue_t))
     );
     assert_eq!(
         ::std::mem::align_of::<mmtk_jl_gc_markqueue_t>(),
-        8usize,
+        64usize,
         concat!("Alignment of ", stringify!(mmtk_jl_gc_markqueue_t))
     );
     assert_eq!(
@@ -5939,7 +6614,7 @@ fn bindgen_test_layout_mmtk_jl_gc_markqueue_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).ptr_queue) as usize - ptr as usize },
-        24usize,
+        192usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_gc_markqueue_t),
@@ -5949,7 +6624,7 @@ fn bindgen_test_layout_mmtk_jl_gc_markqueue_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).reclaim_set) as usize - ptr as usize },
-        48usize,
+        384usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_gc_markqueue_t),
@@ -6054,11 +6729,13 @@ fn bindgen_test_layout_mmtk_jl_gc_mark_cache_t() {
     );
 }
 #[repr(C)]
+#[repr(align(64))]
 #[derive(Debug, Copy, Clone)]
 pub struct mmtk_jl_gc_tls_states_t {
     pub heap: mmtk_jl_thread_heap_t,
     pub page_metadata_allocd: mmtk_jl_gc_page_stack_t,
     pub gc_num: mmtk_jl_thread_gc_num_t,
+    pub __bindgen_padding_0: [u64; 2usize],
     pub mark_queue: mmtk_jl_gc_markqueue_t,
     pub gc_cache: mmtk_jl_gc_mark_cache_t,
     pub gc_sweeps_requested: u64,
@@ -6071,12 +6748,12 @@ fn bindgen_test_layout_mmtk_jl_gc_tls_states_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk_jl_gc_tls_states_t>(),
-        14344usize,
+        11904usize,
         concat!("Size of: ", stringify!(mmtk_jl_gc_tls_states_t))
     );
     assert_eq!(
         ::std::mem::align_of::<mmtk_jl_gc_tls_states_t>(),
-        8usize,
+        64usize,
         concat!("Alignment of ", stringify!(mmtk_jl_gc_tls_states_t))
     );
     assert_eq!(
@@ -6091,7 +6768,7 @@ fn bindgen_test_layout_mmtk_jl_gc_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).page_metadata_allocd) as usize - ptr as usize },
-        5488usize,
+        2664usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_gc_tls_states_t),
@@ -6101,7 +6778,7 @@ fn bindgen_test_layout_mmtk_jl_gc_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).gc_num) as usize - ptr as usize },
-        5496usize,
+        2672usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_gc_tls_states_t),
@@ -6111,7 +6788,7 @@ fn bindgen_test_layout_mmtk_jl_gc_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mark_queue) as usize - ptr as usize },
-        5560usize,
+        2752usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_gc_tls_states_t),
@@ -6121,7 +6798,7 @@ fn bindgen_test_layout_mmtk_jl_gc_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).gc_cache) as usize - ptr as usize },
-        5864usize,
+        3392usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_gc_tls_states_t),
@@ -6131,7 +6808,7 @@ fn bindgen_test_layout_mmtk_jl_gc_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).gc_sweeps_requested) as usize - ptr as usize },
-        14080usize,
+        11608usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_gc_tls_states_t),
@@ -6141,7 +6818,7 @@ fn bindgen_test_layout_mmtk_jl_gc_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).sweep_objs) as usize - ptr as usize },
-        14088usize,
+        11616usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk_jl_gc_tls_states_t),
@@ -6151,6 +6828,7 @@ fn bindgen_test_layout_mmtk_jl_gc_tls_states_t() {
     );
 }
 #[repr(C)]
+#[repr(align(64))]
 pub struct mmtk__jl_tls_states_t {
     pub tid: i16,
     pub threadpoolid: i8,
@@ -6162,6 +6840,7 @@ pub struct mmtk__jl_tls_states_t {
     pub in_finalizer: i16,
     pub disable_gc: i16,
     pub finalizers_inhibited: ::std::os::raw::c_int,
+    pub __bindgen_padding_0: [u64; 3usize],
     pub gc_tls: mmtk_jl_gc_tls_states_t,
     pub defer_signal: sig_atomic_t,
     pub current_task: u64,
@@ -6241,12 +6920,12 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<mmtk__jl_tls_states_t>(),
-        15760usize,
+        13376usize,
         concat!("Size of: ", stringify!(mmtk__jl_tls_states_t))
     );
     assert_eq!(
         ::std::mem::align_of::<mmtk__jl_tls_states_t>(),
-        8usize,
+        64usize,
         concat!("Alignment of ", stringify!(mmtk__jl_tls_states_t))
     );
     assert_eq!(
@@ -6351,7 +7030,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).gc_tls) as usize - ptr as usize },
-        40usize,
+        64usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6361,7 +7040,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).defer_signal) as usize - ptr as usize },
-        14384usize,
+        11968usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6371,7 +7050,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).current_task) as usize - ptr as usize },
-        14392usize,
+        11976usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6381,7 +7060,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).next_task) as usize - ptr as usize },
-        14400usize,
+        11984usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6391,7 +7070,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).previous_task) as usize - ptr as usize },
-        14408usize,
+        11992usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6401,7 +7080,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).root_task) as usize - ptr as usize },
-        14416usize,
+        12000usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6411,7 +7090,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).timing_stack) as usize - ptr as usize },
-        14424usize,
+        12008usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6421,7 +7100,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).stackbase) as usize - ptr as usize },
-        14432usize,
+        12016usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6431,7 +7110,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).stacksize) as usize - ptr as usize },
-        14440usize,
+        12024usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6441,7 +7120,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).sig_exception) as usize - ptr as usize },
-        14648usize,
+        12232usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6451,7 +7130,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).bt_data) as usize - ptr as usize },
-        14656usize,
+        12240usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6461,7 +7140,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).bt_size) as usize - ptr as usize },
-        14664usize,
+        12248usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6471,7 +7150,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).profiling_bt_buffer) as usize - ptr as usize },
-        14672usize,
+        12256usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6481,7 +7160,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).signal_request) as usize - ptr as usize },
-        14680usize,
+        12264usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6491,7 +7170,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).io_wait) as usize - ptr as usize },
-        14684usize,
+        12268usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6501,7 +7180,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).signal_stack) as usize - ptr as usize },
-        14688usize,
+        12272usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6511,7 +7190,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).signal_stack_size) as usize - ptr as usize },
-        14696usize,
+        12280usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6521,7 +7200,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).system_id) as usize - ptr as usize },
-        14704usize,
+        12288usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6531,7 +7210,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).suspend_count) as usize - ptr as usize },
-        14712usize,
+        12296usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6541,7 +7220,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).finalizers) as usize - ptr as usize },
-        14720usize,
+        12304usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6551,7 +7230,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).previous_exception) as usize - ptr as usize },
-        14976usize,
+        12560usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6561,7 +7240,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).locks) as usize - ptr as usize },
-        14984usize,
+        12568usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6571,7 +7250,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).engine_nqueued) as usize - ptr as usize },
-        15048usize,
+        12632usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6581,7 +7260,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mmtk_mutator) as usize - ptr as usize },
-        15056usize,
+        12640usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),
@@ -6591,7 +7270,7 @@ fn bindgen_test_layout_mmtk__jl_tls_states_t() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).malloc_sz_since_last_poll) as usize - ptr as usize },
-        15752usize,
+        13336usize,
         concat!(
             "Offset of field: ",
             stringify!(mmtk__jl_tls_states_t),

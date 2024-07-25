@@ -87,7 +87,9 @@ impl mmtk_jl_datatype_layout_t {
     #[inline]
     pub fn fielddesc_type_custom(&self) -> u16 {
         let fielddesc_type_raw: u16 = unsafe {
-            ::std::mem::transmute::<__BindgenBitfieldUnit<[u8; 2usize]>, u16>(self.flags._bitfield_1)
+            ::std::mem::transmute::<__BindgenBitfieldUnit<[u8; 2usize]>, u16>(
+                self.flags._bitfield_1,
+            )
         };
         fielddesc_type_raw >> 1 & 0b11
     }
