@@ -44,7 +44,7 @@ memoffset = "*"
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 
 [features]
-default = ["mmtk/vm_space", "julia_copy_stack", "object_pinning", "mmtk/exec_permission_on_all_spaces"]
+default = ["mmtk/vm_space", "julia_copy_stack", "object_pinning"]
 
 # Plans
 nogc = []
