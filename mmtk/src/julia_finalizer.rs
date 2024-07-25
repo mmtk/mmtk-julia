@@ -112,7 +112,7 @@ impl ArrayListT {
 
 fn gc_ptr_clear_tag(addr: Address, tag: usize) -> Address {
     let addr = unsafe { Address::from_usize(addr & !tag) };
-    debug_assert!(!addr.is_zero()); 
+    debug_assert!(!addr.is_zero());
     addr
 }
 

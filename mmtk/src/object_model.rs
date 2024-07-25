@@ -122,9 +122,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
     fn get_current_size(object: ObjectReference) -> usize {
         // not being called by objects in LOS
         debug_assert!(!is_object_in_los(&object));
-       
 
-        let obj_size =  unsafe { get_so_object_size(object) };
+        let obj_size = unsafe { get_so_object_size(object) };
         // println!("object = {:?} has size {}", object, obj_size);
         obj_size
     }

@@ -58,7 +58,6 @@ impl Collection<JuliaVM> for VMCollection {
             )
         }
 
-
         AtomicBool::store(&BLOCK_FOR_GC, false, Ordering::SeqCst);
         AtomicBool::store(&WORLD_HAS_STOPPED, false, Ordering::SeqCst);
 

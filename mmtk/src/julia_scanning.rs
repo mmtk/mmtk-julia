@@ -65,7 +65,11 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
     let mut vtag_usize = vtag.as_usize();
 
     if PRINT_OBJ_TYPE {
-        println!("scan_julia_obj {}, obj_type = {:?}", obj, mmtk_jl_to_typeof(obj));
+        println!(
+            "scan_julia_obj {}, obj_type = {:?}",
+            obj,
+            mmtk_jl_to_typeof(obj)
+        );
     }
 
     // symbols are always marked
