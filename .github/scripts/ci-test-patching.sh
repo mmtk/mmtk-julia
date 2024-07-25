@@ -18,8 +18,12 @@ declare -a tests_to_skip=(
     '@test read(`$exename -e $code`, String) == "2"' "$JULIA_PATH/test/cmdlineargs.jl"
     '@test read(`$exename -e $code`, String) == "3"' "$JULIA_PATH/test/cmdlineargs.jl"
 
+    # These tests seem to fail because we set the number of stock GC threads to 0
+    'jl_setaffinity(1, mask, cpumasksize) == 0' "$JULIA_PATH/test/threads.jl"
+    'jl_getaffinity(1, mask, cpumasksize) == 0' "$JULIA_PATH/test/threads.jl"
+
     # This test is about the page profiler
-    '@test readline(fs) != ""' "$JULIA_PATH/stdlib/Profile/test/runtests.jl"
+    '@test readline(fs) != ""' "$JULIA_PATH/usr/share/julia/stdlib/v1.12/Profile/test/runtests.jl"
 
     # Skipping these GC tests for now (until we make sure we follow the stats as expected by the stock GC)
     '@test !live_bytes_has_grown_too_much' "$JULIA_PATH/test/gc.jl"
