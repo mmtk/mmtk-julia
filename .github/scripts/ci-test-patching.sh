@@ -23,6 +23,9 @@ declare -a tests_to_skip=(
     '@test readchomp(`$(Base.julia_cmd()) --startup-file=no --heap-size-hint=10M' "$JULIA_PATH/test/cmdlineargs.jl"
     '@test abs(Float64(maxmem)' "$JULIA_PATH/test/cmdlineargs.jl"
 
+    # For some reason this fails even with the stock build
+    '@test n_precompiles <= expected_precompiles' "$JULIA_PATH/stdlib/REPL/test/precompilation.jl"
+
     # rr might not be available in the github runner
     '@test success(pipeline(setenv(`$(Base.julia_cmd()) --bug-report=rr-local' "$JULIA_PATH/test/cmdlineargs.jl"
 
