@@ -18,6 +18,14 @@ declare -a tests_to_skip=(
     '@test read(`$exename -e $code`, String) == "2"' "$JULIA_PATH/test/cmdlineargs.jl"
     '@test read(`$exename -e $code`, String) == "3"' "$JULIA_PATH/test/cmdlineargs.jl"
 
+    # These tests use the heapsize hint which is not used by mmtk
+    '@test readchomp(`$(Base.julia_cmd()) --startup-file=no --heap-size-hint=500M' "$JULIA_PATH/test/cmdlineargs.jl"
+    '@test readchomp(`$(Base.julia_cmd()) --startup-file=no --heap-size-hint=10M' "$JULIA_PATH/test/cmdlineargs.jl"
+    '@test abs(Float64(maxmem)' "$JULIA_PATH/test/cmdlineargs.jl"
+
+    # rr might not be available in the github runner
+    '@test success(pipeline(setenv(`$(Base.julia_cmd()) --bug-report=rr-local' "$JULIA_PATH/test/cmdlineargs.jl"
+
     # These tests seem to fail because we set the number of stock GC threads to 0
     'jl_setaffinity(1, mask, cpumasksize) == 0' "$JULIA_PATH/test/threads.jl"
     'jl_getaffinity(1, mask, cpumasksize) == 0' "$JULIA_PATH/test/threads.jl"
@@ -26,9 +34,7 @@ declare -a tests_to_skip=(
     '@test !live_bytes_has_grown_too_much' "$JULIA_PATH/test/gc.jl"
     '@test any(page_utilization .> 0)' "$JULIA_PATH/test/gc.jl"
 
-    # These test the heapsize hint which is not used by mmtk
-    '@test readchomp(`$(Base.julia_cmd()) --startup-file=no --heap-size-hint=500M -e "println(@ccall jl_gc_get_max_memory()::UInt64)"`) == "$((500-250)*1024*1024)"' "$JULIA_PATH/test/cmdlineargs.jl"
-    '@test readchomp(`$(Base.julia_cmd()) --startup-file=no --heap-size-hint=10M -e "println(@ccall jl_gc_get_max_memory()::UInt64)"`) == "$(1*1024*1024)"' "$JULIA_PATH/test/cmdlineargs.jl"
+
     # This test checks GC logging
     '@test occursin("GC: pause", read(tmppath, String))' "$JULIA_PATH/test/misc.jl"
 
