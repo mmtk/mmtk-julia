@@ -55,6 +55,7 @@ marksweep = []
 # This feature disables moving
 non_moving = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
 object_pinning = ["mmtk/object_pinning"]
-conservative = ["mmtk/is_mmtk_object"]
+is_mmtk_object = ["mmtk/is_mmtk_object"]
+conservative = ["is_mmtk_object"]
 moving = ["conservative", "object_pinning"]
 julia_copy_stack = []
