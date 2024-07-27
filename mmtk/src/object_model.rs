@@ -1,11 +1,11 @@
 use crate::api::mmtk_get_obj_size;
 use crate::julia_scanning::{
-    ijl_small_typeof, jl_array_typename, jl_genericmemory_typename, mmtk_jl_genericmemory_how,
-    mmtk_jl_typeof, mmtk_jl_typetagof,
+    ijl_small_typeof, jl_genericmemory_typename, mmtk_jl_genericmemory_how, mmtk_jl_typeof,
+    mmtk_jl_typetagof,
 };
 use crate::{julia_types::*, UPCALLS};
 use crate::{JuliaVM, JULIA_BUFF_TAG, JULIA_HEADER_SIZE};
-use log::trace;
+use log::info;
 use mmtk::util::copy::*;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::ObjectModel;
@@ -84,14 +84,15 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         }
         let to_obj = unsafe { ObjectReference::from_raw_address_unchecked(dst + header_offset) };
 
-        trace!("Copying object from {} to {}", from, to_obj);
+        info!("Copying object from {} to {}", from, to_obj);
 
         copy_context.post_copy(to_obj, bytes, semantics);
 
         unsafe {
             let vt = mmtk_jl_typeof(from.to_raw_address());
 
-            if (*vt).name == jl_array_typename {
+            if (*vt).name == jl_genericmemory_typename {
+                info!("Copying generic memory...");
                 ((*UPCALLS).update_inlined_array)(from.to_raw_address(), to_obj.to_raw_address())
             }
         }

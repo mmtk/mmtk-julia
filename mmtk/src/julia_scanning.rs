@@ -4,6 +4,7 @@ use crate::slots::JuliaVMSlot;
 use crate::slots::OffsetSlot;
 use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
+use log::info;
 use memoffset::offset_of;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::slot::SimpleSlot;
@@ -19,6 +20,7 @@ const OFFSET_OF_INLINED_SPACE_IN_MODULE: usize =
 extern "C" {
     pub static jl_simplevector_type: *const mmtk_jl_datatype_t;
     pub static jl_genericmemory_typename: *mut mmtk_jl_typename_t;
+    pub static jl_genericmemoryref_typename: *mut mmtk_jl_typename_t;
     pub static jl_array_typename: *mut mmtk_jl_typename_t;
     pub static jl_module_type: *const mmtk_jl_datatype_t;
     pub static jl_task_type: *const mmtk_jl_datatype_t;
@@ -193,6 +195,22 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         }
     }
     let vt = vtag.to_ptr::<mmtk_jl_datatype_t>();
+    if (*vt).name == jl_array_typename {
+        let a = obj.to_ptr::<mmtk_jl_array_t>();
+        let memref = (*a).ref_;
+
+        let ptr_or_offset = memref.ptr_or_offset;
+        // if the object moves its pointer inside the array object needs to be updated as well
+        if mmtk_object_is_managed_by_mmtk(ptr_or_offset as usize) {
+            let ptr_or_ref_slot = Address::from_ptr(::std::ptr::addr_of!((*a).ref_.ptr_or_offset));
+
+            process_offset_slot(
+                closure,
+                ptr_or_ref_slot,
+                ptr_or_offset as usize - memref.mem as usize,
+            );
+        }
+    }
     if (*vt).name == jl_genericmemory_typename {
         if PRINT_OBJ_TYPE {
             println!("scan_julia_obj {}: genericmemory\n", obj);

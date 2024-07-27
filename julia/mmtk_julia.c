@@ -317,15 +317,14 @@ void scan_vm_specific_roots(RootsWorkClosure* closure)
     add_node_to_roots_buffer(closure, &buf, &len, cmpswap_names);
 
     // jl_global_roots_table must be transitively pinned 
-    // RootsWorkBuffer tpinned_buf = (closure->report_tpinned_nodes_func)((void**)0, 0, 0, closure->data, true);
-    // size_t tpinned_len = 0;
-    // add_node_to_tpinned_roots_buffer(closure, &tpinned_buf, &tpinned_len, jl_global_roots_list);
-    add_node_to_roots_buffer(closure, &buf, &len, jl_global_roots_list);
+    RootsWorkBuffer tpinned_buf = (closure->report_tpinned_nodes_func)((void**)0, 0, 0, closure->data, true);
+    size_t tpinned_len = 0;
+    add_node_to_tpinned_roots_buffer(closure, &tpinned_buf, &tpinned_len, jl_global_roots_list);
     add_node_to_roots_buffer(closure, &buf, &len, jl_global_roots_keyset);
 
     // Push the result of the work.
     (closure->report_nodes_func)(buf.ptr, len, buf.cap, closure->data, false);
-    // (closure->report_tpinned_nodes_func)(tpinned_buf.ptr, tpinned_len, tpinned_buf.cap, closure->data, false);
+    (closure->report_tpinned_nodes_func)(tpinned_buf.ptr, tpinned_len, tpinned_buf.cap, closure->data, false);
 }
 
 JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessSlotFn process_slot) {
@@ -372,27 +371,29 @@ JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessSlotFn
 // number of stacks to always keep available per pool - from gc-stacks.c
 #define MIN_STACK_MAPPINGS_PER_POOL 5
 
+#define jl_genericmemory_elsize(a) (((jl_datatype_t*)jl_typetagof(a))->layout->size)
+
 // if data is inlined inside the array object --- to->data needs to be updated when copying the array
 void update_inlined_array(void* from, void* to) {
-    // FIXME: This function is obsolete in the latest master????
+    jl_value_t* jl_from = (jl_value_t*) from;
+    jl_value_t* jl_to = (jl_value_t*) to;
+
+    uintptr_t tag_to = (uintptr_t)jl_typeof(jl_to);
+    jl_datatype_t *vt = (jl_datatype_t*)tag_to;
 
 
-    // jl_value_t* jl_from = (jl_value_t*) from;
-    // jl_value_t* jl_to = (jl_value_t*) to;
+    if(vt->name == jl_genericmemory_typename) {
+        jl_genericmemory_t *a = (jl_genericmemory_t*)jl_from;
+        jl_genericmemory_t *b = (jl_genericmemory_t*)jl_to;
+        int how = jl_genericmemory_how(a);
 
-    // uintptr_t tag_to = (uintptr_t)jl_typeof(jl_to);
-    // jl_datatype_t *vt = (jl_datatype_t*)tag_to;
-
-    // if(vt->name == jl_array_typename) {
-    //     jl_array_t *a = (jl_array_t*)jl_from;
-    //     jl_array_t *b = (jl_array_t*)jl_to;
-    //     if (a->flags.how == 0 && mmtk_object_is_managed_by_mmtk(a->data)) { // a is inlined (a->data is an mmtk object)
-    //         size_t offset_of_data = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
-    //         if (offset_of_data > 0 && offset_of_data <= ARRAY_INLINE_NBYTES) {
-    //             b->data = (void*)((size_t) b + offset_of_data);
-    //         }
-    //     }
-    // }
+        if (how == 0 && mmtk_object_is_managed_by_mmtk(a->ptr)) { // a is inlined (a->data is an mmtk object)
+            size_t offset_of_data = ((size_t)a->ptr - (size_t)a);
+            if (offset_of_data > 0) {
+                b->ptr = (void*)((size_t) b + offset_of_data);
+            }
+        }
+    }
 }
 
 // modified sweep_stack_pools from gc-stacks.c
