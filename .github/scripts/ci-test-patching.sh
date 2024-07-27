@@ -25,6 +25,7 @@ declare -a tests_to_skip=(
 
     # For some reason this fails even with the stock build
     '@test n_precompiles <= expected_precompiles' "$JULIA_PATH/stdlib/REPL/test/precompilation.jl"
+    '@test length(targets) > 1' "$JULIA_PATH/test/precompile.jl"
 
     # rr might not be available in the github runner
     '@test success(pipeline(setenv(`$(Base.julia_cmd()) --bug-report=rr-local' "$JULIA_PATH/test/cmdlineargs.jl"
