@@ -102,6 +102,10 @@ pub fn conservative_scan_range(lo: Address, hi: Address) {
 }
 
 pub fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
-    // TODO: if addr is in a non-moving space, we dont need to find the base reference at all.
-    memory_manager::find_object_from_internal_pointer::<JuliaVM>(addr, usize::MAX)
+    if crate::object_model::is_addr_in_immixspace(addr) {
+        // We only care about immix space. If the object is in other spaces, we won't move them, and we don't need to pin them.
+        memory_manager::find_object_from_internal_pointer::<JuliaVM>(addr, usize::MAX)
+    } else {
+        None
+    }
 }
