@@ -88,6 +88,8 @@ typedef struct {
     void (*scan_vm_specific_roots)(RootsWorkClosure* closure);
     void (*update_inlined_array) (void* from, void* to);
     void (*prepare_to_collect)(void);
+    uintptr_t (* get_owner_address)(void* m);
+    uintptr_t (* mmtk_genericmemory_how)(void* m);
 } Julia_Upcalls;
 
 /**

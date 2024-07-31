@@ -320,7 +320,7 @@ void scan_vm_specific_roots(RootsWorkClosure* closure)
     RootsWorkBuffer tpinned_buf = (closure->report_tpinned_nodes_func)((void**)0, 0, 0, closure->data, true);
     size_t tpinned_len = 0;
     add_node_to_tpinned_roots_buffer(closure, &tpinned_buf, &tpinned_len, jl_global_roots_list);
-    add_node_to_roots_buffer(closure, &buf, &len, jl_global_roots_keyset);
+    add_node_to_tpinned_roots_buffer(closure, &tpinned_buf, &tpinned_len, jl_global_roots_keyset);
 
     // Push the result of the work.
     (closure->report_nodes_func)(buf.ptr, len, buf.cap, closure->data, false);
@@ -468,7 +468,7 @@ void mmtk_sweep_stack_pools(void)
                 if (stkbuf) {
                     t->stkbuf = NULL;
                     _jl_free_stack(ptls2, stkbuf, bufsz);
-                }
+                } 
 #ifdef _COMPILER_TSAN_ENABLED_
                 if (t->ctx.tsan_state) {
                     __tsan_destroy_fiber(t->ctx.tsan_state);
@@ -511,6 +511,25 @@ void update_gc_stats(uint64_t inc, size_t mmtk_live_bytes, bool is_nursery_gc) {
 
 #define PRINT_STRUCT_SIZE false
 #define print_sizeof(type) (PRINT_STRUCT_SIZE ? (printf("C " #type " = %zu bytes\n", sizeof(type)), sizeof(type)) : sizeof(type))
+
+#define jl_genericmemory_data_owner_field_addr(a) ((jl_value_t**)((jl_genericmemory_t*)(a) + 1))
+
+uintptr_t jl_get_owner_address_to_mmtk(void* m) {
+    return jl_genericmemory_data_owner_field_addr(m);
+}
+
+uintptr_t mmtk_jl_genericmemory_how(jl_genericmemory_t *m) JL_NOTSAFEPOINT
+{
+    if (m->ptr == (void*)((char*)m + 16)) // JL_SMALL_BYTE_ALIGNMENT (from julia_internal.h)
+        return 0;
+    jl_value_t *owner = jl_genericmemory_data_owner_field(m);
+    if (owner == (jl_value_t*)m)
+        return 1;
+    if (owner == NULL)
+        return 2;
+    return 3;
+}
+
 
 uintptr_t get_abi_structs_checksum_c(void) {
     assert_size(struct mmtk__jl_taggedvalue_bits, struct _jl_taggedvalue_bits);
@@ -581,4 +600,6 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_vm_specific_roots = scan_vm_specific_roots,
     .update_inlined_array = update_inlined_array,
     .prepare_to_collect = jl_gc_prepare_to_collect,
+    .get_owner_address = jl_get_owner_address_to_mmtk,
+    .mmtk_genericmemory_how = mmtk_jl_genericmemory_how,
 };

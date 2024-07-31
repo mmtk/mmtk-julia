@@ -353,36 +353,23 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
   3 = has a pointer to the object that owns the data pointer
 */
 #[inline(always)]
-pub unsafe fn mmtk_jl_genericmemory_how(m: *const mmtk_jl_genericmemory_t) -> u8 {
-    let mptr = Address::from_ptr((*m).ptr);
-    if mptr.as_usize() == m as usize + 16 {
-        // JL_SMALL_BYTE_ALIGNMENT (from julia_internal.h)
-        return 0;
-    }
-    let owner = mmtk_jl_genericmemory_data_owner_field(m);
-    if owner as usize == m as usize {
-        return 1;
-    }
-    if owner.is_null() {
-        return 2;
-    }
-
-    return 3;
+pub unsafe fn mmtk_jl_genericmemory_how(m: *const mmtk_jl_genericmemory_t) -> usize {
+    return unsafe { ((*UPCALLS).mmtk_genericmemory_how)(Address::from_ptr(m)) };
 }
 
 #[inline(always)]
 unsafe fn mmtk_jl_genericmemory_data_owner_field_address(
     m: *const mmtk_jl_genericmemory_t,
 ) -> Address {
-    Address::from_ptr(m).shift::<Address>(2)
+    unsafe { Address::from_usize(((*UPCALLS).get_owner_address)(Address::from_ptr(m))) }
 }
 
-#[inline(always)]
-unsafe fn mmtk_jl_genericmemory_data_owner_field(
-    m: *const mmtk_jl_genericmemory_t,
-) -> *const mmtk_jl_value_t {
-    mmtk_jl_genericmemory_data_owner_field_address(m).load::<*const mmtk_jl_value_t>()
-}
+// #[inline(always)]
+// unsafe fn mmtk_jl_genericmemory_data_owner_field(
+//     m: *const mmtk_jl_genericmemory_t,
+// ) -> *const mmtk_jl_value_t {
+//     mmtk_jl_genericmemory_data_owner_field_address(m).load::<*const mmtk_jl_value_t>()
+// }
 
 pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
     ta: *const mmtk_jl_task_t,
