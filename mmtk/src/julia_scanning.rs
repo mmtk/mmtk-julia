@@ -223,11 +223,10 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         }
 
         if how == 3 {
-            let owner_addr = mmtk_jl_genericmemory_data_owner_field_address(m).shift::<Address>(1);
-            let owner = mmtk_jl_genericmemory_data_owner_field(m);
-            if mmtk_object_is_managed_by_mmtk(owner as usize) {
-                process_slot(closure, owner_addr);
-            }
+            let owner_addr = mmtk_jl_genericmemory_data_owner_field_address(m);
+            process_slot(closure, owner_addr);
+
+            return;
         }
 
         if (*m).length == 0 {
@@ -376,7 +375,7 @@ pub unsafe fn mmtk_jl_genericmemory_how(m: *const mmtk_jl_genericmemory_t) -> u8
 unsafe fn mmtk_jl_genericmemory_data_owner_field_address(
     m: *const mmtk_jl_genericmemory_t,
 ) -> Address {
-    Address::from_ptr(m).shift::<Address>(1)
+    Address::from_ptr(m).shift::<Address>(2)
 }
 
 #[inline(always)]
@@ -512,12 +511,12 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
         }
 
         if let Some(objref) = simple_slot.load() {
-            debug_assert!(
-                mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(objref),
-                "Object {:?} in slot {:?} is not mapped address",
-                objref,
-                simple_slot
-            );
+            if !mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(objref) {
+                warn!(
+                    "Object {:?} in slot {:?} is not mapped address",
+                    objref, simple_slot
+                );
+            }
 
             let raw_addr_usize = objref.to_raw_address().as_usize();
 
