@@ -4,7 +4,6 @@ use crate::slots::JuliaVMSlot;
 use crate::slots::OffsetSlot;
 use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
-use log::info;
 use memoffset::offset_of;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::slot::SimpleSlot;
@@ -500,6 +499,7 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
     #[cfg(debug_assertions)]
     {
         use crate::JuliaVM;
+        use log::warn;
         use mmtk::vm::slot::Slot;
 
         if PRINT_OBJ_TYPE {
