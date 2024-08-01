@@ -361,7 +361,7 @@ pub unsafe fn mmtk_jl_genericmemory_how(m: *const mmtk_jl_genericmemory_t) -> us
 unsafe fn mmtk_jl_genericmemory_data_owner_field_address(
     m: *const mmtk_jl_genericmemory_t,
 ) -> Address {
-    unsafe { Address::from_usize(((*UPCALLS).get_owner_address)(Address::from_ptr(m))) }
+    unsafe { ((*UPCALLS).get_owner_address)(Address::from_ptr(m)) }
 }
 
 // #[inline(always)]

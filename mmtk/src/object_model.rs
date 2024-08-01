@@ -60,6 +60,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         semantics: CopySemantics,
         copy_context: &mut GCWorkerCopyContext<JuliaVM>,
     ) -> ObjectReference {
+        info!("Attempting to copy object {}", from);
+
         let bytes = Self::get_current_size(from);
         let from_addr = from.to_raw_address();
         let from_start = Self::ref_to_object_start(from);
@@ -84,15 +86,14 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         }
         let to_obj = unsafe { ObjectReference::from_raw_address_unchecked(dst + header_offset) };
 
-        info!("Copying object from {} to {}", from, to_obj);
-
         copy_context.post_copy(to_obj, bytes, semantics);
+
+        info!("Copied object {} into {}", from, to_obj);
 
         unsafe {
             let vt = mmtk_jl_typeof(from.to_raw_address());
 
             if (*vt).name == jl_genericmemory_typename {
-                info!("Copying generic memory...");
                 ((*UPCALLS).update_inlined_array)(from.to_raw_address(), to_obj.to_raw_address())
             }
         }
@@ -278,11 +279,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
     if (*vt).name == jl_genericmemory_typename {
         let m = obj_address.to_ptr::<mmtk_jl_genericmemory_t>();
         let how = mmtk_jl_genericmemory_how(m);
-        let res = if how == 3 {
-            let dtsz = std::mem::size_of::<mmtk_jl_genericmemory_t>();
-
-            llt_align(dtsz + JULIA_HEADER_SIZE, 16)
-        } else {
+        let res = if how == 0 {
             let layout = (*(mmtk_jl_typetagof(obj_address).to_ptr::<mmtk_jl_datatype_t>())).layout;
             let mut sz = (*layout).size as usize * (*m).length as usize;
             if (*layout).flags.arrayelem_isunion() != 0 {
@@ -290,10 +287,11 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             }
 
             let dtsz = llt_align(std::mem::size_of::<mmtk_jl_genericmemory_t>(), 16);
-
-            // println!("jl_genericmemory_t object = {}, how = {}, size = {}", object, how, sz + dtsz + JULIA_HEADER_SIZE);
-
             llt_align(sz + dtsz + JULIA_HEADER_SIZE, 16)
+        } else {
+            let dtsz =
+                std::mem::size_of::<mmtk_jl_genericmemory_t>() + std::mem::size_of::<Address>();
+            llt_align(dtsz + JULIA_HEADER_SIZE, 16)
         };
 
         return res;

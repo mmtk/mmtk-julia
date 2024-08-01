@@ -381,7 +381,6 @@ void update_inlined_array(void* from, void* to) {
     uintptr_t tag_to = (uintptr_t)jl_typeof(jl_to);
     jl_datatype_t *vt = (jl_datatype_t*)tag_to;
 
-
     if(vt->name == jl_genericmemory_typename) {
         jl_genericmemory_t *a = (jl_genericmemory_t*)jl_from;
         jl_genericmemory_t *b = (jl_genericmemory_t*)jl_to;
@@ -514,12 +513,13 @@ void update_gc_stats(uint64_t inc, size_t mmtk_live_bytes, bool is_nursery_gc) {
 
 #define jl_genericmemory_data_owner_field_addr(a) ((jl_value_t**)((jl_genericmemory_t*)(a) + 1))
 
-uintptr_t jl_get_owner_address_to_mmtk(void* m) {
-    return jl_genericmemory_data_owner_field_addr(m);
+void* jl_get_owner_address_to_mmtk(void* m) {
+    return (void*)jl_genericmemory_data_owner_field_addr(m);
 }
 
-uintptr_t mmtk_jl_genericmemory_how(jl_genericmemory_t *m) JL_NOTSAFEPOINT
+size_t mmtk_jl_genericmemory_how(void *arg) JL_NOTSAFEPOINT
 {
+    jl_genericmemory_t* m = (jl_genericmemory_t*)arg;
     if (m->ptr == (void*)((char*)m + 16)) // JL_SMALL_BYTE_ALIGNMENT (from julia_internal.h)
         return 0;
     jl_value_t *owner = jl_genericmemory_data_owner_field(m);

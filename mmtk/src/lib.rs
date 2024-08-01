@@ -115,7 +115,7 @@ pub struct Julia_Upcalls {
     pub scan_vm_specific_roots: extern "C" fn(closure: *mut crate::slots::RootsWorkClosure),
     pub update_inlined_array: extern "C" fn(to: Address, from: Address),
     pub prepare_to_collect: extern "C" fn(),
-    pub get_owner_address: extern "C" fn(m: Address) -> usize,
+    pub get_owner_address: extern "C" fn(m: Address) -> Address,
     pub mmtk_genericmemory_how: extern "C" fn(m: Address) -> usize,
 }
 
