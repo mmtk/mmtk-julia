@@ -294,6 +294,12 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             llt_align(dtsz + JULIA_HEADER_SIZE, 16)
         };
 
+        debug_assert!(
+            res <= 2032,
+            "size {} greater than minimum!",
+            res
+        );
+
         return res;
     }
 
