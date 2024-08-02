@@ -5,7 +5,7 @@ use crate::julia_scanning::{
 };
 use crate::{julia_types::*, UPCALLS};
 use crate::{JuliaVM, JULIA_BUFF_TAG, JULIA_HEADER_SIZE};
-use log::info;
+use log::trace;
 use mmtk::util::copy::*;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::ObjectModel;
@@ -60,7 +60,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         semantics: CopySemantics,
         copy_context: &mut GCWorkerCopyContext<JuliaVM>,
     ) -> ObjectReference {
-        info!("Attempting to copy object {}", from);
+        trace!("Attempting to copy object {}", from);
 
         let bytes = Self::get_current_size(from);
         let from_addr = from.to_raw_address();
@@ -88,7 +88,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
 
         copy_context.post_copy(to_obj, bytes, semantics);
 
-        info!("Copied object {} into {}", from, to_obj);
+        trace!("Copied object {} into {}", from, to_obj);
 
         unsafe {
             let vt = mmtk_jl_typeof(from.to_raw_address());
