@@ -202,12 +202,10 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         // if the object moves its pointer inside the array object needs to be updated as well
         if mmtk_object_is_managed_by_mmtk(ptr_or_offset as usize) {
             let ptr_or_ref_slot = Address::from_ptr(::std::ptr::addr_of!((*a).ref_.ptr_or_offset));
-
-            process_offset_slot(
-                closure,
-                ptr_or_ref_slot,
-                ptr_or_offset as usize - memref.mem as usize,
-            );
+            let offset = ptr_or_offset as usize - memref.mem as usize;
+            if offset > 0 {
+                process_offset_slot(closure, ptr_or_ref_slot, offset);
+            }
         }
     }
     if (*vt).name == jl_genericmemory_typename {
