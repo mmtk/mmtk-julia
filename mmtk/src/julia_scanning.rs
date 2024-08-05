@@ -199,12 +199,17 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         let memref = (*a).ref_;
 
         let ptr_or_offset = memref.ptr_or_offset;
-        // if the object moves its pointer inside the array object needs to be updated as well
+        // if the object moves its pointer inside the array object (void* ptr_or_offset) needs to be updated as well
         if mmtk_object_is_managed_by_mmtk(ptr_or_offset as usize) {
             let ptr_or_ref_slot = Address::from_ptr(::std::ptr::addr_of!((*a).ref_.ptr_or_offset));
-            let offset = ptr_or_offset as usize - memref.mem as usize;
-            if offset > 0 {
-                process_offset_slot(closure, ptr_or_ref_slot, offset);
+            let mem_addr_as_usize = memref.mem as usize;
+            let ptr_or_offset_as_usize = ptr_or_offset as usize;
+            if ptr_or_offset_as_usize > mem_addr_as_usize {
+                let offset = ptr_or_offset_as_usize - mem_addr_as_usize;
+                // #define GC_MAX_SZCLASS (2032-sizeof(void*)) from julia_internal
+                if offset <= (2032 - std::mem::size_of::<Address>()) {
+                    process_offset_slot(closure, ptr_or_ref_slot, offset);
+                }
             }
         }
     }
