@@ -5,10 +5,10 @@ set -e
 
 . $(dirname "$0")/common.sh
 
-export MMTK_MAX_HSIZE_G=4
+export MMTK_MAX_HSIZE_G=6
 total_mem=$(free -m | awk '/^Mem:/ {print $2}')
-num_workers=3
+num_workers=2
 export JULIA_TEST_MAXRSS_MB=$((total_mem/ num_workers))
 
 echo "-> Run single threaded"
-ci_run_jl_test "LinearAlgebra" 3
+ci_run_jl_test "LinearAlgebra" 2
