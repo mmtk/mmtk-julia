@@ -5,7 +5,7 @@ set -e
 
 . $(dirname "$0")/common.sh
 
-export MMTK_MAX_HSIZE_G=8
+export MMTK_MAX_HSIZE_G=10
 total_mem=$(free -m | awk '/^Mem:/ {print $2}')
 num_workers=1
 export JULIA_TEST_MAXRSS_MB=$((total_mem/ num_workers))
