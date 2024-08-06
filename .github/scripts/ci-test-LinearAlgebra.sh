@@ -5,7 +5,7 @@ set -e
 
 . $(dirname "$0")/common.sh
 
-export MMTK_MAX_HSIZE_G=6
+export MMTK_MAX_HSIZE_G=4
 
 echo "-> Run single threaded"
-ci_run_jl_test "LinearAlgebra" 1
+ci_run_jl_test "LinearAlgebra" 3
