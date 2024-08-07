@@ -121,9 +121,20 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
     }
 
     fn get_current_size(object: ObjectReference) -> usize {
-        // not being called by objects in LOS
-        debug_assert!(!is_object_in_los(&object));
-        unsafe { get_so_object_size(object) }
+        if is_object_in_los(&object) {
+            unsafe { ((*UPCALLS).get_lo_size)(object) }
+        } else if is_object_in_immixspace(&object) {
+            unsafe { get_so_object_size(object) }
+        } else {
+            // This is hacky but it should work.
+            // This covers the cases for immortal space and VM space.
+            // For those spaces, we only query object size when we try to find the base reference for an internal pointer.
+            // For those two spaces, we bulk set VO bits so we cannot find the base reference at all.
+            // We return 0 as the object size, so MMTk core won't find the base reference.
+            // As we only use the base reference to pin the objects, we cannot pin the objects. But it is fine,
+            // as objects in those spaces won't be moved.
+            0
+        }
     }
 
     fn get_size_when_copied(_object: ObjectReference) -> usize {
@@ -173,6 +184,17 @@ pub fn is_object_in_los(object: &ObjectReference) -> bool {
     // FIXME: get the range from MMTk. Or at least assert at boot time to make sure those constants are correct.
     (*object).to_raw_address().as_usize() >= 0x600_0000_0000
         && (*object).to_raw_address().as_usize() < 0x800_0000_0000
+}
+
+#[inline(always)]
+pub fn is_object_in_immixspace(object: &ObjectReference) -> bool {
+    is_addr_in_immixspace((*object).to_raw_address())
+}
+
+#[inline(always)]
+pub fn is_addr_in_immixspace(addr: Address) -> bool {
+    // FIXME: get the range from MMTk. Or at least assert at boot time to make sure those constants are correct.
+    addr.as_usize() >= 0x200_0000_0000 && addr.as_usize() < 0x400_0000_0000
 }
 
 #[inline(always)]

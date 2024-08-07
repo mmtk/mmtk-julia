@@ -26,10 +26,10 @@ fi
 
 plan_feature=${plan,,}
 moving_feature=${is_moving,,}
-if [ "$is_moving" == "Default" ]; then
-    tpin_roots=1
+if [ "$is_moving" == "Moving" ]; then
+    conservative=1
 else
-    tpin_roots=0
+    conservative=0
 fi
 
 cd $MMTK_JULIA_DIR/mmtk
@@ -41,6 +41,6 @@ cd $JULIA_PATH
 make cleanall
 # Build
 cp $BINDING_PATH/.github/scripts/Make.user $JULIA_PATH/
-MMTK_PLAN=$plan MMTK_BUILD=$build_type MMTK_TPIN_ROOTS=$tpin_roots make
+MMTK_PLAN=$plan MMTK_BUILD=$build_type MMTK_CONSERVATIVE=$conservative make
 # Run hello world
 $JULIA_PATH/julia $HELLO_WORLD_JL

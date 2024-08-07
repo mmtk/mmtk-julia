@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "gc.h"
+#include "julia_gcext.h"
 
 extern int64_t perm_scanned_bytes;
 extern void run_finalizer(jl_task_t *ct, void *o, void *ff);
@@ -209,6 +210,8 @@ JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
     gc_num.total_time_to_safepoint += duration;
 
     if (!jl_atomic_load_acquire(&jl_gc_disable_counter)) {
+        jl_save_context_for_conservative_scanning(ptls, NULL);
+
         JL_LOCK_NOGC(&finalizers_lock); // all the other threads are stopped, so this does not make sense, right? otherwise, failing that, this seems like plausibly a deadlock
         combine_thread_gc_counts(&gc_num);
         mmtk_block_thread_for_gc(gc_n_threads);
@@ -497,6 +500,15 @@ bool check_is_collection_disabled(void) {
     return (jl_atomic_load_acquire(&jl_gc_disable_counter) > 0);
 }
 
+size_t get_lo_size(void* obj_raw) 
+{
+    jl_value_t* obj = (jl_value_t*) obj_raw;
+    jl_taggedvalue_t *v = jl_astaggedvalue(obj);
+    // bigval_header: but we cannot access the function here. So use container_of instead.
+    bigval_t* hdr = container_of(v, bigval_t, header);
+    return hdr->sz;
+}
+
 uint64_t mmtk_get_total_memory(void) {
     return uv_get_total_memory();
 }
@@ -581,6 +593,11 @@ uint64_t mmtk_jl_hrtime(void) JL_NOTSAFEPOINT
     return uv_hrtime();
 }
 
+JL_DLLEXPORT void *mmtk_jl_task_stack_buffer(void *task, size_t *size, int *ptid)
+{
+    return jl_task_stack_buffer((jl_task_t *)task, size, ptid);
+}
+
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
@@ -593,6 +610,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .sweep_weak_refs = sweep_weak_refs,
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
     .exit_from_safepoint = mmtk_exit_from_safepoint,
+    .get_lo_size = get_lo_size,
     .mmtk_jl_hrtime = mmtk_jl_hrtime,
     .update_gc_stats = update_gc_stats,
     .get_abi_structs_checksum_c = get_abi_structs_checksum_c,
@@ -608,4 +626,5 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .mmtk_get_total_memory = mmtk_get_total_memory,
     .mmtk_get_constrained_memory = mmtk_get_constrained_memory,
     .mmtk_get_heap_size_hint = mmtk_get_heap_size_hint,
+    .mmtk_jl_task_stack_buffer = mmtk_jl_task_stack_buffer,
 };
