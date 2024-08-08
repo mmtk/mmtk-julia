@@ -5,7 +5,7 @@ set -e
 
 . $(dirname "$0")/common.sh
 
-export MMTK_MAX_HSIZE_G=5
+export MMTK_MAX_HSIZE_G=5.5
 total_mem=$(free -m | awk '/^Mem:/ {print $2}')
 mem_threshold=512 # use 0.5Gb as a threshold for the max rss based on the total free memory
 total_mem_restricted=$((total_mem- mem_threshold))
