@@ -109,8 +109,8 @@ static void mmtk_sweep_malloced_memory(void) JL_NOTSAFEPOINT
     void* iter = new_mutator_iterator();
     jl_ptls_t ptls2 = get_next_mutator_tls(iter);
     while(ptls2 != NULL) {
-            mallocarray_t *ma = ptls2->gc_tls.heap.mallocarrays;
-            mallocarray_t **pma = &ptls2->gc_tls.heap.mallocarrays;
+        mallocarray_t *ma = ptls2->gc_tls.heap.mallocarrays;
+        mallocarray_t **pma = &ptls2->gc_tls.heap.mallocarrays;
         while (ma != NULL) {
             mallocarray_t *nxt = ma->next;
             jl_value_t *a = (jl_value_t*)((uintptr_t)ma->a & ~1);
@@ -373,7 +373,7 @@ JL_DLLEXPORT void scan_julia_exc_obj(void* obj_raw, void* closure, ProcessSlotFn
 
 #define jl_genericmemory_elsize(a) (((jl_datatype_t*)jl_typetagof(a))->layout->size)
 
-// if data is inlined inside the array object --- to->data needs to be updated when copying the array
+// if data is inlined inside the genericmemory object --- to->ptr needs to be updated when copying the array
 void update_inlined_array(void* from, void* to) {
     jl_value_t* jl_from = (jl_value_t*) from;
     jl_value_t* jl_to = (jl_value_t*) to;
@@ -386,7 +386,7 @@ void update_inlined_array(void* from, void* to) {
         jl_genericmemory_t *b = (jl_genericmemory_t*)jl_to;
         int how = jl_genericmemory_how(a);
 
-        if (how == 0 && mmtk_object_is_managed_by_mmtk(a->ptr)) { // a is inlined (a->data is an mmtk object)
+        if (how == 0 && mmtk_object_is_managed_by_mmtk(a->ptr)) { // a is inlined (a->ptr points into the mmtk object)
             size_t offset_of_data = ((size_t)a->ptr - (size_t)a);
             if (offset_of_data > 0) {
                 b->ptr = (void*)((size_t) b + offset_of_data);
@@ -467,7 +467,7 @@ void mmtk_sweep_stack_pools(void)
                 if (stkbuf) {
                     t->stkbuf = NULL;
                     _jl_free_stack(ptls2, stkbuf, bufsz);
-                } 
+                }
 #ifdef _COMPILER_TSAN_ENABLED_
                 if (t->ctx.tsan_state) {
                     __tsan_destroy_fiber(t->ctx.tsan_state);

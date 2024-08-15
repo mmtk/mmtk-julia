@@ -126,7 +126,6 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         debug_assert!(!is_object_in_los(&object));
 
         let obj_size = unsafe { get_so_object_size(object) };
-        // println!("object = {:?} has size {}", object, obj_size);
         obj_size
     }
 
@@ -325,11 +324,6 @@ pub unsafe fn get_object_start_ref(object: ObjectReference) -> Address {
 #[inline(always)]
 pub unsafe fn llt_align(size: usize, align: usize) -> usize {
     ((size) + (align) - 1) & !((align) - 1)
-}
-
-#[inline(always)]
-pub unsafe fn mmtk_jl_array_ndims(_a: *const mmtk_jl_array_t) -> u32 {
-    unimplemented!();
 }
 
 #[inline(always)]
