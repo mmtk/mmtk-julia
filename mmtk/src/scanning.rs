@@ -194,7 +194,7 @@ impl Scanning<JuliaVM> for VMScanning {
     }
 
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
-        // pin concservative roots from stack scanning
+        // pin conservative roots from stack scanning
         crate::conservative::pin_conservative_roots();
 
         let sweep_vm_specific_work = SweepVMSpecific::new();
