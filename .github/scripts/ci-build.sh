@@ -26,10 +26,11 @@ fi
 
 plan_feature=${plan,,}
 moving_feature=${is_moving,,}
-if [ "$is_moving" == "Moving" ]; then
-    conservative=1
-else
+if [ "$is_moving" == "Non_Moving" ]; then
+    # We don't need conservative.
     conservative=0
+else
+    conservative=1
 fi
 
 cd $MMTK_JULIA_DIR/mmtk

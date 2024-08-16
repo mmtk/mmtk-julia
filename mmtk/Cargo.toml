@@ -9,8 +9,8 @@ edition = "2018"
 # Metadata for the Julia repository
 [package.metadata.julia]
 # Our CI matches the following line and extract mmtk/julia. If this line is updated, please check ci yaml files and make sure it works.
-julia_repo = "https://github.com/qinsoon/julia.git"
-julia_version = "0e318f9526e4523ee676bbdd98973650bdeb1601"
+julia_repo = "https://github.com/mmtk/julia.git"
+julia_version = "f5f8510c016b40cb82f7445338bf9ef084704174"
 
 [lib]
 crate-type = ["cdylib"]
@@ -44,9 +44,13 @@ memoffset = "*"
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 
 [features]
-default = ["mmtk/vm_space", "julia_copy_stack"]
+# We must build with default features
+default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/is_mmtk_object", "mmtk/object_pinning"]
 
-# Plans
+# Default features
+julia_copy_stack = []
+
+# Plans: choose one
 nogc = []
 immix = []
 stickyimmix = ["mmtk/sticky_immix_non_moving_nursery", "mmtk/immix_smaller_block"]
@@ -54,8 +58,3 @@ marksweep = []
 
 # This feature disables moving
 non_moving = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
-object_pinning = ["mmtk/object_pinning"]
-is_mmtk_object = ["mmtk/is_mmtk_object"]
-conservative = ["is_mmtk_object"]
-moving = ["conservative", "object_pinning"]
-julia_copy_stack = []

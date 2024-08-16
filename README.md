@@ -28,9 +28,11 @@ To build Julia with MMTk, create a `Make.user` file in the top-level directory o
 ```
 export MMTK_BUILD=release # or debug depending on how you build the Julia binding in Rust
 export MMTK_JULIA_DIR=<path-to-mmtk-julia>
+export MMTK_CONSERVATIVE=1
+export MMTK_PLAN=StickyImmix # or Immix
 ```
 
-Then run `make` with the environment variables mentioned above. Please also make sure to install any dependency considering any particular requirement from both [Julia](https://github.com/JuliaLang/julia/blob/master/doc/src/devdocs/build/build.md#required-build-tools-and-external-libraries) and [MMTk](https://github.com/mmtk/mmtk-core#requirements). 
+Then run `make` with the environment variables mentioned above. Please also make sure to install any dependency considering any particular requirement from both [Julia](https://github.com/JuliaLang/julia/blob/master/doc/src/devdocs/build/build.md#required-build-tools-and-external-libraries) and [MMTk](https://github.com/mmtk/mmtk-core#requirements).
 
 ### Heap Size
 
@@ -48,7 +50,7 @@ These environment variables are set during julia initialization time, so they ca
 
 (4) In `julia`, create a file `Make.user`, and add `WITH_MMTK=1`.
 
-(5) In `julia`, run `MMTK_PLAN=Immix MMTK_BUILD=release MMTK_JULIA_DIR=/absolute/path/mmtk-julia make` (or with `MMTK_PLAN=StickyImmix`).
+(5) In `julia`, run `MMTK_PLAN=Immix MMTK_BUILD=release MMTK_JULIA_DIR=/absolute/path/mmtk-julia MMTK_CONSERVATIVE=1 make` (or with `MMTK_PLAN=StickyImmix`).
 
 If you would like to have a debug build, remove `--release` from Step (3) and use `MMTK_BUILD=debug` in Step (5)
 

@@ -13,6 +13,8 @@ lazy_static! {
     pub static ref CONSERVATIVE_ROOTS: Mutex<HashSet<ObjectReference>> = Mutex::new(HashSet::new());
 }
 pub fn pin_conservative_roots() {
+    crate::early_return_for_non_moving!(());
+
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
     let n_roots = roots.len();
     roots.retain(|obj| mmtk::memory_manager::pin_object::<JuliaVM>(*obj));
@@ -20,8 +22,9 @@ pub fn pin_conservative_roots() {
     log::debug!("Conservative roots: {}, pinned: {}", n_roots, n_pinned);
 }
 
-#[cfg(feature = "conservative")]
 pub fn unpin_conservative_roots() {
+    crate::early_return_for_non_moving!(());
+
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
     let n_pinned = roots.len();
     let mut n_live = 0;
@@ -37,7 +40,10 @@ pub fn unpin_conservative_roots() {
         n_live
     );
 }
-pub fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
+
+pub fn mmtk_conservative_scan_task_stack(ta: *const mmtk_jl_task_t) {
+    crate::early_return_for_non_moving!(());
+
     let mut size: u64 = 0;
     let mut ptid: i32 = 0;
     log::info!("mmtk_conservative_scan_native_stack begin ta = {:?}", ta);
@@ -65,23 +71,27 @@ pub fn mmtk_conservative_scan_native_stack(ta: *const mmtk_jl_task_t) {
     }
 }
 pub fn mmtk_conservative_scan_task_registers(ta: *const mmtk_jl_task_t) {
+    crate::early_return_for_non_moving!(());
+
     let (lo, hi) = get_range(&unsafe { &*ta }.ctx);
     conservative_scan_range(lo, hi);
 }
 pub fn mmtk_conservative_scan_ptls_registers(ptls: &mut mmtk_jl_tls_states_t) {
+    crate::early_return_for_non_moving!(());
+
     let (lo, hi) = get_range(&ptls.ctx_at_the_time_gc_started);
     conservative_scan_range(lo, hi);
 }
 
 // TODO: This scans the entire context type, which is slower.
 // We actually only need to scan registers.
-pub fn get_range<T>(ctx: &T) -> (Address, Address) {
+fn get_range<T>(ctx: &T) -> (Address, Address) {
     let start = Address::from_ptr(ctx);
     let ty_size = std::mem::size_of::<T>();
     (start, start + ty_size)
 }
 
-pub fn conservative_scan_range(lo: Address, hi: Address) {
+fn conservative_scan_range(lo: Address, hi: Address) {
     // The high address is exclusive
     let hi = if hi.is_aligned_to(BYTES_IN_ADDRESS) {
         hi - BYTES_IN_ADDRESS
@@ -101,7 +111,7 @@ pub fn conservative_scan_range(lo: Address, hi: Address) {
     }
 }
 
-pub fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
+fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
     if crate::object_model::is_addr_in_immixspace(addr) {
         // We only care about immix space. If the object is in other spaces, we won't move them, and we don't need to pin them.
         memory_manager::find_object_from_internal_pointer::<JuliaVM>(addr, usize::MAX)

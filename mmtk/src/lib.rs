@@ -34,7 +34,6 @@ pub mod julia_scanning;
 #[allow(non_snake_case)]
 pub mod julia_types;
 
-#[cfg(feature = "conservative")]
 pub mod conservative;
 
 #[derive(Default)]
@@ -129,3 +128,12 @@ pub struct Julia_Upcalls {
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();
+
+#[macro_export]
+macro_rules! early_return_for_non_moving {
+    ($ret_val:expr) => {
+        if cfg!(feature = "non_moving") {
+            return $ret_val;
+        }
+    };
+}

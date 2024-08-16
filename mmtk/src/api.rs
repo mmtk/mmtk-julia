@@ -390,7 +390,7 @@ pub extern "C" fn mmtk_memory_region_copy(
 pub extern "C" fn mmtk_immortal_region_post_alloc(start: Address, size: usize) {
     #[cfg(feature = "stickyimmix")]
     set_side_log_bit_for_region(start, size);
-    #[cfg(feature = "is_mmtk_object")]
+
     set_side_vo_bit_for_region(start, size);
 }
 
@@ -404,15 +404,15 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
     }
 }
 
-#[cfg(feature = "is_mmtk_object")]
 fn set_side_vo_bit_for_region(start: Address, size: usize) {
+    crate::early_return_for_non_moving!(());
+
     debug!(
         "Bulk set VO bit {} to {} ({} bytes)",
         start,
         start + size,
         size
     );
-
     crate::util::bulk_update_vo_bit(start, size, &crate::util::set_meta_bits)
 }
 
@@ -492,9 +492,10 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
     }
 }
 
-#[cfg(feature = "object_pinning")]
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
+    crate::early_return_for_non_moving!(false);
+
     if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
         memory_manager::pin_object::<JuliaVM>(object)
     } else {
@@ -503,9 +504,10 @@ pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
     }
 }
 
-#[cfg(feature = "object_pinning")]
 #[no_mangle]
 pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
+    crate::early_return_for_non_moving!(false);
+
     if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
         memory_manager::unpin_object::<JuliaVM>(object)
     } else {
@@ -514,32 +516,14 @@ pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
     }
 }
 
-#[cfg(feature = "object_pinning")]
 #[no_mangle]
 pub extern "C" fn mmtk_is_pinned(object: ObjectReference) -> bool {
+    crate::early_return_for_non_moving!(false);
+
     if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
         memory_manager::is_pinned::<JuliaVM>(object)
     } else {
         warn!("Object is not managed by mmtk - checking via this function isn't supported.");
         false
     }
-}
-
-// If the `non-moving` feature is selected, pinning/unpinning is a noop and simply returns false
-#[cfg(not(feature = "object_pinning"))]
-#[no_mangle]
-pub extern "C" fn mmtk_pin_object(_object: ObjectReference) -> bool {
-    false
-}
-
-#[cfg(not(feature = "object_pinning"))]
-#[no_mangle]
-pub extern "C" fn mmtk_unpin_object(_object: ObjectReference) -> bool {
-    false
-}
-
-#[cfg(not(feature = "object_pinning"))]
-#[no_mangle]
-pub extern "C" fn mmtk_is_pinned(_object: ObjectReference) -> bool {
-    false
 }

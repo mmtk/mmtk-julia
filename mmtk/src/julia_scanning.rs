@@ -1,4 +1,3 @@
-#[cfg(feature = "moving")]
 use crate::api::mmtk_is_pinned;
 use crate::api::mmtk_object_is_managed_by_mmtk;
 use crate::julia_types::*;

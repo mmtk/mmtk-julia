@@ -48,7 +48,6 @@ impl Collection<JuliaVM> for VMCollection {
 
     fn resume_mutators(_tls: VMWorkerThread) {
         // unpin conservative roots
-        #[cfg(feature = "conservative")]
         crate::conservative::unpin_conservative_roots();
 
         // Get the end time of the GC

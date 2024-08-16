@@ -21,9 +21,11 @@ pub(crate) const LOGGING_SIDE_METADATA_SPEC: VMGlobalLogBitSpec = VMGlobalLogBit
 pub(crate) const MARKING_METADATA_SPEC: VMLocalMarkBitSpec =
     VMLocalMarkBitSpec::side_after(LOS_METADATA_SPEC.as_spec());
 
-#[cfg(feature = "object_pinning")]
 pub(crate) const LOCAL_PINNING_METADATA_BITS_SPEC: VMLocalPinningBitSpec =
     VMLocalPinningBitSpec::side_after(MARKING_METADATA_SPEC.as_spec());
+
+pub(crate) const LOCAL_FORWARDING_MEATADATA_BITS_SPEC: VMLocalForwardingBitsSpec =
+    VMLocalForwardingBitsSpec::side_after(LOCAL_PINNING_METADATA_BITS_SPEC.as_spec());
 
 // pub(crate) const LOCAL_FORWARDING_POINTER_METADATA_SPEC: VMLocalForwardingPointerSpec =
 //     VMLocalForwardingPointerSpec::side_after(MARKING_METADATA_SPEC.as_spec());
@@ -41,20 +43,14 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
         VMLocalForwardingPointerSpec::in_header(-64);
 
-    #[cfg(feature = "object_pinning")]
+    const LOCAL_PINNING_BIT_SPEC: VMLocalPinningBitSpec = LOCAL_PINNING_METADATA_BITS_SPEC;
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
-        VMLocalForwardingBitsSpec::side_after(LOCAL_PINNING_METADATA_BITS_SPEC.as_spec());
-    #[cfg(not(feature = "object_pinning"))]
-    const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
-        VMLocalForwardingBitsSpec::side_after(MARKING_METADATA_SPEC.as_spec());
-
+        LOCAL_FORWARDING_MEATADATA_BITS_SPEC;
     const LOCAL_MARK_BIT_SPEC: VMLocalMarkBitSpec = MARKING_METADATA_SPEC;
     const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec = LOS_METADATA_SPEC;
+
     const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = false;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
-
-    #[cfg(feature = "object_pinning")]
-    const LOCAL_PINNING_BIT_SPEC: VMLocalPinningBitSpec = LOCAL_PINNING_METADATA_BITS_SPEC;
 
     fn copy(
         from: ObjectReference,
