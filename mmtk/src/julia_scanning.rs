@@ -490,7 +490,6 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
     #[cfg(debug_assertions)]
     {
         use crate::JuliaVM;
-        use log::warn;
         use mmtk::vm::slot::Slot;
 
         if PRINT_OBJ_TYPE {
@@ -502,12 +501,12 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
         }
 
         if let Some(objref) = simple_slot.load() {
-            if !mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(objref) {
-                warn!(
-                    "Object {:?} in slot {:?} is not mapped address",
-                    objref, simple_slot
-                );
-            }
+            debug_assert!(
+                mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(objref),
+                "Object {:?} in slot {:?} is not mapped address",
+                objref,
+                simple_slot
+            );
 
             let raw_addr_usize = objref.to_raw_address().as_usize();
 
@@ -603,11 +602,6 @@ pub unsafe fn mmtk_jl_svec_len(obj: Address) -> usize {
 #[inline(always)]
 pub unsafe fn mmtk_jl_svec_data(obj: Address) -> Address {
     obj + std::mem::size_of::<crate::julia_scanning::mmtk_jl_svec_t>()
-}
-
-#[inline(always)]
-pub unsafe fn mmtk_jl_array_len(_a: *const mmtk_jl_array_t) -> usize {
-    unimplemented!();
 }
 
 #[inline(always)]
