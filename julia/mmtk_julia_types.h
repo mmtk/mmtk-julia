@@ -1,10 +1,29 @@
 // install bindgen with cargo install bindgen-cli
 // run:
-// BINDGEN_EXTRA_CLANG_ARGS="-I mmtk/api" ~/.cargo/bin/bindgen julia/mmtk_julia_types.h --opaque-type MMTkMutatorContext -o mmtk/src/julia_types.rs
+// BINDGEN_EXTRA_CLANG_ARGS="-I mmtk/api" ~/.cargo/bin/bindgen julia/mmtk_julia_types.h --opaque-type MMTkMutatorContext -o mmtk/src/julia_types.rs -- -x c++ -std=c++14
 #include <setjmp.h>	
 #include <stdint.h>
 #include <pthread.h>
 #include "mmtkMutator.h"
+
+#if defined(_CPU_X86_64_)
+#  define _P64
+#elif defined(_CPU_X86_)
+#  define _P32
+#elif defined(_OS_WINDOWS_)
+/* Not sure how to determine pointer size on Windows running ARM. */
+#  if _WIN64
+#    define _P64
+#  else
+#    define _P32
+#  endif
+#elif __SIZEOF_POINTER__ == 8
+#    define _P64
+#elif __SIZEOF_POINTER__ == 4
+#    define _P32
+#else
+#  error pointer size not known for your platform / compiler
+#endif
 
 typedef __SIZE_TYPE__ size_t;
 typedef int sig_atomic_t;
