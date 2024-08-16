@@ -404,9 +404,9 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
     }
 }
 
+// We have to set VO bit even if this is a non_moving build. Otherwise, assertions in mmtk-core
+// will complain about seeing objects without VO bit.
 fn set_side_vo_bit_for_region(start: Address, size: usize) {
-    crate::early_return_for_non_moving!(());
-
     debug!(
         "Bulk set VO bit {} to {} ({} bytes)",
         start,
