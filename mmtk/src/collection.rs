@@ -47,6 +47,9 @@ impl Collection<JuliaVM> for VMCollection {
     }
 
     fn resume_mutators(_tls: VMWorkerThread) {
+        // unpin conservative roots
+        crate::conservative::unpin_conservative_roots();
+
         // Get the end time of the GC
         let end = unsafe { ((*UPCALLS).jl_hrtime)() };
         trace!("gc_end = {}", end);
@@ -84,18 +87,20 @@ impl Collection<JuliaVM> for VMCollection {
 
     fn spawn_gc_thread(_tls: VMThread, ctx: GCThreadContext<JuliaVM>) {
         // Just drop the join handle. The thread will run until the process quits.
-        let _ = std::thread::spawn(move || {
-            use mmtk::util::opaque_pointer::*;
-            use mmtk::util::Address;
-            let worker_tls = VMWorkerThread(VMThread(OpaquePointer::from_address(unsafe {
-                Address::from_usize(thread_id::get())
-            })));
-            match ctx {
-                GCThreadContext::Worker(w) => {
-                    mmtk::memory_manager::start_worker(&SINGLETON, worker_tls, w)
+        let _ = std::thread::Builder::new()
+            .name("MMTk Worker".to_string())
+            .spawn(move || {
+                use mmtk::util::opaque_pointer::*;
+                use mmtk::util::Address;
+                let worker_tls = VMWorkerThread(VMThread(OpaquePointer::from_address(unsafe {
+                    Address::from_usize(thread_id::get())
+                })));
+                match ctx {
+                    GCThreadContext::Worker(w) => {
+                        mmtk::memory_manager::start_worker(&SINGLETON, worker_tls, w)
+                    }
                 }
-            }
-        });
+            });
     }
 
     fn schedule_finalization(_tls: VMWorkerThread) {}

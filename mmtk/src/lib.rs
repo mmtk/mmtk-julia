@@ -5,7 +5,8 @@ extern crate mmtk;
 extern crate lazy_static;
 
 use mmtk::util::opaque_pointer::*;
-use mmtk::util::Address;
+use mmtk::util::{Address, ObjectReference};
+
 use mmtk::vm::VMBinding;
 use mmtk::MMTKBuilder;
 use mmtk::MMTK;
@@ -32,6 +33,8 @@ pub mod julia_scanning;
 #[allow(non_upper_case_globals)]
 #[allow(non_snake_case)]
 pub mod julia_types;
+
+pub mod conservative;
 
 #[derive(Default)]
 pub struct JuliaVM;
@@ -101,6 +104,7 @@ pub struct Julia_Upcalls {
     pub mmtk_sweep_weak_refs: extern "C" fn(),
     pub wait_in_a_safepoint: extern "C" fn(),
     pub exit_from_safepoint: extern "C" fn(old_state: i8),
+    pub get_lo_size: extern "C" fn(object: ObjectReference) -> usize,
     pub jl_hrtime: extern "C" fn() -> u64,
     pub update_gc_stats: extern "C" fn(u64, usize, bool),
     pub get_abi_structs_checksum_c: extern "C" fn() -> usize,
@@ -116,6 +120,20 @@ pub struct Julia_Upcalls {
     pub mmtk_get_total_memory: extern "C" fn() -> u64,
     pub mmtk_get_constrained_memory: extern "C" fn() -> u64,
     pub mmtk_get_heap_size_hint: extern "C" fn() -> u64,
+    pub mmtk_jl_task_stack_buffer: extern "C" fn(
+        task: *const crate::julia_types::mmtk_jl_task_t,
+        size: *mut u64,
+        ptid: *mut i32,
+    ) -> Address,
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();
+
+#[macro_export]
+macro_rules! early_return_for_non_moving {
+    ($ret_val:expr) => {
+        if cfg!(feature = "non_moving") {
+            return $ret_val;
+        }
+    };
+}

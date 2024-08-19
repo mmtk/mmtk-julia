@@ -83,6 +83,7 @@ typedef struct {
     void (* sweep_weak_refs) (void);
     void (* wait_in_a_safepoint) (void);
     void (* exit_from_safepoint) (int8_t old_state);
+    size_t (* get_lo_size) (void*);
     uint64_t (* mmtk_jl_hrtime) (void);
     void (* update_gc_stats) (uint64_t, size_t, bool);
     uintptr_t (* get_abi_structs_checksum_c) (void);
@@ -98,6 +99,7 @@ typedef struct {
     uint64_t (*mmtk_get_total_memory)(void);
     uint64_t (*mmtk_get_constrained_memory)(void);
     uint64_t (*mmtk_get_heap_size_hint)(void);
+    void* (*mmtk_jl_task_stack_buffer)(void* task, size_t* size, int* ptid);
 } Julia_Upcalls;
 
 /**

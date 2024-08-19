@@ -1,10 +1,10 @@
-#[cfg(not(feature = "non_moving"))]
 use crate::api::mmtk_is_pinned;
 use crate::api::mmtk_object_is_managed_by_mmtk;
 use crate::julia_types::*;
 use crate::object_model::mmtk_jl_array_ndims;
 use crate::slots::JuliaVMSlot;
 use crate::slots::OffsetSlot;
+use crate::JuliaVM;
 use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
 use memoffset::offset_of;
@@ -551,7 +551,6 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
 
     #[cfg(debug_assertions)]
     {
-        use crate::JuliaVM;
         use mmtk::vm::slot::Slot;
 
         if let Some(objref) = simple_slot.load() {
@@ -623,7 +622,6 @@ pub fn process_offset_slot<EV: SlotVisitor<JuliaVMSlot>>(
     let offset_slot = OffsetSlot::new_with_offset(slot, offset);
     #[cfg(debug_assertions)]
     {
-        use crate::JuliaVM;
         use mmtk::vm::slot::Slot;
 
         if let Some(objref) = offset_slot.load() {
