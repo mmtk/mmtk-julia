@@ -297,6 +297,160 @@ static void add_node_to_tpinned_roots_buffer(RootsWorkClosure* closure, RootsWor
     }
 }
 
+#define ADD_GLOBALLY_ROOTED(roots, r) roots[i] = (void*)r; i++;
+
+// This is a list of global variables that are marked with JL_GLOBALLY_ROOTED. We need to make sure that they
+// won't be moved. Otherwise, when we access those objects from the C global variables, we may see moved references.
+void mmtk_get_globally_rooted(void** roots, int* n)
+{
+    int i = 0;
+    ADD_GLOBALLY_ROOTED(roots, cmpswap_names);
+    ADD_GLOBALLY_ROOTED(roots, jl_typeinf_func);
+    ADD_GLOBALLY_ROOTED(roots, _jl_debug_method_invalidation);
+
+    // Max 4096
+    for (int j = 0; j < N_CALL_CACHE; j++) {
+        ADD_GLOBALLY_ROOTED(roots, call_cache[j]);
+    }
+
+    // julia_internal.h
+    ADD_GLOBALLY_ROOTED(roots, jl_type_type_mt);
+    ADD_GLOBALLY_ROOTED(roots, jl_nonfunction_mt);
+    ADD_GLOBALLY_ROOTED(roots, jl_kwcall_mt);
+    ADD_GLOBALLY_ROOTED(roots, jl_all_methods);
+    ADD_GLOBALLY_ROOTED(roots, jl_module_init_order);
+    // ADD_GLOBALLY_ROOTED(roots, jl_current_modules); -- we cannot trace a htable_t. But all the modules are pinned. So we are fine.
+    ADD_GLOBALLY_ROOTED(roots, jl_precompile_toplevel_module);
+    ADD_GLOBALLY_ROOTED(roots, jl_global_roots_table);
+
+    // julia.h
+    ADD_GLOBALLY_ROOTED(roots, jl_typeofbottom_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_datatype_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_uniontype_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_unionall_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_tvar_type);
+
+    ADD_GLOBALLY_ROOTED(roots, jl_any_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_type_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_typename_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_type_typename);
+    ADD_GLOBALLY_ROOTED(roots, jl_symbol_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_ssavalue_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_abstractslot_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_slotnumber_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_typedslot_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_argument_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_const_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_partial_struct_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_partial_opaque_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_interconditional_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_method_match_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_simplevector_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_tuple_typename);
+    ADD_GLOBALLY_ROOTED(roots, jl_vecelement_typename);
+    ADD_GLOBALLY_ROOTED(roots, jl_anytuple_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_emptytuple_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_anytuple_type_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_vararg_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_function_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_builtin_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_opaque_closure_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_opaque_closure_typename);
+
+    ADD_GLOBALLY_ROOTED(roots, jl_bottom_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_method_instance_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_code_instance_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_code_info_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_method_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_module_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_abstractarray_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_densearray_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_array_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_array_typename);
+    ADD_GLOBALLY_ROOTED(roots, jl_weakref_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_abstractstring_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_string_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_errorexception_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_argumenterror_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_loaderror_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_initerror_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_typeerror_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_methoderror_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_undefvarerror_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_atomicerror_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_lineinfonode_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_stackovf_exception);
+    ADD_GLOBALLY_ROOTED(roots, jl_memory_exception);
+    ADD_GLOBALLY_ROOTED(roots, jl_readonlymemory_exception);
+    ADD_GLOBALLY_ROOTED(roots, jl_diverror_exception);
+    ADD_GLOBALLY_ROOTED(roots, jl_undefref_exception);
+    ADD_GLOBALLY_ROOTED(roots, jl_interrupt_exception);
+    ADD_GLOBALLY_ROOTED(roots, jl_boundserror_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_an_empty_vec_any);
+    ADD_GLOBALLY_ROOTED(roots, jl_an_empty_string);
+
+    ADD_GLOBALLY_ROOTED(roots, jl_bool_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_char_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_int8_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_uint8_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_int16_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_uint16_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_int32_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_uint32_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_int64_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_uint64_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_float16_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_float32_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_float64_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_floatingpoint_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_number_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_void_type);  // deprecated
+    ADD_GLOBALLY_ROOTED(roots, jl_nothing_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_signed_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_voidpointer_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_uint8pointer_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_pointer_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_llvmpointer_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_ref_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_pointer_typename);
+    ADD_GLOBALLY_ROOTED(roots, jl_llvmpointer_typename);
+    ADD_GLOBALLY_ROOTED(roots, jl_namedtuple_typename);
+    ADD_GLOBALLY_ROOTED(roots, jl_namedtuple_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_task_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_pair_type);
+
+    ADD_GLOBALLY_ROOTED(roots, jl_array_uint8_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_array_any_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_array_symbol_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_array_int32_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_array_uint64_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_expr_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_globalref_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_linenumbernode_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_gotonode_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_gotoifnot_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_returnnode_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_phinode_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_pinode_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_phicnode_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_upsilonnode_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_quotenode_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_newvarnode_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_intrinsic_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_methtable_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_typemap_level_type);
+    ADD_GLOBALLY_ROOTED(roots, jl_typemap_entry_type);
+
+    ADD_GLOBALLY_ROOTED(roots, jl_emptysvec);
+    ADD_GLOBALLY_ROOTED(roots, jl_emptytuple);
+    ADD_GLOBALLY_ROOTED(roots, jl_true);
+    ADD_GLOBALLY_ROOTED(roots, jl_false);
+    ADD_GLOBALLY_ROOTED(roots, jl_nothing);
+    ADD_GLOBALLY_ROOTED(roots, jl_kwcall_func);
+
+    *n = i;
+}
+
 void scan_vm_specific_roots(RootsWorkClosure* closure)
 {
     // Create a new buf
@@ -325,6 +479,17 @@ void scan_vm_specific_roots(RootsWorkClosure* closure)
     // constants
     add_node_to_roots_buffer(closure, &buf, &len, jl_emptytuple_type);
     add_node_to_roots_buffer(closure, &buf, &len, cmpswap_names);
+
+    // globally rooted
+    #define MAX_GLOBALLY_ROOTED 5000
+    void** globally_rooted = (void**) malloc(sizeof(void*) * MAX_GLOBALLY_ROOTED);
+    int n_roots = 0;
+    mmtk_get_globally_rooted(globally_rooted, &n_roots);
+    assert(n_roots <= MAX_GLOBALLY_ROOTED);
+    for (int i = 0; i < n_roots; i++) {
+        add_node_to_roots_buffer(closure, &buf, &len, globally_rooted[i]);
+    }
+    free(globally_rooted);
 
     // jl_global_roots_table must be transitively pinned 
     RootsWorkBuffer tpinned_buf = (closure->report_tpinned_nodes_func)((void**)0, 0, 0, closure->data, true);
