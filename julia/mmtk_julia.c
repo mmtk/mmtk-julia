@@ -297,6 +297,12 @@ static void add_node_to_tpinned_roots_buffer(RootsWorkClosure* closure, RootsWor
     }
 }
 
+// staticdata_utils.c
+extern jl_array_t *edges_map;
+extern jl_array_t *newly_inferred;
+// task.c
+extern jl_function_t* task_done_hook_func;
+
 #define ADD_GLOBALLY_ROOTED(roots, r) roots[i] = (void*)r; i++;
 
 // This is a list of global variables that are marked with JL_GLOBALLY_ROOTED. We need to make sure that they
@@ -447,6 +453,19 @@ void mmtk_get_globally_rooted(void** roots, int* n)
     ADD_GLOBALLY_ROOTED(roots, jl_false);
     ADD_GLOBALLY_ROOTED(roots, jl_nothing);
     ADD_GLOBALLY_ROOTED(roots, jl_kwcall_func);
+
+    ADD_GLOBALLY_ROOTED(roots, jl_main_module);
+    ADD_GLOBALLY_ROOTED(roots, jl_core_module);
+    ADD_GLOBALLY_ROOTED(roots, jl_base_module);
+    ADD_GLOBALLY_ROOTED(roots, jl_top_module);
+
+    // staticdata_utils.c
+    ADD_GLOBALLY_ROOTED(roots, edges_map);
+    ADD_GLOBALLY_ROOTED(roots, newly_inferred);
+    // task.c
+    ADD_GLOBALLY_ROOTED(roots, task_done_hook_func);
+    // threading.c
+    ADD_GLOBALLY_ROOTED(roots, jl_all_tls_states);
 
     *n = i;
 }
