@@ -36,8 +36,10 @@ impl Scanning<JuliaVM> for VMScanning {
                             self.buffer.push(object);
                         }
                     }
-                    JuliaVMSlot::Offset(_) => {
-                        unimplemented!() // transitively pinned roots in Julia only come from the stack
+                    JuliaVMSlot::Offset(oe) => {
+                        if let Some(object) = oe.load() {
+                            self.buffer.push(object);
+                        }
                     }
                 }
             }

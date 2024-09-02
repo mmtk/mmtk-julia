@@ -27,6 +27,7 @@ extern "C" {
     pub static jl_weakref_type: *const mmtk_jl_datatype_t;
     pub static jl_symbol_type: *const mmtk_jl_datatype_t;
     pub static jl_method_type: *const mmtk_jl_datatype_t;
+    pub static jl_binding_partition_type: *const mmtk_jl_datatype_t;
     pub static mut ijl_small_typeof: [*mut mmtk_jl_datatype_t; 128usize];
 }
 
@@ -308,6 +309,13 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
     if npointers == 0 {
         return;
     } else {
+        if vt == jl_binding_partition_type {
+            let bpart_ptr = obj.to_mut_ptr::<mmtk_jl_binding_partition_t>();
+            let restriction = (*bpart_ptr).restriction;
+            let offset = mmtk_decode_restriction_value(restriction);
+            let slot = Address::from_ptr(::std::ptr::addr_of!((*bpart_ptr).restriction));
+            process_offset_slot(closure, slot, offset);
+        }
         debug_assert!(
             (*layout).nfields > 0 && (*layout).fielddesc_type_custom() != 3,
             "opaque types should have been handled specially"
@@ -379,12 +387,12 @@ pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
     ta: *const mmtk_jl_task_t,
     closure: &mut EV,
 ) {
-    let stkbuf = (*ta).stkbuf;
-    let copy_stack = (*ta).copy_stack_custom();
+    let stkbuf = (*ta).ctx.stkbuf;
+    let copy_stack = (*ta).ctx.copy_stack_custom();
 
     #[cfg(feature = "julia_copy_stack")]
     if stkbuf != std::ptr::null_mut() && copy_stack != 0 {
-        let stkbuf_slot = Address::from_ptr(::std::ptr::addr_of!((*ta).stkbuf));
+        let stkbuf_slot = Address::from_ptr(::std::ptr::addr_of!((*ta).ctx.stkbuf));
         process_slot(closure, stkbuf_slot);
     }
 
@@ -398,8 +406,8 @@ pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
         }
         let stackbase = ((*UPCALLS).get_stackbase)((*ta).tid);
         ub = stackbase as u64;
-        lb = ub - ((*ta).copy_stack() as u64);
-        offset = (*ta).stkbuf as isize - lb as isize;
+        lb = ub - ((*ta).ctx.copy_stack() as u64);
+        offset = (*ta).ctx.stkbuf as isize - lb as isize;
     }
 
     if s != std::ptr::null_mut() {
@@ -558,6 +566,22 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
 
 //     mark_metadata_scanned(obj);
 // }
+
+#[inline(always)]
+pub fn mmtk_decode_restriction_value(pku: u64) -> usize {
+    #[cfg(target_pointer_width = "64")]
+    {
+        // need to apply (pku & ~0x7) to get the object to be traced
+        // so we use (pku & 0x7) to get the offset from the object
+        // and pass it to process_offset_slot
+        return pku as usize & 0x7;
+    }
+
+    #[cfg(not(target_pointer_width = "64"))]
+    {
+        return 0;
+    }
+}
 
 #[inline(always)]
 pub fn process_offset_slot<EV: SlotVisitor<JuliaVMSlot>>(
