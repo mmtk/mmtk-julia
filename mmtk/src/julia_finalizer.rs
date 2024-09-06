@@ -149,12 +149,12 @@ fn sweep_finalizer_list(
         let (isfreed, isold) = if gc_ptr_tag(v0, 2) {
             (true, false)
         } else {
-            let isfreed = !memory_manager::is_live_object::<JuliaVM>(v);
+            let isfreed = !memory_manager::is_live_object(v);
             debug_assert!(!fin.is_zero());
             let isold = finalizer_list_marked.is_some()
                 && !isfreed
                 && (mmtk_object_is_managed_by_mmtk(fin.as_usize())
-                    && memory_manager::is_live_object::<JuliaVM>(unsafe {
+                    && memory_manager::is_live_object(unsafe {
                         ObjectReference::from_raw_address_unchecked(fin)
                     })
                     || !(mmtk_object_is_managed_by_mmtk(fin.as_usize())));

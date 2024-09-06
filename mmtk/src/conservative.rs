@@ -1,5 +1,4 @@
 use crate::julia_types::*;
-use crate::JuliaVM;
 use crate::UPCALLS;
 
 use mmtk::memory_manager;
@@ -17,7 +16,7 @@ pub fn pin_conservative_roots() {
 
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
     let n_roots = roots.len();
-    roots.retain(|obj| mmtk::memory_manager::pin_object::<JuliaVM>(*obj));
+    roots.retain(|obj| mmtk::memory_manager::pin_object(*obj));
     let n_pinned = roots.len();
     log::debug!("Conservative roots: {}, pinned: {}", n_roots, n_pinned);
 }
@@ -29,9 +28,9 @@ pub fn unpin_conservative_roots() {
     let n_pinned = roots.len();
     let mut n_live = 0;
     roots.drain().for_each(|obj| {
-        if mmtk::memory_manager::is_live_object::<JuliaVM>(obj) {
+        if mmtk::memory_manager::is_live_object(obj) {
             n_live += 1;
-            mmtk::memory_manager::unpin_object::<JuliaVM>(obj);
+            mmtk::memory_manager::unpin_object(obj);
         }
     });
     log::debug!(
@@ -114,7 +113,7 @@ fn conservative_scan_range(lo: Address, hi: Address) {
 fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
     if crate::object_model::is_addr_in_immixspace(addr) {
         // We only care about immix space. If the object is in other spaces, we won't move them, and we don't need to pin them.
-        memory_manager::find_object_from_internal_pointer::<JuliaVM>(addr, usize::MAX)
+        memory_manager::find_object_from_internal_pointer(addr, usize::MAX)
     } else {
         None
     }
