@@ -4,7 +4,6 @@ use crate::julia_types::*;
 use crate::object_model::mmtk_jl_array_ndims;
 use crate::slots::JuliaVMSlot;
 use crate::slots::OffsetSlot;
-use crate::JuliaVM;
 use crate::JULIA_BUFF_TAG;
 use crate::UPCALLS;
 use memoffset::offset_of;
@@ -560,7 +559,7 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
 
         if let Some(objref) = simple_slot.load() {
             debug_assert!(
-                mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(objref),
+                mmtk::memory_manager::is_in_mmtk_spaces(objref),
                 "Object {:?} in slot {:?} is not mapped address",
                 objref,
                 simple_slot
@@ -631,7 +630,7 @@ pub fn process_offset_slot<EV: SlotVisitor<JuliaVMSlot>>(
 
         if let Some(objref) = offset_slot.load() {
             debug_assert!(
-                mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(objref),
+                mmtk::memory_manager::is_in_mmtk_spaces(objref),
                 "Object {:?} in slot {:?} is not mapped address",
                 objref,
                 offset_slot
