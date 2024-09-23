@@ -78,7 +78,7 @@ pub(crate) fn get_abi_structs_checksum_rust() -> usize {
 }
 
 // The functions below allow accessing the values of bitfields without performing a for loop
-use crate::julia_types::{__BindgenBitfieldUnit, mmtk_jl_ucontext_t, mmtk_jl_datatype_layout_t};
+use crate::julia_types::{__BindgenBitfieldUnit, mmtk_jl_datatype_layout_t, mmtk_jl_ucontext_t};
 
 impl mmtk_jl_datatype_layout_t {
     #[inline]
