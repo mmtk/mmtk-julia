@@ -677,6 +677,6 @@ pub extern "C" fn mmtk_unpin_object(_object: ObjectReference) -> bool {
 
 #[cfg(feature = "non_moving")]
 #[no_mangle]
-pub extern "C" fn mmtk_pin_object(_object: ObjectReference) -> bool {
+pub extern "C" fn mmtk_is_object_pinned(_object: ObjectReference) -> bool {
     false
 }
