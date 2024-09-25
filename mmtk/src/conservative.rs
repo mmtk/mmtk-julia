@@ -11,6 +11,7 @@ use std::sync::Mutex;
 lazy_static! {
     pub static ref CONSERVATIVE_ROOTS: Mutex<HashSet<ObjectReference>> = Mutex::new(HashSet::new());
 }
+
 pub fn pin_conservative_roots() {
     crate::early_return_for_non_moving!(());
 
@@ -40,7 +41,14 @@ pub fn unpin_conservative_roots() {
     );
 }
 
-pub fn mmtk_conservative_scan_task_stack(ta: *const mmtk_jl_task_t) {
+// See jl_guard_size
+// TODO: Are we sure there are always guard pages we need to skip?
+const JL_GUARD_PAGE: usize = 4096 * 8;
+
+pub fn mmtk_conservative_scan_task_stack(
+    ta: *const mmtk_jl_task_t,
+    buffer: &mut Vec<ObjectReference>,
+) {
     crate::early_return_for_non_moving!(());
 
     let mut size: u64 = 0;
@@ -58,28 +66,52 @@ pub fn mmtk_conservative_scan_task_stack(ta: *const mmtk_jl_task_t) {
     if !stk.is_zero() {
         log::info!("Conservatively scan the stack");
 
-        // See jl_guard_size
-        // TODO: Are we sure there are always guard pages we need to skip?
-        const JL_GUARD_PAGE: usize = 4096 * 8;
         let guard_page_start = stk + JL_GUARD_PAGE;
         log::info!("Skip guard page: {}, {}", stk, guard_page_start);
 
-        conservative_scan_range(guard_page_start, stk + size as usize);
+        conservative_scan_range(guard_page_start, stk + size as usize, buffer);
     } else {
         log::warn!("Skip stack for {:?}", ta);
     }
 }
-pub fn mmtk_conservative_scan_task_registers(ta: *const mmtk_jl_task_t) {
+
+pub fn mmtk_conservative_scan_ptls_stack(
+    ptls: &mut mmtk_jl_tls_states_t,
+    buffer: &mut Vec<ObjectReference>,
+) {
+    crate::early_return_for_non_moving!(());
+
+    let stackbase: Address = Address::from_ptr(ptls.stackbase);
+    let stacksize = ptls.stacksize;
+
+    let stackstart = stackbase - stacksize;
+    let guard_page_start = stackstart + JL_GUARD_PAGE;
+    log::info!(
+        "mmtk_conservative_scan_ptls_stack: {} to {}",
+        stackstart,
+        stackbase
+    );
+    conservative_scan_range(guard_page_start, stackbase, buffer);
+}
+
+pub fn mmtk_conservative_scan_task_registers(
+    ta: *const mmtk_jl_task_t,
+    buffer: &mut Vec<ObjectReference>,
+) {
     crate::early_return_for_non_moving!(());
 
     let (lo, hi) = get_range(&unsafe { &*ta }.ctx);
-    conservative_scan_range(lo, hi);
+    conservative_scan_range(lo, hi, buffer);
 }
-pub fn mmtk_conservative_scan_ptls_registers(ptls: &mut mmtk_jl_tls_states_t) {
+
+pub fn mmtk_conservative_scan_ptls_registers(
+    ptls: &mut mmtk_jl_tls_states_t,
+    buffer: &mut Vec<ObjectReference>,
+) {
     crate::early_return_for_non_moving!(());
 
     let (lo, hi) = get_range(&ptls.ctx_at_the_time_gc_started);
-    conservative_scan_range(lo, hi);
+    conservative_scan_range(lo, hi, buffer);
 }
 
 // TODO: This scans the entire context type, which is slower.
@@ -90,7 +122,7 @@ fn get_range<T>(ctx: &T) -> (Address, Address) {
     (start, start + ty_size)
 }
 
-fn conservative_scan_range(lo: Address, hi: Address) {
+fn conservative_scan_range(lo: Address, hi: Address, buffer: &mut Vec<ObjectReference>) {
     // The high address is exclusive
     let hi = if hi.is_aligned_to(BYTES_IN_ADDRESS) {
         hi - BYTES_IN_ADDRESS
@@ -104,7 +136,7 @@ fn conservative_scan_range(lo: Address, hi: Address) {
     while cursor >= lo {
         let addr = unsafe { cursor.load::<Address>() };
         if let Some(obj) = is_potential_mmtk_object(addr) {
-            CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
+            buffer.push(obj);
         }
         cursor -= BYTES_IN_ADDRESS;
     }

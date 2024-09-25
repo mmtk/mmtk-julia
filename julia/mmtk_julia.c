@@ -512,10 +512,15 @@ void scan_vm_specific_roots(RootsWorkClosure* closure)
     // globally rooted
     trace_full_globally_rooted(closure, &buf, &len);
 
-    // jl_global_roots_table must be transitively pinned
+    // Simply pin things in global roots table
+    size_t i;
+    for (i = 0; i < jl_array_len(jl_global_roots_table); i++) {
+        jl_value_t* root = jl_array_ptr_ref(jl_global_roots_table, i);
+        add_node_to_roots_buffer(closure, &buf, &len, root);
+    }
+
     RootsWorkBuffer tpinned_buf = (closure->report_tpinned_nodes_func)((void**)0, 0, 0, closure->data, true);
     size_t tpinned_len = 0;
-    add_node_to_tpinned_roots_buffer(closure, &tpinned_buf, &tpinned_len, jl_global_roots_table);
 
     // Push the result of the work.
     (closure->report_nodes_func)(buf.ptr, len, buf.cap, closure->data, false);
@@ -781,7 +786,11 @@ uint64_t mmtk_jl_hrtime(void) JL_NOTSAFEPOINT
 
 JL_DLLEXPORT void *mmtk_jl_task_stack_buffer(void *task, size_t *size, int *ptid)
 {
-    return jl_task_stack_buffer((jl_task_t *)task, size, ptid);
+    char* active_start = 0, *active_end = 0, *total_start = 0, *total_end = 0;
+    jl_active_task_stack((jl_task_t*)task, &active_start, &active_end, &total_start, &total_end);
+    // TODO: Should try use active start/end.
+    *size = total_end - total_start;
+    return (void*) total_start;
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {

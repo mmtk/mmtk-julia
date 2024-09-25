@@ -1,4 +1,4 @@
-use crate::api::mmtk_is_pinned;
+use crate::api::mmtk_is_object_pinned;
 use crate::api::mmtk_object_is_managed_by_mmtk;
 use crate::julia_types::*;
 use crate::object_model::mmtk_jl_array_ndims;
@@ -126,11 +126,11 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             #[cfg(not(feature = "non_moving"))]
             debug_assert!(
                 (mmtk_object_is_managed_by_mmtk(owner_addr.load())
-                    && mmtk_is_pinned(owner_addr.load())
+                    && mmtk_is_object_pinned(owner_addr.load())
                     || !(mmtk_object_is_managed_by_mmtk(owner_addr.load()))),
                 "Owner ({:?}) may move (is_pinned = {}), a->data may become outdated!",
                 owner_addr.load::<ObjectReference>(),
-                mmtk_is_pinned(owner_addr.load())
+                mmtk_is_object_pinned(owner_addr.load())
             );
 
             process_slot(closure, owner_addr);

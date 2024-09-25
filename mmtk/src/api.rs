@@ -492,38 +492,187 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
     }
 }
 
+fn assert_is_object(object: ObjectReference) {
+    #[cfg(debug_assertions)]
+    {
+        use crate::object_model::{is_object_in_immixspace, is_object_in_los};
+        if !mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
+            panic!("{} is not managed by MMTk", object);
+        }
+        if !is_object_in_immixspace(&object) && !is_object_in_los(&object) {
+            // We will use VO bit in the following check. But if the object is not in immix space or LOS, we cannot do the check.
+            return;
+        }
+        if !object
+            .to_raw_address()
+            .is_aligned_to(ObjectReference::ALIGNMENT)
+        {
+            panic!(
+                "{} is not aligned, it cannot be an object reference",
+                object
+            )
+        }
+        if memory_manager::is_mmtk_object(object.to_raw_address()).is_none() {
+            error!("{} is not an object", object);
+            if let Some(base_ref) = memory_manager::find_object_from_internal_pointer(
+                object.to_raw_address(),
+                usize::MAX,
+            ) {
+                panic!("{} is an internal pointer of {}", object, base_ref);
+            } else {
+                panic!(
+                    "{} is not recognised as an object reference, or an internal reference",
+                    object
+                );
+            }
+        }
+    }
+}
+
+#[cfg(not(feature = "non_moving"))]
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
-    crate::early_return_for_non_moving!(false);
-
-    if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
-        memory_manager::pin_object(object)
-    } else {
-        warn!("Object is not managed by mmtk - (un)pinning it via this function isn't supported.");
-        false
-    }
+    assert_is_object(object);
+    memory_manager::pin_object(object)
 }
 
+#[cfg(not(feature = "non_moving"))]
 #[no_mangle]
 pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
-    crate::early_return_for_non_moving!(false);
+    assert_is_object(object);
+    memory_manager::unpin_object(object)
+}
 
-    if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
-        memory_manager::unpin_object(object)
+#[cfg(not(feature = "non_moving"))]
+#[no_mangle]
+pub extern "C" fn mmtk_is_object_pinned(object: ObjectReference) -> bool {
+    assert_is_object(object);
+    memory_manager::is_pinned(object)
+}
+
+#[cfg(not(feature = "non_moving"))]
+#[no_mangle]
+pub extern "C" fn mmtk_pin_pointer(addr: Address) -> bool {
+    if mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
+        if addr.is_aligned_to(ObjectReference::ALIGNMENT) {
+            if let Some(obj) = memory_manager::is_mmtk_object(addr) {
+                return memory_manager::pin_object(obj);
+            }
+        }
+        let maybe_objref = memory_manager::find_object_from_internal_pointer(addr, usize::MAX);
+        if let Some(obj) = maybe_objref {
+            trace!(
+                "Attempt to pin {:?}, but it is an internal reference of {:?}",
+                addr,
+                obj
+            );
+            memory_manager::pin_object(obj)
+        } else {
+            // Possibly the object is in the VM space, and we do not set VO bit properly.
+            warn!(
+                "Attempt to pin {:?}, but it is not recognised as a object",
+                addr
+            );
+            false
+        }
     } else {
-        warn!("Object is not managed by mmtk - (un)pinning it via this function isn't supported.");
+        debug!("Object is not managed by mmtk - pinning it via this function isn't supported.");
         false
     }
 }
 
+#[cfg(not(feature = "non_moving"))]
 #[no_mangle]
-pub extern "C" fn mmtk_is_pinned(object: ObjectReference) -> bool {
-    crate::early_return_for_non_moving!(false);
-
-    if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
-        memory_manager::is_pinned(object)
+pub extern "C" fn mmtk_unpin_pointer(addr: Address) -> bool {
+    if mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
+        if addr.is_aligned_to(ObjectReference::ALIGNMENT) {
+            if let Some(obj) = memory_manager::is_mmtk_object(addr) {
+                return memory_manager::unpin_object(obj);
+            }
+        }
+        let maybe_objref = memory_manager::find_object_from_internal_pointer(addr, usize::MAX);
+        if let Some(obj) = maybe_objref {
+            trace!(
+                "Attempt to unpin {:?}, but it is an internal reference of {:?}",
+                addr,
+                obj
+            );
+            memory_manager::unpin_object(obj)
+        } else {
+            warn!(
+                "Attempt to unpin {:?}, but it is not recognised as a object",
+                addr
+            );
+            false
+        }
     } else {
-        warn!("Object is not managed by mmtk - checking via this function isn't supported.");
+        debug!("Object is not managed by mmtk - unpinning it via this function isn't supported.");
         false
     }
+}
+
+#[cfg(not(feature = "non_moving"))]
+#[no_mangle]
+pub extern "C" fn mmtk_is_pointer_pinned(addr: Address) -> bool {
+    if mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
+        if let Some(obj) = memory_manager::is_mmtk_object(addr) {
+            memory_manager::is_pinned(obj)
+        } else {
+            let maybe_objref = memory_manager::find_object_from_internal_pointer(addr, usize::MAX);
+            if let Some(obj) = maybe_objref {
+                trace!(
+                    "Attempt to check is_pinned for {:?}, but it is an internal reference of {:?}",
+                    addr,
+                    obj
+                );
+                memory_manager::is_pinned(obj)
+            } else {
+                warn!(
+                    "Attempt to check is_pinned for {:?}, but it is not recognised as a object",
+                    addr
+                );
+                false
+            }
+        }
+    } else {
+        debug!("Object is not managed by mmtk - checking pinning state via this function isn't supported.");
+        false
+    }
+}
+
+// If the `non-moving` feature is selected, pinning/unpinning is a noop and simply returns false
+#[cfg(feature = "non_moving")]
+#[no_mangle]
+pub extern "C" fn mmtk_pin_pointer(_addr: Address) -> bool {
+    false
+}
+
+#[cfg(feature = "non_moving")]
+#[no_mangle]
+pub extern "C" fn mmtk_unpin_pointer(_addr: Address) -> bool {
+    false
+}
+
+#[cfg(feature = "non_moving")]
+#[no_mangle]
+pub extern "C" fn mmtk_is_pointer_pinned(_addr: Address) -> bool {
+    false
+}
+
+#[cfg(feature = "non_moving")]
+#[no_mangle]
+pub extern "C" fn mmtk_pin_object(_object: ObjectReference) -> bool {
+    false
+}
+
+#[cfg(feature = "non_moving")]
+#[no_mangle]
+pub extern "C" fn mmtk_unpin_object(_object: ObjectReference) -> bool {
+    false
+}
+
+#[cfg(feature = "non_moving")]
+#[no_mangle]
+pub extern "C" fn mmtk_pin_object(_object: ObjectReference) -> bool {
+    false
 }

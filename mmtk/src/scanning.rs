@@ -54,9 +54,11 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut tpinning_slot_buffer = SlotBuffer { buffer: vec![] }; // need to be transitively pinned
         let mut pinning_slot_buffer = SlotBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
         let mut node_buffer = vec![];
+        let mut conservative_buffer = vec![];
 
         // Conservatively scan registers saved with the thread
-        crate::conservative::mmtk_conservative_scan_ptls_registers(ptls);
+        crate::conservative::mmtk_conservative_scan_ptls_registers(ptls, &mut conservative_buffer);
+        crate::conservative::mmtk_conservative_scan_ptls_stack(ptls, &mut conservative_buffer);
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
         let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
@@ -80,8 +82,14 @@ impl Scanning<JuliaVM> for VMScanning {
                     pthread
                 );
                 // Conservative scan stack and registers
-                crate::conservative::mmtk_conservative_scan_task_stack(task);
-                crate::conservative::mmtk_conservative_scan_task_registers(task);
+                crate::conservative::mmtk_conservative_scan_task_stack(
+                    task,
+                    &mut conservative_buffer,
+                );
+                crate::conservative::mmtk_conservative_scan_task_registers(
+                    task,
+                    &mut conservative_buffer,
+                );
 
                 if task_is_root {
                     // captures wrong root nodes before creating the work
@@ -171,6 +179,12 @@ impl Scanning<JuliaVM> for VMScanning {
         }
         for nodes in node_buffer.chunks(CAPACITY_PER_PACKET).map(|c| c.to_vec()) {
             factory.create_process_pinning_roots_work(nodes);
+        }
+        {
+            let mut conservative_roots = crate::conservative::CONSERVATIVE_ROOTS.lock().unwrap();
+            for r in conservative_buffer {
+                conservative_roots.insert(r);
+            }
         }
     }
 
