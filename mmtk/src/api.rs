@@ -533,6 +533,8 @@ fn assert_is_object(object: ObjectReference) {
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
     assert_is_object(object);
+    crate::early_return_for_non_moving!(false);
+
     memory_manager::pin_object(object)
 }
 
@@ -540,6 +542,8 @@ pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
 #[no_mangle]
 pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
     assert_is_object(object);
+    crate::early_return_for_non_moving!(false);
+
     memory_manager::unpin_object(object)
 }
 
