@@ -28,7 +28,7 @@ extern "C" {
     pub static jl_symbol_type: *const mmtk_jl_datatype_t;
     pub static jl_method_type: *const mmtk_jl_datatype_t;
     pub static jl_binding_partition_type: *const mmtk_jl_datatype_t;
-    pub static mut ijl_small_typeof: [*mut mmtk_jl_datatype_t; 128usize];
+    pub static mut jl_small_typeof: [*mut mmtk_jl_datatype_t; 128usize];
 }
 
 #[inline(always)]
@@ -50,7 +50,7 @@ pub unsafe fn mmtk_jl_typeof(addr: Address) -> *const mmtk_jl_datatype_t {
 pub unsafe fn mmtk_jl_to_typeof(t: Address) -> *const mmtk_jl_datatype_t {
     let t_raw = t.as_usize();
     if t_raw < (JL_MAX_TAGS << 4) {
-        let ty = ijl_small_typeof[t_raw / std::mem::size_of::<Address>()];
+        let ty = jl_small_typeof[t_raw / std::mem::size_of::<Address>()];
         return ty;
     }
     return t.to_ptr::<mmtk_jl_datatype_t>();
@@ -88,7 +88,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
     {
         // these objects have pointers in them, but no other special handling
         // so we want these to fall through to the end
-        vtag_usize = ijl_small_typeof[vtag.as_usize() / std::mem::size_of::<Address>()] as usize;
+        vtag_usize = jl_small_typeof[vtag.as_usize() / std::mem::size_of::<Address>()] as usize;
         vtag = Address::from_usize(vtag_usize);
     } else if vtag_usize < ((mmtk_jl_small_typeof_tags_mmtk_jl_max_tags as usize) << 4) {
         // these objects either have specialing handling

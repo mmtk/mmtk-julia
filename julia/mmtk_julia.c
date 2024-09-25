@@ -28,6 +28,7 @@ extern void jl_gc_wait_for_the_world(jl_ptls_t* gc_all_tls_states, int gc_n_thre
 extern void mmtk_block_thread_for_gc(void);
 extern int64_t live_bytes;
 extern void jl_throw_out_of_memory_error(void);
+extern uint32_t jl_get_gc_disable_counter(void);
 
 
 extern void* new_mutator_iterator(void);
@@ -540,6 +541,7 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
     .jl_throw_out_of_memory_error = jl_throw_out_of_memory_error,
+    .jl_get_gc_disable_counter = jl_get_gc_disable_counter,
     .sweep_malloced_memory = mmtk_sweep_malloced_memory,
     .sweep_stack_pools = mmtk_sweep_stack_pools,
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,
