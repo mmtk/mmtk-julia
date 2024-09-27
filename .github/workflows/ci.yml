@@ -19,6 +19,10 @@ jobs:
       matrix:
         gc_plan: [Immix, StickyImmix]
         moving: [Default, Non_Moving]
+        include:
+          # Also run Immix with stress copying to test copying for Julia.
+          - gc_plan: Immix
+            moving: Immix_Stress_Copying
     uses: ./.github/workflows/binding-tests.yml
     with:
       gc_plan: ${{ matrix.gc_plan }}
