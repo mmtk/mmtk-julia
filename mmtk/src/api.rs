@@ -281,7 +281,7 @@ pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread, coll
         // incremental
         2 => SINGLETON.handle_user_collection_request(tls, false, false),
         _ => unreachable!(),
-    }
+    };
 }
 
 #[no_mangle]
