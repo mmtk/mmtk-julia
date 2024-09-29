@@ -173,6 +173,10 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
     }
 }
 
+// FIXME: We should remove these boundary checks, and replace with
+// what MMTK API provides, such as checking if the object is movable,
+// if the object has the LOS semantic.
+
 #[inline(always)]
 pub fn is_object_in_los(object: &ObjectReference) -> bool {
     is_addr_in_los(object.to_raw_address())
