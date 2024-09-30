@@ -642,7 +642,7 @@ pub extern "C" fn mmtk_is_pointer_pinned(addr: Address) -> bool {
 
         if addr.is_aligned_to(ObjectReference::ALIGNMENT) {
             if let Some(obj) = memory_manager::is_mmtk_object(addr) {
-                return memory_manager::is_pinned(obj)
+                return memory_manager::is_pinned(obj);
             }
         }
 
