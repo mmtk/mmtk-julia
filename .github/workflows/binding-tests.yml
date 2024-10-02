@@ -26,7 +26,7 @@ jobs:
         run: |
           ./.github/scripts/ci-style.sh
 
-  build-test-other-0:
+  build-test-other:
     runs-on: ubuntu-22.04
     timeout-minutes: 360
     steps:
@@ -43,26 +43,7 @@ jobs:
           ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
       - name: Test Julia
         run: |
-          ./.github/scripts/ci-test-other.sh 0 2
-
-  build-test-other-1:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 360
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup environments
-        run: |
-          ./.github/scripts/ci-checkout.sh
-          ./.github/scripts/ci-setup.sh
-      - name: Patching unsupported tests
-        run: |
-          ./.github/scripts/ci-test-patching.sh
-      - name: Build Julia (Release)
-        run: |
-          ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
-      - name: Test Julia
-        run: |
-          ./.github/scripts/ci-test-other.sh 1 2
+          ./.github/scripts/ci-test-other.sh
 
   build-test-stdlib:
     runs-on: ubuntu-22.04
