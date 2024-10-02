@@ -789,8 +789,10 @@ JL_DLLEXPORT void *mmtk_jl_task_stack_buffer(void *task, size_t *size, int *ptid
     char* active_start = 0, *active_end = 0, *total_start = 0, *total_end = 0;
     jl_active_task_stack((jl_task_t*)task, &active_start, &active_end, &total_start, &total_end);
     // TODO: Should try use active start/end.
-    *size = total_end - total_start;
-    return (void*) total_start;
+    // *size = total_end - total_start;
+    *size = active_end - active_start;
+    // return (void*) total_start;
+    return (void*) active_start;
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {

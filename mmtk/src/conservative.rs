@@ -53,25 +53,25 @@ pub fn mmtk_conservative_scan_task_stack(
 
     let mut size: u64 = 0;
     let mut ptid: i32 = 0;
-    log::info!("mmtk_conservative_scan_native_stack begin ta = {:?}", ta);
+    log::debug!("mmtk_conservative_scan_native_stack begin ta = {:?}", ta);
     let stk = unsafe {
         ((*UPCALLS).mmtk_jl_task_stack_buffer)(ta, &mut size as *mut _, &mut ptid as *mut _)
     };
-    log::info!(
+    log::debug!(
         "mmtk_conservative_scan_native_stack continue stk = {}, size = {}, ptid = {:x}",
         stk,
         size,
         ptid
     );
     if !stk.is_zero() {
-        log::info!("Conservatively scan the stack");
+        log::debug!("Conservatively scan the stack");
 
         let guard_page_start = stk + JL_GUARD_PAGE;
-        log::info!("Skip guard page: {}, {}", stk, guard_page_start);
+        log::debug!("Skip guard page: {}, {}", stk, guard_page_start);
 
         conservative_scan_range(guard_page_start, stk + size as usize, buffer);
     } else {
-        log::warn!("Skip stack for {:?}", ta);
+        log::debug!("Skip stack for {:?}", ta);
     }
 }
 
@@ -86,7 +86,7 @@ pub fn mmtk_conservative_scan_ptls_stack(
 
     let stackstart = stackbase - stacksize;
     let guard_page_start = stackstart + JL_GUARD_PAGE;
-    log::info!(
+    log::debug!(
         "mmtk_conservative_scan_ptls_stack: {} to {}",
         stackstart,
         stackbase
@@ -130,7 +130,7 @@ fn conservative_scan_range(lo: Address, hi: Address, buffer: &mut Vec<ObjectRefe
         hi.align_down(BYTES_IN_ADDRESS)
     };
     let lo = lo.align_up(BYTES_IN_ADDRESS);
-    log::info!("Scan {} (lo) {} (hi)", lo, hi);
+    log::trace!("Scan {} (lo) {} (hi)", lo, hi);
 
     let mut cursor = hi;
     while cursor >= lo {
