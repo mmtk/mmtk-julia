@@ -65,8 +65,8 @@ static void mmtk_sweep_malloced_memory(void) JL_NOTSAFEPOINT
     void* iter = new_mutator_iterator();
     jl_ptls_t ptls2 = get_next_mutator_tls(iter);
     while(ptls2 != NULL) {
-        mallocmemory_t *ma = ptls2->gc_tls.heap.mallocarrays;
-        mallocmemory_t **pma = &ptls2->gc_tls.heap.mallocarrays;
+        mallocmemory_t *ma = ptls2->gc_tls_common.heap.mallocarrays;
+        mallocmemory_t **pma = &ptls2->gc_tls_common.heap.mallocarrays;
         while (ma != NULL) {
             mallocmemory_t *nxt = ma->next;
             jl_value_t *a = (jl_value_t*)((uintptr_t)ma->a & ~1);
@@ -85,8 +85,8 @@ static void mmtk_sweep_malloced_memory(void) JL_NOTSAFEPOINT
                 *pma = nxt;
                 int isaligned = (uintptr_t)ma->a & 1;
                 jl_gc_free_memory(a, isaligned);
-                ma->next = ptls2->gc_tls.heap.mafreelist;
-                ptls2->gc_tls.heap.mafreelist = ma;
+                ma->next = ptls2->gc_tls_common.heap.mafreelist;
+                ptls2->gc_tls_common.heap.mafreelist = ma;
             }
             ma = nxt;
         }
@@ -116,8 +116,8 @@ JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
     jl_task_t *ct = jl_current_task;
     jl_ptls_t ptls = ct->ptls;
     if (jl_atomic_load_acquire(&jl_gc_disable_counter)) {
-        size_t localbytes = jl_atomic_load_relaxed(&ptls->gc_tls.gc_num.allocd) + gc_num.interval;
-        jl_atomic_store_relaxed(&ptls->gc_tls.gc_num.allocd, -(int64_t)gc_num.interval);
+        size_t localbytes = jl_atomic_load_relaxed(&ptls->gc_tls_common.gc_num.allocd) + gc_num.interval;
+        jl_atomic_store_relaxed(&ptls->gc_tls_common.gc_num.allocd, -(int64_t)gc_num.interval);
         static_assert(sizeof(_Atomic(uint64_t)) == sizeof(gc_num.deferred_alloc), "");
         jl_atomic_fetch_add_relaxed((_Atomic(uint64_t)*)&gc_num.deferred_alloc, localbytes);
         return;
@@ -373,7 +373,7 @@ void mmtk_sweep_stack_pools(void)
 
         // free half of stacks that remain unused since last sweep
         for (int p = 0; p < JL_N_STACK_POOLS; p++) {
-            small_arraylist_t *al = &ptls2->gc_tls.heap.free_stacks[p];
+            small_arraylist_t *al = &ptls2->gc_tls_common.heap.free_stacks[p];
             size_t n_to_free;
             if (jl_atomic_load_relaxed(&ptls2->current_task) == NULL) {
                 n_to_free = al->len; // not alive yet or dead, so it does not need these anymore
@@ -395,10 +395,10 @@ void mmtk_sweep_stack_pools(void)
             }
         }
         if (jl_atomic_load_relaxed(&ptls2->current_task) == NULL) {
-            small_arraylist_free(ptls2->gc_tls.heap.free_stacks);
+            small_arraylist_free(ptls2->gc_tls_common.heap.free_stacks);
         }
 
-        small_arraylist_t *live_tasks = &ptls2->gc_tls.heap.live_tasks;
+        small_arraylist_t *live_tasks = &ptls2->gc_tls_common.heap.live_tasks;
         size_t n = 0;
         size_t ndel = 0;
         size_t l = live_tasks->len;
@@ -533,8 +533,8 @@ uintptr_t get_abi_structs_checksum_c(void) {
         ^ print_sizeof(mmtk_jl_task_t)
         ^ print_sizeof(mmtk_jl_weakref_t)
         ^ print_sizeof(mmtk_jl_tls_states_t)
-        ^ print_sizeof(mmtk_jl_thread_heap_t)
-        ^ print_sizeof(mmtk_jl_thread_gc_num_t);
+        ^ print_sizeof(mmtk_jl_thread_heap_common_t)
+        ^ print_sizeof(mmtk_jl_thread_gc_num_common_t);
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {

@@ -73,8 +73,8 @@ pub(crate) fn get_abi_structs_checksum_rust() -> usize {
         ^ print_sizeof!(mmtk_jl_task_t)
         ^ print_sizeof!(mmtk_jl_weakref_t)
         ^ print_sizeof!(mmtk_jl_tls_states_t)
-        ^ print_sizeof!(mmtk_jl_thread_heap_t)
-        ^ print_sizeof!(mmtk_jl_thread_gc_num_t)
+        ^ print_sizeof!(mmtk_jl_thread_heap_common_t)
+        ^ print_sizeof!(mmtk_jl_thread_gc_num_common_t)
 }
 
 // The functions below allow accessing the values of bitfields without performing a for loop

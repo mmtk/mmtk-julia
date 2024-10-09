@@ -263,6 +263,8 @@ typedef struct mmtk__jl_module_t {
     struct mmtk__jl_module_t *parent;
     _Atomic(mmtk_jl_svec_t)* bindings;
     _Atomic(mmtk_jl_genericmemory_t)* bindingkeyset; // index lookup by name into bindings
+    void* file;
+    int32_t line;
     // hidden fields:
     mmtk_arraylist_t usings;  // modules with all bindings potentially imported
     mmtk_jl_uuid_t build_id;
@@ -364,7 +366,7 @@ typedef struct {
     _Atomic(uint64_t) bigalloc;
     _Atomic(int64_t) free_acc;
     _Atomic(uint64_t) alloc_acc;
-} mmtk_jl_thread_gc_num_t;
+} mmtk_jl_thread_gc_num_common_t;
 
 typedef struct {
     // variable for tracking weak references
@@ -379,7 +381,7 @@ typedef struct {
 
 #define JL_N_STACK_POOLS 16
     mmtk_small_arraylist_t free_stacks[JL_N_STACK_POOLS];
-} mmtk_jl_thread_heap_t;
+} mmtk_jl_thread_heap_common_t;
 
 // handle to reference an OS thread
 typedef pthread_t mmtk_jl_thread_t;
@@ -421,11 +423,14 @@ typedef struct {
 } mmtk_jl_gc_mark_cache_t;
 
 typedef struct {
-    mmtk_jl_thread_heap_t heap;
-    mmtk_jl_thread_gc_num_t gc_num;
     MMTkMutatorContext mmtk_mutator;
     size_t malloc_sz_since_last_poll;
 } mmtk_jl_gc_tls_states_t;
+
+typedef struct {
+    mmtk_jl_thread_heap_common_t heap;
+    mmtk_jl_thread_gc_num_common_t gc_num;
+} mmtk_jl_gc_tls_states_common_t;
 
 typedef struct mmtk__jl_tls_states_t {
     int16_t tid;
@@ -458,6 +463,7 @@ typedef struct mmtk__jl_tls_states_t {
     // Counter to disable finalizer **on the current thread**
     int finalizers_inhibited;
     mmtk_jl_gc_tls_states_t gc_tls; // this is very large, and the offset of the first member is baked into codegen
+    mmtk_jl_gc_tls_states_common_t gc_tls_common; // common tls for both GCs
     volatile sig_atomic_t defer_signal;
     _Atomic(struct mmtk__jl_task_t*) current_task;
     struct mmtk__jl_task_t *next_task;
