@@ -18,8 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gc_plan: [Immix]
-        moving: [Non_Moving]
+        gc_plan: [Immix, StickyImmix]
+        moving: [Default, Non_Moving]
     uses: ./.github/workflows/binding-tests.yml
     with:
       gc_plan: ${{ matrix.gc_plan }}
