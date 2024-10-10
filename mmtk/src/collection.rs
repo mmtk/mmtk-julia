@@ -5,15 +5,11 @@ use mmtk::util::alloc::AllocationError;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::Mutator;
-use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering};
 
 use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
 
 static GC_START: AtomicU64 = AtomicU64::new(0);
-
-extern "C" {
-    pub static jl_gc_disable_counter: AtomicU32;
-}
 
 pub struct VMCollection {}
 
@@ -109,7 +105,7 @@ impl Collection<JuliaVM> for VMCollection {
     }
 
     fn is_collection_enabled() -> bool {
-        unsafe { AtomicU32::load(&jl_gc_disable_counter, Ordering::SeqCst) <= 0 }
+        unsafe { ((*UPCALLS).jl_get_gc_disable_counter)() <= 0 }
     }
 }
 

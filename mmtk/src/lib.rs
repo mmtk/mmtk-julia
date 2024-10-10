@@ -100,6 +100,7 @@ pub struct Julia_Upcalls {
         extern "C" fn(obj: Address, closure: Address, process_slot: ProcessSlotFn),
     pub get_stackbase: extern "C" fn(tid: u16) -> usize,
     pub jl_throw_out_of_memory_error: extern "C" fn(),
+    pub jl_get_gc_disable_counter: extern "C" fn() -> u32,
     pub mmtk_sweep_malloced_array: extern "C" fn(),
     pub mmtk_sweep_stack_pools: extern "C" fn(),
     pub wait_in_a_safepoint: extern "C" fn(),

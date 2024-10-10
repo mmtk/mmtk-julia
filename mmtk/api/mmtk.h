@@ -73,6 +73,7 @@ typedef struct {
     void (* scan_julia_exc_obj) (void* obj, void* closure, ProcessSlotFn process_slot);
     void* (* get_stackbase) (int16_t tid);
     void (* jl_throw_out_of_memory_error) (void);
+    uint32_t (*jl_get_gc_disable_counter) (void);
     void (* sweep_malloced_memory) (void);
     void (* sweep_stack_pools) (void);
     void (* wait_in_a_safepoint) (void);
