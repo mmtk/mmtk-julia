@@ -49,8 +49,12 @@ extern void mmtk_modify_check(void* ref);
 extern int mmtk_object_is_managed_by_mmtk(void* addr);
 extern void mmtk_runtime_panic(void);
 extern void mmtk_unreachable(void);
+extern unsigned char mmtk_pin_pointer(void* obj);
+extern unsigned char mmtk_unpin_pointer(void* obj);
+extern unsigned char mmtk_is_pointer_pinned(void* obj);
 extern unsigned char mmtk_pin_object(void* obj);
-extern bool mmtk_is_pinned(void* obj);
+extern unsigned char mmtk_unpin_object(void* obj);
+extern unsigned char mmtk_is_object_pinned(void* obj);
 
 
 extern void mmtk_set_vm_space(void* addr, size_t size);
