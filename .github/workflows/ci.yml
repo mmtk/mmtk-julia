@@ -7,6 +7,7 @@ on:
       - v1.8.2\+RAI
       - v1.9.2\+RAI
       - upstream-ready/immix
+      - dev
 
 concurrency:
   # Cancels pending runs when a PR gets updated.
