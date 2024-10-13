@@ -532,43 +532,9 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
     closure.visit_slot(JuliaVMSlot::Simple(simple_slot));
 }
 
-// #[inline(always)]
-// pub unsafe fn boot_image_object_has_been_scanned(obj: Address) -> u8 {
-//     let obj_type_addr = mmtk_jl_typeof(obj);
-//     let obj_type = obj_type_addr.to_ptr::<mmtk_jl_datatype_t>();
-
-//     if obj_type == jl_symbol_type {
-//         return 1;
-//     }
-
-//     if BI_METADATA_START_ALIGNED_DOWN == 0 {
-//         return 0;
-//     }
-
-//     if obj.as_usize() < BI_METADATA_START_ALIGNED_DOWN
-//         || obj.as_usize() >= BI_METADATA_END_ALIGNED_UP
-//     {
-//         return 0;
-//     }
-
-//     return check_metadata_scanned(obj);
-// }
-
-// #[inline(always)]
-// pub unsafe fn boot_image_mark_object_as_scanned(obj: Address) {
-//     if BI_METADATA_START_ALIGNED_DOWN == 0 {
-//         return;
-//     }
-
-//     if obj.as_usize() < BI_METADATA_START_ALIGNED_DOWN
-//         || obj.as_usize() >= BI_METADATA_END_ALIGNED_UP
-//     {
-//         return;
-//     }
-
-//     mark_metadata_scanned(obj);
-// }
-
+// This is based on the function decode_restriction_value from julia_internal.h.
+// However, since MMTk uses the slot to load the object, we get the offset from pku using
+// that offset to pass to process_offset_edge and get the right address.
 #[inline(always)]
 pub fn mmtk_decode_restriction_value(pku: u64) -> usize {
     #[cfg(target_pointer_width = "64")]
@@ -581,6 +547,8 @@ pub fn mmtk_decode_restriction_value(pku: u64) -> usize {
 
     #[cfg(not(target_pointer_width = "64"))]
     {
+        // when not #ifdef _P64 we simply return pku.val
+        // i.e., the offset is 0, since val is the first field
         return 0;
     }
 }
