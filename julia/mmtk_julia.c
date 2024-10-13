@@ -46,6 +46,9 @@ JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
     mmtk_harness_end();
 }
 
+// This is used in mmtk_sweep_malloced_memory and it is slightly different 
+// from jl_gc_free_memory from gc-stock.c as the stock GC updates the 
+// information in the global variable gc_heap_stats (which is specific to the stock GC)
 static void jl_gc_free_memory(jl_value_t *v, int isaligned) JL_NOTSAFEPOINT
 {
     assert(jl_is_genericmemory(v));
