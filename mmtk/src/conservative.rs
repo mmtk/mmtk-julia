@@ -13,7 +13,8 @@ lazy_static! {
 }
 
 pub fn pin_conservative_roots() {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
 
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
     let n_roots = roots.len();
@@ -23,7 +24,8 @@ pub fn pin_conservative_roots() {
 }
 
 pub fn unpin_conservative_roots() {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
 
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
     let n_pinned = roots.len();
@@ -49,7 +51,8 @@ pub fn mmtk_conservative_scan_task_stack(
     ta: *const mmtk_jl_task_t,
     buffer: &mut Vec<ObjectReference>,
 ) {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
 
     let mut size: u64 = 0;
     let mut ptid: i32 = 0;
@@ -79,7 +82,8 @@ pub fn mmtk_conservative_scan_ptls_stack(
     ptls: &mut mmtk_jl_tls_states_t,
     buffer: &mut Vec<ObjectReference>,
 ) {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
 
     let stackbase: Address = Address::from_ptr(ptls.stackbase);
     let stacksize = ptls.stacksize;
@@ -98,7 +102,8 @@ pub fn mmtk_conservative_scan_task_registers(
     ta: *const mmtk_jl_task_t,
     buffer: &mut Vec<ObjectReference>,
 ) {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
 
     let (lo, hi) = get_range(&unsafe { &*ta }.ctx);
     conservative_scan_range(lo, hi, buffer);
@@ -108,7 +113,8 @@ pub fn mmtk_conservative_scan_ptls_registers(
     ptls: &mut mmtk_jl_tls_states_t,
     buffer: &mut Vec<ObjectReference>,
 ) {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
 
     let (lo, hi) = get_range(&ptls.ctx_at_the_time_gc_started);
     conservative_scan_range(lo, hi, buffer);

@@ -539,7 +539,7 @@ fn assert_is_object(object: ObjectReference) {
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
     assert_is_object(object);
-    crate::early_return_for_non_moving!(false);
+    crate::early_return_for_non_moving_build!(false);
 
     memory_manager::pin_object(object)
 }
@@ -547,7 +547,7 @@ pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
 #[no_mangle]
 pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
     assert_is_object(object);
-    crate::early_return_for_non_moving!(false);
+    crate::early_return_for_non_moving_build!(false);
 
     memory_manager::unpin_object(object)
 }
@@ -555,14 +555,14 @@ pub extern "C" fn mmtk_unpin_object(object: ObjectReference) -> bool {
 #[no_mangle]
 pub extern "C" fn mmtk_is_object_pinned(object: ObjectReference) -> bool {
     assert_is_object(object);
-    crate::early_return_for_non_moving!(false);
+    crate::early_return_for_non_moving_build!(false);
 
     memory_manager::is_pinned(object)
 }
 
 #[no_mangle]
 pub extern "C" fn mmtk_pin_pointer(addr: Address) -> bool {
-    crate::early_return_for_non_moving!(false);
+    crate::early_return_for_non_moving_build!(false);
 
     if mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
         if !crate::object_model::is_addr_in_immixspace(addr) {
@@ -600,7 +600,7 @@ pub extern "C" fn mmtk_pin_pointer(addr: Address) -> bool {
 
 #[no_mangle]
 pub extern "C" fn mmtk_unpin_pointer(addr: Address) -> bool {
-    crate::early_return_for_non_moving!(false);
+    crate::early_return_for_non_moving_build!(false);
 
     if mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
         if !crate::object_model::is_addr_in_immixspace(addr) {
@@ -637,7 +637,7 @@ pub extern "C" fn mmtk_unpin_pointer(addr: Address) -> bool {
 
 #[no_mangle]
 pub extern "C" fn mmtk_is_pointer_pinned(addr: Address) -> bool {
-    crate::early_return_for_non_moving!(false);
+    crate::early_return_for_non_moving_build!(false);
 
     if mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
         if !crate::object_model::is_addr_in_immixspace(addr) {

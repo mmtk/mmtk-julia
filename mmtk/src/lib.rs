@@ -129,11 +129,22 @@ pub struct Julia_Upcalls {
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();
 
+/// Skip some methods for a non moving build.
 #[macro_export]
-macro_rules! early_return_for_non_moving {
+macro_rules! early_return_for_non_moving_build {
     ($ret_val:expr) => {
         if cfg!(feature = "non_moving") {
             return $ret_val;
+        }
+    };
+}
+
+/// Skip some methods if the current GC does not move objects
+#[macro_export]
+macro_rules! early_return_for_current_gc {
+    () => {
+        if !crate::collection::is_current_gc_moving() {
+            return;
         }
     };
 }

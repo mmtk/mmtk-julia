@@ -12,6 +12,7 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
 
 static GC_START: AtomicU64 = AtomicU64::new(0);
+static CURRENT_GC_MAY_MOVE: AtomicBool = AtomicBool::new(true);
 
 extern "C" {
     pub static jl_gc_disable_counter: AtomicU32;
@@ -31,6 +32,13 @@ impl Collection<JuliaVM> for VMCollection {
         }
 
         trace!("Stopped the world!");
+
+        // Store if the current GC may move objects -- we will use it when the current GC finishes.
+        // We cache the value here just in case MMTk may clear it before we use the value.
+        CURRENT_GC_MAY_MOVE.store(
+            crate::SINGLETON.get_plan().current_gc_may_move_object(),
+            Ordering::SeqCst,
+        );
 
         // Tell MMTk the stacks are ready.
         {
@@ -139,6 +147,10 @@ pub fn is_current_gc_nursery() -> bool {
         Some(gen) => gen.is_current_gc_nursery(),
         None => false,
     }
+}
+
+pub fn is_current_gc_moving() -> bool {
+    CURRENT_GC_MAY_MOVE.load(Ordering::SeqCst)
 }
 
 #[no_mangle]
