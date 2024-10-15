@@ -1,12 +1,13 @@
 #include "mmtk_julia.h"
 #include "mmtk.h"
+#include "gc-mmtk.h"
 #include "mmtk_julia_types.h"
 #include <stdbool.h>
 #include <stddef.h>
-#include "gc.h"
+#include "gc-common.h"
+#include "threading.h"
 
 extern int64_t perm_scanned_bytes;
-extern gc_heapstatus_t gc_heap_stats;
 extern void run_finalizer(jl_task_t *ct, void *o, void *ff);
 extern int gc_n_threads;
 extern jl_ptls_t* gc_all_tls_states;
@@ -14,13 +15,10 @@ extern jl_value_t *cmpswap_names JL_GLOBALLY_ROOTED;
 extern jl_genericmemory_t *jl_global_roots_list JL_GLOBALLY_ROOTED;
 extern jl_genericmemory_t *jl_global_roots_keyset JL_GLOBALLY_ROOTED;
 extern jl_typename_t *jl_array_typename JL_GLOBALLY_ROOTED;
-extern void jl_gc_free_memory(jl_value_t *v, int isaligned);
 extern long BI_METADATA_START_ALIGNED_DOWN;
 extern long BI_METADATA_END_ALIGNED_UP;
 extern uint64_t finalizer_rngState[JL_RNG_SIZE];
 extern const unsigned pool_sizes[];
-extern void mmtk_store_obj_size_c(void* obj, size_t size);
-extern void jl_gc_free_array(jl_array_t *a);
 extern size_t mmtk_get_obj_size(void* obj);
 extern void jl_rng_split(uint64_t to[JL_RNG_SIZE], uint64_t from[JL_RNG_SIZE]);
 extern void _jl_free_stack(jl_ptls_t ptls, void *stkbuf, size_t bufsz);
@@ -29,6 +27,8 @@ extern jl_mutex_t finalizers_lock;
 extern void jl_gc_wait_for_the_world(jl_ptls_t* gc_all_tls_states, int gc_n_threads);
 extern void mmtk_block_thread_for_gc(void);
 extern int64_t live_bytes;
+extern void jl_throw_out_of_memory_error(void);
+extern uint32_t jl_get_gc_disable_counter(void);
 
 
 extern void* new_mutator_iterator(void);
@@ -46,62 +46,21 @@ JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
     mmtk_harness_end();
 }
 
-JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int osize, size_t align, void *ty)
+// This is used in mmtk_sweep_malloced_memory and it is slightly different 
+// from jl_gc_free_memory from gc-stock.c as the stock GC updates the 
+// information in the global variable gc_heap_stats (which is specific to the stock GC)
+static void jl_gc_free_memory(jl_value_t *v, int isaligned) JL_NOTSAFEPOINT
 {
-    // safepoint
-    jl_gc_safepoint_(ptls);
-
-    jl_value_t *v;
-    if ((uintptr_t)ty != jl_buff_tag) {
-        // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_immix_alloc_fast(&ptls->mmtk_mutator, LLT_ALIGN(osize, align), align, sizeof(jl_taggedvalue_t));
-        v = jl_valueof(v_tagged);
-        mmtk_immix_post_alloc_fast(&ptls->mmtk_mutator, v, LLT_ALIGN(osize, align));
-    } else {
-        // allocating an extra word to store the size of buffer objects
-        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_immix_alloc_fast(&ptls->mmtk_mutator, LLT_ALIGN(osize+sizeof(jl_taggedvalue_t), align), align, 0);
-        jl_value_t* v_tagged_aligned = ((jl_value_t*)((char*)(v_tagged) + sizeof(jl_taggedvalue_t)));
-        v = jl_valueof(v_tagged_aligned);
-        mmtk_store_obj_size_c(v, LLT_ALIGN(osize+sizeof(jl_taggedvalue_t), align));
-        mmtk_immix_post_alloc_fast(&ptls->mmtk_mutator, v, LLT_ALIGN(osize+sizeof(jl_taggedvalue_t), align));
-    }
-    
-    ptls->gc_tls.gc_num.allocd += osize;
-    ptls->gc_tls.gc_num.poolalloc++;
-
-    return v;
-}
-
-JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
-{
-    // safepoint
-    jl_gc_safepoint_(ptls);
-
-    size_t offs = offsetof(bigval_t, header);
-    assert(sz >= sizeof(jl_taggedvalue_t) && "sz must include tag");
-    static_assert(offsetof(bigval_t, header) >= sizeof(void*), "Empty bigval header?");
-    static_assert(sizeof(bigval_t) % JL_HEAP_ALIGNMENT == 0, "");
-    size_t allocsz = LLT_ALIGN(sz + offs, JL_CACHE_BYTE_ALIGNMENT);
-    if (allocsz < sz) { // overflow in adding offs, size was "negative"
-        assert(0 && "Error when allocating big object");
-        jl_throw(jl_memory_exception);
-    }
-
-    bigval_t *v = (bigval_t*)mmtk_alloc_large(&ptls->mmtk_mutator, allocsz, JL_CACHE_BYTE_ALIGNMENT, 0, 2);
-
-    if (v == NULL) {
-        assert(0 && "Allocation failed");
-        jl_throw(jl_memory_exception);
-    }
-    v->sz = allocsz;
-
-    ptls->gc_tls.gc_num.allocd += allocsz;
-    ptls->gc_tls.gc_num.bigalloc++;
-
-    jl_value_t *result = jl_valueof(&v->header);
-    mmtk_post_alloc(&ptls->mmtk_mutator, result, allocsz, 2);
-
-    return result;
+    assert(jl_is_genericmemory(v));
+    jl_genericmemory_t *m = (jl_genericmemory_t*)v;
+    assert(jl_genericmemory_how(m) == 1 || jl_genericmemory_how(m) == 2);
+    char *d = (char*)m->ptr;
+    if (isaligned)
+        jl_free_aligned(d);
+    else
+        free(d);
+    gc_num.freed += jl_genericmemory_nbytes(m);
+    gc_num.freecall++;
 }
 
 static void mmtk_sweep_malloced_memory(void) JL_NOTSAFEPOINT
@@ -109,10 +68,10 @@ static void mmtk_sweep_malloced_memory(void) JL_NOTSAFEPOINT
     void* iter = new_mutator_iterator();
     jl_ptls_t ptls2 = get_next_mutator_tls(iter);
     while(ptls2 != NULL) {
-        mallocarray_t *ma = ptls2->gc_tls.heap.mallocarrays;
-        mallocarray_t **pma = &ptls2->gc_tls.heap.mallocarrays;
+        mallocmemory_t *ma = ptls2->gc_tls_common.heap.mallocarrays;
+        mallocmemory_t **pma = &ptls2->gc_tls_common.heap.mallocarrays;
         while (ma != NULL) {
-            mallocarray_t *nxt = ma->next;
+            mallocmemory_t *nxt = ma->next;
             jl_value_t *a = (jl_value_t*)((uintptr_t)ma->a & ~1);
             if (!mmtk_object_is_managed_by_mmtk(a)) {
                 pma = &ma->next;
@@ -121,7 +80,7 @@ static void mmtk_sweep_malloced_memory(void) JL_NOTSAFEPOINT
             }
             if (mmtk_is_live_object(a)) {
                 // if the array has been forwarded, the reference needs to be updated
-                jl_value_t *maybe_forwarded = (jl_value_t*)mmtk_get_possibly_forwared(ma->a);
+                jl_genericmemory_t *maybe_forwarded = (jl_genericmemory_t*)mmtk_get_possibly_forwared(ma->a);
                 ma->a = maybe_forwarded;
                 pma = &ma->next;
             }
@@ -129,8 +88,8 @@ static void mmtk_sweep_malloced_memory(void) JL_NOTSAFEPOINT
                 *pma = nxt;
                 int isaligned = (uintptr_t)ma->a & 1;
                 jl_gc_free_memory(a, isaligned);
-                ma->next = ptls2->gc_tls.heap.mafreelist;
-                ptls2->gc_tls.heap.mafreelist = ma;
+                ma->next = ptls2->gc_tls_common.heap.mafreelist;
+                ptls2->gc_tls_common.heap.mafreelist = ma;
             }
             ma = nxt;
         }
@@ -160,8 +119,8 @@ JL_DLLEXPORT void jl_gc_prepare_to_collect(void)
     jl_task_t *ct = jl_current_task;
     jl_ptls_t ptls = ct->ptls;
     if (jl_atomic_load_acquire(&jl_gc_disable_counter)) {
-        size_t localbytes = jl_atomic_load_relaxed(&ptls->gc_tls.gc_num.allocd) + gc_num.interval;
-        jl_atomic_store_relaxed(&ptls->gc_tls.gc_num.allocd, -(int64_t)gc_num.interval);
+        size_t localbytes = jl_atomic_load_relaxed(&ptls->gc_tls_common.gc_num.allocd) + gc_num.interval;
+        jl_atomic_store_relaxed(&ptls->gc_tls_common.gc_num.allocd, -(int64_t)gc_num.interval);
         static_assert(sizeof(_Atomic(uint64_t)) == sizeof(gc_num.deferred_alloc), "");
         jl_atomic_fetch_add_relaxed((_Atomic(uint64_t)*)&gc_num.deferred_alloc, localbytes);
         return;
@@ -417,7 +376,7 @@ void mmtk_sweep_stack_pools(void)
 
         // free half of stacks that remain unused since last sweep
         for (int p = 0; p < JL_N_STACK_POOLS; p++) {
-            small_arraylist_t *al = &ptls2->gc_tls.heap.free_stacks[p];
+            small_arraylist_t *al = &ptls2->gc_tls_common.heap.free_stacks[p];
             size_t n_to_free;
             if (jl_atomic_load_relaxed(&ptls2->current_task) == NULL) {
                 n_to_free = al->len; // not alive yet or dead, so it does not need these anymore
@@ -439,10 +398,10 @@ void mmtk_sweep_stack_pools(void)
             }
         }
         if (jl_atomic_load_relaxed(&ptls2->current_task) == NULL) {
-            small_arraylist_free(ptls2->gc_tls.heap.free_stacks);
+            small_arraylist_free(ptls2->gc_tls_common.heap.free_stacks);
         }
 
-        small_arraylist_t *live_tasks = &ptls2->gc_tls.heap.live_tasks;
+        small_arraylist_t *live_tasks = &ptls2->gc_tls_common.heap.live_tasks;
         size_t n = 0;
         size_t ndel = 0;
         size_t l = live_tasks->len;
@@ -456,16 +415,16 @@ void mmtk_sweep_stack_pools(void)
                 live_tasks->items[n] = maybe_forwarded;
                 t = maybe_forwarded;
                 assert(jl_is_task(t));
-                if (t->stkbuf == NULL)
+                if (t->ctx.stkbuf == NULL)
                     ndel++; // jl_release_task_stack called
                 else
                     n++;
             } else {
                 ndel++;
-                void *stkbuf = t->stkbuf;
-                size_t bufsz = t->bufsz;
+                void *stkbuf = t->ctx.stkbuf;
+                size_t bufsz = t->ctx.bufsz;
                 if (stkbuf) {
-                    t->stkbuf = NULL;
+                    t->ctx.stkbuf = NULL;
                     _jl_free_stack(ptls2, stkbuf, bufsz);
                 }
 #ifdef _COMPILER_TSAN_ENABLED_
@@ -577,14 +536,15 @@ uintptr_t get_abi_structs_checksum_c(void) {
         ^ print_sizeof(mmtk_jl_task_t)
         ^ print_sizeof(mmtk_jl_weakref_t)
         ^ print_sizeof(mmtk_jl_tls_states_t)
-        ^ print_sizeof(mmtk_jl_thread_heap_t)
-        ^ print_sizeof(mmtk_jl_thread_gc_num_t);
+        ^ print_sizeof(mmtk_jl_thread_heap_common_t)
+        ^ print_sizeof(mmtk_jl_thread_gc_num_common_t);
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
     .jl_throw_out_of_memory_error = jl_throw_out_of_memory_error,
+    .jl_get_gc_disable_counter = jl_get_gc_disable_counter,
     .sweep_malloced_memory = mmtk_sweep_malloced_memory,
     .sweep_stack_pools = mmtk_sweep_stack_pools,
     .wait_in_a_safepoint = mmtk_wait_in_a_safepoint,

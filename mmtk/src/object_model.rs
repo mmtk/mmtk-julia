@@ -1,6 +1,6 @@
 use crate::api::mmtk_get_obj_size;
 use crate::julia_scanning::{
-    ijl_small_typeof, jl_genericmemory_typename, mmtk_jl_genericmemory_how, mmtk_jl_typeof,
+    jl_genericmemory_typename, jl_small_typeof, mmtk_jl_genericmemory_how, mmtk_jl_typeof,
     mmtk_jl_typetagof,
 };
 use crate::{julia_types::*, UPCALLS};
@@ -194,7 +194,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
     {
         // these objects have pointers in them, but no other special handling
         // so we want these to fall through to the end
-        vtag_usize = ijl_small_typeof[vtag.as_usize() / std::mem::size_of::<Address>()] as usize;
+        vtag_usize = jl_small_typeof[vtag.as_usize() / std::mem::size_of::<Address>()] as usize;
         vtag = Address::from_usize(vtag_usize);
     } else if vtag_usize < ((mmtk_jl_small_typeof_tags_mmtk_jl_max_tags as usize) << 4) {
         if vtag_usize == ((mmtk_jl_small_typeof_tags_mmtk_jl_simplevector_tag as usize) << 4) {
@@ -242,7 +242,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             // NB: Strings are aligned to 8 and not to 16
             return llt_align(dtsz + JULIA_HEADER_SIZE, 8);
         } else {
-            let vt = ijl_small_typeof[vtag_usize / std::mem::size_of::<Address>()];
+            let vt = jl_small_typeof[vtag_usize / std::mem::size_of::<Address>()];
             let layout = (*vt).layout;
             let dtsz = (*layout).size as usize;
             debug_assert!(

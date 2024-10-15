@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include <pthread.h>
 #include "mmtkMutator.h"
+#include <stdalign.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #if defined(_CPU_X86_64_)
 #  define _P64
@@ -169,18 +174,52 @@ typedef struct mmtk__jl_sym_t {
     // JL_ATTRIBUTE_ALIGN_PTRSIZE(char name[]);
 } mmtk_jl_sym_t;
 
+#ifdef _P64
+// Union of a ptr and a 3 bit field.
+typedef uintptr_t mmtk_jl_ptr_kind_union_t;
+#else
+typedef struct __attribute__((aligned(8))) { void *val; size_t kind; } mmtk_jl_ptr_kind_union_t;
+#endif
+typedef struct __attribute__((aligned(8))) mmtk__jl_binding_partition_t {
+    /* union {
+     *   // For ->kind == BINDING_KIND_GLOBAL
+     *   jl_value_t *type_restriction;
+     *   // For ->kind == BINDING_KIND_CONST(_IMPORT)
+     *   jl_value_t *constval;
+     *   // For ->kind in (BINDING_KIND_IMPLICIT, BINDING_KIND_EXPLICIT, BINDING_KIND_IMPORT)
+     *   jl_binding_t *imported;
+     * } restriction;
+     *
+     * Currently: Low 3 bits hold ->kind on _P64 to avoid needing >8 byte atomics
+     *
+     * This field is updated atomically with both kind and restriction. The following
+     * transitions are allowed and modeled by the system:
+     *
+     *  GUARD -> any
+     *  (DECLARED, FAILED) -> any non-GUARD
+     *  IMPLICIT -> {EXPLICIT, IMPORTED} (->restriction unchanged only)
+     *
+     * In addition, we permit (with warning about undefined behavior) changing the restriction
+     * pointer for CONST(_IMPORT).
+     *
+     * All other kind or restriction transitions are disallowed.
+     */
+    _Atomic(mmtk_jl_ptr_kind_union_t) restriction;
+    size_t min_world;
+    _Atomic(size_t) max_world;
+    _Atomic(struct mmtk__jl_binding_partition_t*) next;
+    size_t reserved; // Reserved for ->kind. Currently this holds the low bits of ->restriction during serialization
+} mmtk_jl_binding_partition_t;
+
 typedef struct {
+    void *globalref;  // cached GlobalRef for this binding
     _Atomic(void*) value;
-    void* globalref;  // cached GlobalRef for this binding
-    struct mmtk__jl_binding_t* owner;  // for individual imported bindings -- TODO: make _Atomic
-    _Atomic(void*) ty;  // binding type
-    uint8_t constp:1;
-    uint8_t exportp:1;
+    _Atomic(void*) partitions;
+    uint8_t declared:1;
+    uint8_t exportp:1; // `public foo` sets `publicp`, `export foo` sets both `publicp` and `exportp`
     uint8_t publicp:1; // exportp without publicp is not allowed.
-    uint8_t imported:1;
-    uint8_t usingfailed:1;
     uint8_t deprecated:2; // 0=not deprecated, 1=renamed, 2=moved to another package
-    uint8_t padding:1;
+    uint8_t padding:3;
 } mmtk_jl_binding_t;
 
 #define HT_N_INLINE 32
@@ -224,6 +263,8 @@ typedef struct mmtk__jl_module_t {
     struct mmtk__jl_module_t *parent;
     _Atomic(mmtk_jl_svec_t)* bindings;
     _Atomic(mmtk_jl_genericmemory_t)* bindingkeyset; // index lookup by name into bindings
+    void* file;
+    int32_t line;
     // hidden fields:
     mmtk_arraylist_t usings;  // modules with all bindings potentially imported
     mmtk_jl_uuid_t build_id;
@@ -278,17 +319,6 @@ extern void siglongjmp (sigjmp_buf __env, int __val)
 #endif /* Use POSIX.  */
 
 #  define mmtk_jl_jmp_buf sigjmp_buf
-#  if defined(_CPU_ARM_) || defined(_CPU_PPC_) || defined(_CPU_WASM_)
-#    define MAX_ALIGN 8
-#  elif defined(_CPU_AARCH64_)
-// int128 is 16 bytes aligned on aarch64
-#    define MAX_ALIGN 16
-#  elif defined(_P64)
-// Generically we assume MAX_ALIGN is sizeof(void*)
-#    define MAX_ALIGN 8
-#  else
-#    define MAX_ALIGN 4
-#  endif
 
 typedef struct {
     mmtk_jl_jmp_buf uc_mcontext;
@@ -298,9 +328,13 @@ typedef mmtk_jl_stack_context_t mmtk__jl_ucontext_t;
 
 typedef struct {
     union {
-        mmtk__jl_ucontext_t ctx;
-        mmtk_jl_stack_context_t copy_ctx;
+        mmtk__jl_ucontext_t *ctx;
+        mmtk_jl_stack_context_t *copy_ctx;
     };
+    void *stkbuf; // malloc'd memory (either copybuf or stack)
+    size_t bufsz; // actual sizeof stkbuf
+    unsigned int copy_stack:31; // sizeof stack for copybuf
+    unsigned int started:1;
 #if defined(_COMPILER_TSAN_ENABLED_)
     void *tsan_state;
 #endif
@@ -332,7 +366,7 @@ typedef struct {
     _Atomic(uint64_t) bigalloc;
     _Atomic(int64_t) free_acc;
     _Atomic(uint64_t) alloc_acc;
-} mmtk_jl_thread_gc_num_t;
+} mmtk_jl_thread_gc_num_common_t;
 
 typedef struct {
     // variable for tracking weak references
@@ -342,23 +376,12 @@ typedef struct {
     mmtk_small_arraylist_t live_tasks;
 
     // variables for tracking malloc'd arrays
-    struct _mallocarray_t *mallocarrays;
-    struct _mallocarray_t *mafreelist;
-
-    // variables for tracking big objects
-    struct _bigval_t *big_objects;
-
-    // lower bound of the number of pointers inside remembered values
-    int remset_nptr;
-    mmtk_arraylist_t remset;
-
-    // variables for allocating objects from pools
-#define JL_GC_N_MAX_POOLS 51 // conservative. must be kept in sync with `src/julia_internal.h`
-    mmtk_jl_gc_pool_t norm_pools[JL_GC_N_MAX_POOLS];
+    struct _mallocmemory_t *mallocarrays;
+    struct _mallocmemory_t *mafreelist;
 
 #define JL_N_STACK_POOLS 16
     mmtk_small_arraylist_t free_stacks[JL_N_STACK_POOLS];
-} mmtk_jl_thread_heap_t;
+} mmtk_jl_thread_heap_common_t;
 
 // handle to reference an OS thread
 typedef pthread_t mmtk_jl_thread_t;
@@ -400,14 +423,14 @@ typedef struct {
 } mmtk_jl_gc_mark_cache_t;
 
 typedef struct {
-    mmtk_jl_thread_heap_t heap;
-    mmtk_jl_gc_page_stack_t page_metadata_allocd;
-    mmtk_jl_thread_gc_num_t gc_num;
-    mmtk_jl_gc_markqueue_t mark_queue;
-    mmtk_jl_gc_mark_cache_t gc_cache;
-    _Atomic(size_t) gc_sweeps_requested;
-    mmtk_arraylist_t sweep_objs;
+    MMTkMutatorContext mmtk_mutator;
+    size_t malloc_sz_since_last_poll;
 } mmtk_jl_gc_tls_states_t;
+
+typedef struct {
+    mmtk_jl_thread_heap_common_t heap;
+    mmtk_jl_thread_gc_num_common_t gc_num;
+} mmtk_jl_gc_tls_states_common_t;
 
 typedef struct mmtk__jl_tls_states_t {
     int16_t tid;
@@ -440,6 +463,7 @@ typedef struct mmtk__jl_tls_states_t {
     // Counter to disable finalizer **on the current thread**
     int finalizers_inhibited;
     mmtk_jl_gc_tls_states_t gc_tls; // this is very large, and the offset of the first member is baked into codegen
+    mmtk_jl_gc_tls_states_common_t gc_tls_common; // common tls for both GCs
     volatile sig_atomic_t defer_signal;
     _Atomic(struct mmtk__jl_task_t*) current_task;
     struct mmtk__jl_task_t *next_task;
@@ -448,11 +472,6 @@ typedef struct mmtk__jl_tls_states_t {
     void *timing_stack;
     void *stackbase;
     size_t stacksize;
-    union {
-        mmtk__jl_ucontext_t base_ctx; // base context of stack
-        // This hack is needed to support always_copy_stacks:
-        mmtk_jl_stack_context_t copy_stack_ctx;
-    };
     // Temp storage for exception thrown in signal handler. Not rooted.
     mmtk_jl_value_t *sig_exception;
     // Temporary backtrace buffer. Scanned for gc roots when bt_size > 0.
@@ -485,8 +504,6 @@ typedef struct mmtk__jl_tls_states_t {
     //     uint64_t sleep_enter;
     //     uint64_t sleep_leave;
     // )
-    MMTkMutatorContext mmtk_mutator;
-    size_t malloc_sz_since_last_poll;
 
     // some hidden state (usually just because we don't have the type's size declaration)
 } mmtk_jl_tls_states_t;
@@ -529,10 +546,6 @@ typedef struct mmtk__jl_task_t {
     void *eh;
     // saved thread state
     mmtk_jl_ucontext_t ctx;
-    void *stkbuf; // malloc'd memory (either copybuf or stack)
-    size_t bufsz; // actual sizeof stkbuf
-    unsigned int copy_stack:31; // sizeof stack for copybuf
-    unsigned int started:1;
 } mmtk_jl_task_t;
 
 typedef struct {
@@ -669,3 +682,7 @@ enum mmtk_jl_small_typeof_tags {
     mmtk_jl_bitstags_first = mmtk_jl_char_tag, // n.b. bool is not considered a bitstype, since it can be compared by pointer
     mmtk_jl_max_tags = 64
 };
+
+#ifdef __cplusplus
+}
+#endif

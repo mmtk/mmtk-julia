@@ -1,5 +1,5 @@
 #include "mmtk.h"
-#include "gc.h"
+#include "gc-common.h"
 
 extern Julia_Upcalls mmtk_upcalls;
 

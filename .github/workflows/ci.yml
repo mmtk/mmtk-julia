@@ -6,6 +6,7 @@ on:
       - master
       - v1.8.2\+RAI
       - v1.9.2\+RAI
+      - dev
 
 concurrency:
   # Cancels pending runs when a PR gets updated.

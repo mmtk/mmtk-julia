@@ -27,7 +27,8 @@ extern "C" {
     pub static jl_weakref_type: *const mmtk_jl_datatype_t;
     pub static jl_symbol_type: *const mmtk_jl_datatype_t;
     pub static jl_method_type: *const mmtk_jl_datatype_t;
-    pub static mut ijl_small_typeof: [*mut mmtk_jl_datatype_t; 128usize];
+    pub static jl_binding_partition_type: *const mmtk_jl_datatype_t;
+    pub static mut jl_small_typeof: [*mut mmtk_jl_datatype_t; 128usize];
 }
 
 #[inline(always)]
@@ -49,7 +50,7 @@ pub unsafe fn mmtk_jl_typeof(addr: Address) -> *const mmtk_jl_datatype_t {
 pub unsafe fn mmtk_jl_to_typeof(t: Address) -> *const mmtk_jl_datatype_t {
     let t_raw = t.as_usize();
     if t_raw < (JL_MAX_TAGS << 4) {
-        let ty = ijl_small_typeof[t_raw / std::mem::size_of::<Address>()];
+        let ty = jl_small_typeof[t_raw / std::mem::size_of::<Address>()];
         return ty;
     }
     return t.to_ptr::<mmtk_jl_datatype_t>();
@@ -87,7 +88,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
     {
         // these objects have pointers in them, but no other special handling
         // so we want these to fall through to the end
-        vtag_usize = ijl_small_typeof[vtag.as_usize() / std::mem::size_of::<Address>()] as usize;
+        vtag_usize = jl_small_typeof[vtag.as_usize() / std::mem::size_of::<Address>()] as usize;
         vtag = Address::from_usize(vtag_usize);
     } else if vtag_usize < ((mmtk_jl_small_typeof_tags_mmtk_jl_max_tags as usize) << 4) {
         // these objects either have specialing handling
@@ -308,6 +309,15 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
     if npointers == 0 {
         return;
     } else {
+        if vt == jl_binding_partition_type {
+            let bpart_ptr = obj.to_mut_ptr::<mmtk_jl_binding_partition_t>();
+            let restriction = (*bpart_ptr).restriction;
+            let offset = mmtk_decode_restriction_value(restriction);
+            let slot = Address::from_ptr(::std::ptr::addr_of!((*bpart_ptr).restriction));
+            if restriction as usize - offset != 0 {
+                process_offset_slot(closure, slot, offset);
+            }
+        }
         debug_assert!(
             (*layout).nfields > 0 && (*layout).fielddesc_type_custom() != 3,
             "opaque types should have been handled specially"
@@ -379,12 +389,12 @@ pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
     ta: *const mmtk_jl_task_t,
     closure: &mut EV,
 ) {
-    let stkbuf = (*ta).stkbuf;
-    let copy_stack = (*ta).copy_stack_custom();
+    let stkbuf = (*ta).ctx.stkbuf;
+    let copy_stack = (*ta).ctx.copy_stack_custom();
 
     #[cfg(feature = "julia_copy_stack")]
     if stkbuf != std::ptr::null_mut() && copy_stack != 0 {
-        let stkbuf_slot = Address::from_ptr(::std::ptr::addr_of!((*ta).stkbuf));
+        let stkbuf_slot = Address::from_ptr(::std::ptr::addr_of!((*ta).ctx.stkbuf));
         process_slot(closure, stkbuf_slot);
     }
 
@@ -398,8 +408,8 @@ pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
         }
         let stackbase = ((*UPCALLS).get_stackbase)((*ta).tid);
         ub = stackbase as u64;
-        lb = ub - ((*ta).copy_stack() as u64);
-        offset = (*ta).stkbuf as isize - lb as isize;
+        lb = ub - ((*ta).ctx.copy_stack() as u64);
+        offset = (*ta).ctx.stkbuf as isize - lb as isize;
     }
 
     if s != std::ptr::null_mut() {
@@ -522,42 +532,26 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
     closure.visit_slot(JuliaVMSlot::Simple(simple_slot));
 }
 
-// #[inline(always)]
-// pub unsafe fn boot_image_object_has_been_scanned(obj: Address) -> u8 {
-//     let obj_type_addr = mmtk_jl_typeof(obj);
-//     let obj_type = obj_type_addr.to_ptr::<mmtk_jl_datatype_t>();
+// This is based on the function decode_restriction_value from julia_internal.h.
+// However, since MMTk uses the slot to load the object, we get the offset from pku using
+// that offset to pass to process_offset_edge and get the right address.
+#[inline(always)]
+pub fn mmtk_decode_restriction_value(pku: u64) -> usize {
+    #[cfg(target_pointer_width = "64")]
+    {
+        // need to apply (pku & ~0x7) to get the object to be traced
+        // so we use (pku & 0x7) to get the offset from the object
+        // and pass it to process_offset_slot
+        return pku as usize & 0x7;
+    }
 
-//     if obj_type == jl_symbol_type {
-//         return 1;
-//     }
-
-//     if BI_METADATA_START_ALIGNED_DOWN == 0 {
-//         return 0;
-//     }
-
-//     if obj.as_usize() < BI_METADATA_START_ALIGNED_DOWN
-//         || obj.as_usize() >= BI_METADATA_END_ALIGNED_UP
-//     {
-//         return 0;
-//     }
-
-//     return check_metadata_scanned(obj);
-// }
-
-// #[inline(always)]
-// pub unsafe fn boot_image_mark_object_as_scanned(obj: Address) {
-//     if BI_METADATA_START_ALIGNED_DOWN == 0 {
-//         return;
-//     }
-
-//     if obj.as_usize() < BI_METADATA_START_ALIGNED_DOWN
-//         || obj.as_usize() >= BI_METADATA_END_ALIGNED_UP
-//     {
-//         return;
-//     }
-
-//     mark_metadata_scanned(obj);
-// }
+    #[cfg(not(target_pointer_width = "64"))]
+    {
+        // when not #ifdef _P64 we simply return pku.val
+        // i.e., the offset is 0, since val is the first field
+        return 0;
+    }
+}
 
 #[inline(always)]
 pub fn process_offset_slot<EV: SlotVisitor<JuliaVMSlot>>(
