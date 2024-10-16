@@ -23,7 +23,7 @@ jobs:
         run: |
           ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
       - name: Setup tmate session
-        uses: udesou/action-tmate@v3
+        uses: mxschmitt/action-tmate@v3
         with:
           sudo: false
       - name: Style check
