@@ -19,13 +19,13 @@ jobs:
         run: |
           ./.github/scripts/ci-checkout.sh
           ./.github/scripts/ci-setup.sh
-      - name: Build Julia (Debug)
-        run: |
-          ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
         with:
           sudo: false
+      - name: Build Julia (Debug)
+        run: |
+          ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
       - name: Style check
         run: |
           ./.github/scripts/ci-style.sh
