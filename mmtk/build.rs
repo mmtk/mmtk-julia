@@ -59,7 +59,7 @@ fn main() {
         .clang_arg("-std=c++14")
         
         // using X86-64
-        .clang_arg("-march=x86-64")
+        .clang_arg("--target=x86_64-pc-linux-gnu")
         // using MMTK types
         .clang_arg("-DMMTK_GC")
         // Finish the builder and generate the bindings.
