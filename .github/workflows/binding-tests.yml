@@ -21,8 +21,6 @@ jobs:
           ./.github/scripts/ci-setup.sh
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
-        with:
-          sudo: false
       - name: Build Julia (Debug)
         run: |
           ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
