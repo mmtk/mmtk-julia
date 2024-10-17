@@ -27,6 +27,8 @@ fi
 plan_feature=${plan,,}
 moving_feature=${is_moving,,}
 
+
+sudo rm -rf /usr/lib/llvm-1*
 cd $MMTK_JULIA_DIR/mmtk
 cargo build --features $plan_feature,$moving_feature $build_args
 
