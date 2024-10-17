@@ -28,7 +28,10 @@ plan_feature=${plan,,}
 moving_feature=${is_moving,,}
 
 
-sudo rm -rf /usr/lib/llvm-1*
+# For some reason these cause issues with bindgen
+sudo rm -rf /usr/lib/llvm-14
+sudo rm -rf /usr/lib/llvm-13
+
 cd $MMTK_JULIA_DIR/mmtk
 cargo build --features $plan_feature,$moving_feature $build_args
 
