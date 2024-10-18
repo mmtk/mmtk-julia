@@ -38,11 +38,17 @@ declare -a tests_to_skip=(
     '@test !live_bytes_has_grown_too_much' "$JULIA_PATH/test/gc.jl"
     '@test any(page_utilization .> 0)' "$JULIA_PATH/test/gc.jl"
 
+    # Tests that check the reasons for a full sweep and are specific to stock Julia
+    '@test reasons\[:FULL_SWEEP_REASON_FORCED_FULL_SWEEP\] >= 1' "$JULIA_PATH/test/gc.jl"
+    '@test keys(reasons) == Set(Base.FULL_SWEEP_REASONS)' "$JULIA_PATH/test/gc.jl"
+
     # Allocation profiler tests that fail when we inline fastpath allocation
     '@test length(\[a for a in prof.allocs if a.type == MyType\]) >= 1' "$JULIA_PATH/stdlib/Profile/test/allocs.jl"
     '@test length(prof.allocs) >= 1' "$JULIA_PATH/stdlib/Profile/test/allocs.jl"
     '@test length(filter(a->a.type <: type, profile.allocs)) >= NUM_TASKS' "$JULIA_PATH/stdlib/Profile/test/allocs.jl"
-
+    
+    # Test that expects information from heap snapshot which is currently not available in MMTk
+    '@test contains(sshot, "redact_this")' "$JULIA_PATH/stdlib/Profile/test/runtests.jl"
 
     # This test checks GC logging
     '@test occursin("GC: pause", read(tmppath, String))' "$JULIA_PATH/test/misc.jl"
