@@ -1,7 +1,8 @@
 [package]
 name = "mmtk-julia"
 version = "0.1.0"
-authors = ["Eduardo Souza <ledusou@gmail.com>"]
+authors = ["Eduardo Souza <ledusou@gmail.com>", "Yi Lin <qinsoon@gmail.com>"]
+build = "build.rs"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -18,6 +19,7 @@ crate-type = ["cdylib"]
 [build-dependencies]
 cc = "*"
 built = "*"
+bindgen = "*"
 
 [profile.release]
 lto = true
