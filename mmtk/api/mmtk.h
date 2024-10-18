@@ -63,7 +63,7 @@ extern const void* MMTK_SIDE_LOG_BIT_BASE_ADDRESS;
 extern uintptr_t JULIA_MALLOC_BYTES;
 
 /**
-g * Misc
+ * Misc
  */
 extern void mmtk_gc_init(uintptr_t min_heap_size, uintptr_t max_heap_size, uintptr_t n_gcthreads, uintptr_t header_size, uintptr_t tag);
 extern bool mmtk_will_never_move(void* object);
