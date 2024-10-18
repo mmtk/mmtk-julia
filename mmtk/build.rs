@@ -59,6 +59,9 @@ fn main() {
         .clang_arg("-std=c++14")
         // using MMTK types
         .clang_arg("-DMMTK_GC")
+        // using Immix by default to define MMTK_NEEDS_WRITE_BARRIER
+        // but it shouldn't affect the resulting bindings file
+        .clang_arg("-DMMTK_PLAN_IMMIX")
         // Finish the builder and generate the bindings.
         .generate()
         // Unwrap the Result and panic on failure.
