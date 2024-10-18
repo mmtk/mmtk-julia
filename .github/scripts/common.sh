@@ -1,5 +1,5 @@
 BINDING_PATH=$(realpath $(dirname "$0"))/../..
-JULIA_PATH=$BINDING_PATH/vm/julia
+export JULIA_PATH=$BINDING_PATH/vm/julia
 
 RUSTUP_TOOLCHAIN=`cat $BINDING_PATH/mmtk/rust-toolchain`
 JULIA_TEST_ARGS='--check-bounds=yes --startup-file=no --depwarn=error'
