@@ -50,6 +50,7 @@ fn main() {
         .allowlist_item("jl_binding_partition_t")
         .allowlist_item("jl_bt_element_t")
         .allowlist_item("jl_taggedvalue_t")
+        .allowlist_item("_jl_module_using")
         .allowlist_item("MMTkMutatorContext")
         // --opaque-type MMTkMutatorContext
         .opaque_type("MMTkMutatorContext")
