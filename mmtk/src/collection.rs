@@ -1,6 +1,6 @@
 use crate::SINGLETON;
 use crate::{
-    jl_mmtk_prepare_to_collect, jl_mmtk_update_gc_stats, jl_get_gc_disable_counter, jl_hrtime,
+    jl_get_gc_disable_counter, jl_hrtime, jl_mmtk_prepare_to_collect, jl_mmtk_update_gc_stats,
     jl_throw_out_of_memory_error,
 };
 use crate::{JuliaVM, USER_TRIGGERED_GC};
