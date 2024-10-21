@@ -95,23 +95,24 @@ type ProcessSlotFn = *const extern "C" fn(closure: Address, slot: Address);
 
 #[allow(improper_ctypes)]
 extern "C" {
-    pub fn jl_gc_scan_julia_exc_obj(obj: Address, closure: Address, process_slot: ProcessSlotFn);
-    pub fn jl_gc_get_stackbase(tid: i16) -> usize;
+// these are specific to MMTk and defined in gc-mmtk.c
+    pub fn jl_mmtk_scan_julia_exc_obj(obj: Address, closure: Address, process_slot: ProcessSlotFn);
+    pub fn jl_mmtk_get_stackbase(tid: i16) -> usize;
+    pub fn jl_mmtk_sweep_malloced_memory();
+    pub fn jl_mmtk_sweep_stack_pools();
+    pub fn jl_mmtk_update_gc_stats(t: u64, mmtk_live_bytes: usize, is_nursery: bool);
+    pub fn jl_mmtk_get_thread_finalizer_list(tls: OpaquePointer) -> Address;
+    pub fn jl_mmtk_get_to_finalize_list() -> Address;
+    pub fn jl_mmtk_get_marked_finalizers_list() -> Address;
+    pub fn jl_mmtk_get_have_pending_finalizers() -> *mut i32;
+    pub fn jl_mmtk_scan_vm_specific_roots(closure: *mut crate::slots::RootsWorkClosure);
+    pub fn jl_mmtk_update_inlined_array(to: Address, from: Address);
+    pub fn jl_mmtk_prepare_to_collect();
+    pub fn jl_mmtk_get_owner_address(m: Address) -> Address;
+    pub fn jl_mmtk_genericmemory_how(m: Address) -> usize;
+// these are already part of the Julia Runtime
     pub fn jl_throw_out_of_memory_error();
-    pub fn jl_get_gc_disable_counter() -> u32;
-    pub fn jl_gc_mmtk_sweep_malloced_memory();
-    pub fn jl_gc_mmtk_sweep_stack_pools();
-    pub fn jl_hrtime() -> u64;
-    pub fn jl_gc_update_stats(t: u64, mmtk_live_bytes: usize, is_nursery: bool);
-    pub fn jl_gc_get_abi_structs_checksum_c() -> usize;
-    pub fn jl_gc_get_thread_finalizer_list(tls: OpaquePointer) -> Address;
-    pub fn jl_gc_get_to_finalize_list() -> Address;
-    pub fn jl_gc_get_marked_finalizers_list() -> Address;
     pub fn arraylist_grow(a: Address, n: usize);
-    pub fn jl_gc_get_have_pending_finalizers() -> *mut i32;
-    pub fn jl_gc_scan_vm_specific_roots(closure: *mut crate::slots::RootsWorkClosure);
-    pub fn jl_gc_update_inlined_array(to: Address, from: Address);
-    pub fn jl_gc_prepare_to_collect();
-    pub fn jl_gc_get_owner_address_to_mmtk(m: Address) -> Address;
-    pub fn jl_gc_genericmemory_how(m: Address) -> usize;
+    pub fn jl_get_gc_disable_counter() -> u32;
+    pub fn jl_hrtime() -> u64;
 }

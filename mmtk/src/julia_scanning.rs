@@ -10,10 +10,10 @@ use mmtk::vm::SlotVisitor;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-use crate::jl_gc_genericmemory_how;
-use crate::jl_gc_get_owner_address_to_mmtk;
-use crate::jl_gc_get_stackbase;
-use crate::jl_gc_scan_julia_exc_obj;
+use crate::jl_mmtk_genericmemory_how;
+use crate::jl_mmtk_get_owner_address;
+use crate::jl_mmtk_get_stackbase;
+use crate::jl_mmtk_scan_julia_exc_obj;
 
 const JL_MAX_TAGS: usize = 64; // from vm/julia/src/jl_exports.h
 const OFFSET_OF_INLINED_SPACE_IN_MODULE: usize =
@@ -224,7 +224,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             println!("scan_julia_obj {}: genericmemory\n", obj);
         }
         let m = obj.to_ptr::<jl_genericmemory_t>();
-        let how = jl_gc_genericmemory_how(obj);
+        let how = jl_mmtk_genericmemory_how(obj);
 
         if PRINT_OBJ_TYPE {
             println!("scan_julia_obj {}: genericmemory how = {}\n", obj, how);
@@ -365,7 +365,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
 
 #[inline(always)]
 unsafe fn mmtk_jl_genericmemory_data_owner_field_address(m: *const jl_genericmemory_t) -> Address {
-    unsafe { jl_gc_get_owner_address_to_mmtk(Address::from_ptr(m)) }
+    unsafe { jl_mmtk_get_owner_address(Address::from_ptr(m)) }
 }
 
 // #[inline(always)]
@@ -396,7 +396,7 @@ pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
         if ((*ta).tid._M_i) < 0 {
             panic!("tid must be positive.")
         }
-        let stackbase = jl_gc_get_stackbase((*ta).tid._M_i);
+        let stackbase = jl_mmtk_get_stackbase((*ta).tid._M_i);
         ub = stackbase as u64;
         lb = ub - ((*ta).ctx.copy_stack() as u64);
         offset = (*ta).ctx.stkbuf as isize - lb as isize;
@@ -459,7 +459,7 @@ pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
 
     // just call into C, since the code is cold
     if (*ta).excstack != std::ptr::null_mut() {
-        jl_gc_scan_julia_exc_obj(
+        jl_mmtk_scan_julia_exc_obj(
             Address::from_ptr(ta),
             Address::from_mut_ptr(closure),
             process_slot::<EV> as _,

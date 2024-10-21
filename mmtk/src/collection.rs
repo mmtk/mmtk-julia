@@ -1,6 +1,6 @@
 use crate::SINGLETON;
 use crate::{
-    jl_gc_prepare_to_collect, jl_gc_update_stats, jl_get_gc_disable_counter, jl_hrtime,
+    jl_mmtk_prepare_to_collect, jl_mmtk_update_gc_stats, jl_get_gc_disable_counter, jl_hrtime,
     jl_throw_out_of_memory_error,
 };
 use crate::{JuliaVM, USER_TRIGGERED_GC};
@@ -51,7 +51,7 @@ impl Collection<JuliaVM> for VMCollection {
         trace!("gc_end = {}", end);
         let gc_time = end - GC_START.load(Ordering::Relaxed);
         unsafe {
-            jl_gc_update_stats(
+            jl_mmtk_update_gc_stats(
                 gc_time,
                 crate::api::mmtk_used_bytes(),
                 is_current_gc_nursery(),
@@ -76,7 +76,7 @@ impl Collection<JuliaVM> for VMCollection {
     fn block_for_gc(_tls: VMMutatorThread) {
         info!("Triggered GC!");
 
-        unsafe { jl_gc_prepare_to_collect() };
+        unsafe { jl_mmtk_prepare_to_collect() };
 
         info!("Finished blocking mutator for GC!");
     }

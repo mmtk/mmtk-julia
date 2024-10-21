@@ -1,6 +1,6 @@
 use crate::api::mmtk_get_obj_size;
-use crate::jl_gc_genericmemory_how;
-use crate::jl_gc_update_inlined_array;
+use crate::jl_mmtk_genericmemory_how;
+use crate::jl_mmtk_update_inlined_array;
 use crate::julia_scanning::{
     jl_genericmemory_typename, jl_small_typeof, mmtk_jl_typeof, mmtk_jl_typetagof,
 };
@@ -95,7 +95,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             let vt = mmtk_jl_typeof(from.to_raw_address());
 
             if (*vt).name == jl_genericmemory_typename {
-                jl_gc_update_inlined_array(from.to_raw_address(), to_obj.to_raw_address())
+                jl_mmtk_update_inlined_array(from.to_raw_address(), to_obj.to_raw_address())
             }
         }
 
@@ -273,7 +273,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
     assert_eq!(obj_type, vt);
     if (*vt).name == jl_genericmemory_typename {
         let m = obj_address.to_ptr::<jl_genericmemory_t>();
-        let how = jl_gc_genericmemory_how(obj_address);
+        let how = jl_mmtk_genericmemory_how(obj_address);
         let res = if how == 0 {
             let layout = (*(mmtk_jl_typetagof(obj_address).to_ptr::<jl_datatype_t>())).layout;
             let mut sz = (*layout).size as usize * (*m).length as usize;

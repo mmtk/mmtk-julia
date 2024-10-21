@@ -13,9 +13,9 @@ use mmtk::vm::VMBinding;
 use mmtk::Mutator;
 use mmtk::MMTK;
 
-use crate::jl_gc_mmtk_sweep_malloced_memory;
-use crate::jl_gc_mmtk_sweep_stack_pools;
-use crate::jl_gc_scan_vm_specific_roots;
+use crate::jl_mmtk_sweep_malloced_memory;
+use crate::jl_mmtk_sweep_stack_pools;
+use crate::jl_mmtk_scan_vm_specific_roots;
 use crate::JuliaVM;
 
 pub struct VMScanning {}
@@ -153,7 +153,7 @@ impl Scanning<JuliaVM> for VMScanning {
         use crate::slots::RootsWorkClosure;
         let mut roots_closure = RootsWorkClosure::from_roots_work_factory(&mut factory);
         unsafe {
-            jl_gc_scan_vm_specific_roots(&mut roots_closure as _);
+            jl_mmtk_scan_vm_specific_roots(&mut roots_closure as _);
         }
     }
 
@@ -217,8 +217,8 @@ impl SweepVMSpecific {
 impl<VM: VMBinding> GCWork<VM> for SweepVMSpecific {
     fn do_work(&mut self, _worker: &mut GCWorker<VM>, _mmtk: &'static MMTK<VM>) {
         // call sweep malloced arrays and sweep stack pools
-        unsafe { jl_gc_mmtk_sweep_malloced_memory() }
-        unsafe { jl_gc_mmtk_sweep_stack_pools() }
+        unsafe { jl_mmtk_sweep_malloced_memory() }
+        unsafe { jl_mmtk_sweep_stack_pools() }
         self.swept = true;
     }
 }
