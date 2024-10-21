@@ -142,7 +142,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
                 process_offset_slot(closure, slot, offset);
             }
 
-            let nusings = (*m).usings.len;
+            let nusings = (*m).usings.len / 3;
             if nusings > 0 {
                 let mut objary_begin = Address::from_mut_ptr((*m).usings.items);
                 let objary_end = objary_begin.shift::<Address>(nusings as isize);
@@ -152,7 +152,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
                         println!(" - scan usings: {:?}\n", objary_begin);
                     }
                     process_slot(closure, objary_begin);
-                    objary_begin = objary_begin.shift::<Address>(1);
+                    objary_begin = objary_begin.shift::<Address>(3);
                 }
             }
         } else if vtag_usize == ((jl_small_typeof_tags_jl_task_tag as usize) << 4) {
