@@ -142,10 +142,10 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
                 process_offset_slot(closure, slot, offset);
             }
 
-            let nusings = (*m).usings.len / 3;
+            let nusings = (*m).usings.len;
             if nusings > 0 {
                 let mut objary_begin = Address::from_mut_ptr((*m).usings.items);
-                let objary_end = objary_begin.shift::<_jl_module_using>(nusings as isize);
+                let objary_end = objary_begin.shift::<Address>(nusings as isize);
 
                 while objary_begin < objary_end {
                     if PRINT_OBJ_TYPE {
