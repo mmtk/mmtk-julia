@@ -102,6 +102,7 @@ impl Collection<JuliaVM> for VMCollection {
     fn out_of_memory(_tls: VMThread, _err_kind: AllocationError) {
         println!("Out of Memory!");
         unsafe { jl_throw_out_of_memory_error() };
+        panic!("OOM!"); // Seeing if this is triggered by the LinearAlgebra tests
     }
 
     fn vm_live_bytes() -> usize {
