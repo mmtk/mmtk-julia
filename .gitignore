@@ -2,3 +2,4 @@
 julia/*.o
 julia/*.dbj.obj
 .vscode
+mmtk/src/julia_types.rs
