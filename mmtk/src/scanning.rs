@@ -61,7 +61,11 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut root_scan_task = |task: *const _jl_task_t, task_is_root: bool| {
             if !task.is_null() {
                 unsafe {
-                    crate::julia_scanning::mmtk_scan_gcstack(task, &mut tpinning_slot_buffer, Some(&mut pinning_slot_buffer));
+                    crate::julia_scanning::mmtk_scan_gcstack(
+                        task,
+                        &mut tpinning_slot_buffer,
+                        Some(&mut pinning_slot_buffer),
+                    );
                 }
                 if task_is_root {
                     // captures wrong root nodes before creating the work
