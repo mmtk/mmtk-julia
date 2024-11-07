@@ -162,7 +162,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
 
             let ta = obj.to_ptr::<jl_task_t>();
 
-            mmtk_scan_gcstack(ta, closure);
+            mmtk_scan_gcstack(ta, closure, None);
 
             let layout = (*jl_task_type).layout;
             debug_assert!((*layout).fielddesc_type_custom() == 0);
@@ -373,9 +373,10 @@ unsafe fn mmtk_jl_genericmemory_data_owner_field_address(m: *const jl_genericmem
 //     mmtk_jl_genericmemory_data_owner_field_address(m).load::<*const mmtk_jl_value_t>()
 // }
 
-pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
+pub unsafe fn mmtk_scan_gcstack<'a, EV: SlotVisitor<JuliaVMSlot>>(
     ta: *const jl_task_t,
-    closure: &mut EV,
+    mut closure: &'a mut EV,
+    mut pclosure: Option<&'a mut EV>,
 ) {
     let stkbuf = (*ta).ctx.stkbuf;
     let copy_stack = (*ta).ctx.copy_stack_custom();
@@ -404,16 +405,28 @@ pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
         let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
         let mut nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
         debug_assert!(nroots.as_usize() as u32 <= u32::MAX);
-        let mut nr = nroots >> 2;
+        let mut nr = nroots >> 3;
 
         loop {
+            // if the 'pin' bit on the root type is not set, must transitively pin
+            // and therefore use transitive pinning closure
+            let closure_to_use: &mut &mut EV = if (nroots.as_usize() & 4) == 0 {
+                &mut closure
+            } else {
+                // otherwise, use the pinning closure (if available)
+                match &mut pclosure {
+                    Some(c) => c,
+                    None => &mut closure,
+                }
+            };
+
             let rts = Address::from_mut_ptr(s).shift::<Address>(2);
             let mut i = 0;
             while i < nr {
                 if (nroots.as_usize() & 1) != 0 {
                     let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                     let real_addr = get_stack_addr(slot, offset, lb, ub);
-                    process_slot(closure, real_addr);
+                    process_slot(*closure_to_use, real_addr);
                 } else {
                     let real_addr =
                         get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
@@ -429,12 +442,12 @@ pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
 
                     // pointer is not malloced but function is native, so skip it
                     if gc_ptr_tag(slot, 1) {
-                        process_offset_slot(closure, real_addr, 1);
+                        process_offset_slot(*closure_to_use, real_addr, 1);
                         i += 2;
                         continue;
                     }
 
-                    process_slot(closure, real_addr);
+                    process_slot(*closure_to_use, real_addr);
                 }
 
                 i += 1;
@@ -450,7 +463,7 @@ pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
             let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
             let new_nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
             nroots = new_nroots;
-            nr = nroots >> 2;
+            nr = nroots >> 3;
             continue;
         }
     }
