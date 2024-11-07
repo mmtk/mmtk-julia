@@ -53,14 +53,19 @@ impl Scanning<JuliaVM> for VMScanning {
         use mmtk::util::Address;
 
         let ptls: &mut _jl_tls_states_t = unsafe { std::mem::transmute(mutator.mutator_tls) };
-        let mut slot_buffer = SlotBuffer { buffer: vec![] }; // need to be tpinned as they're all from the shadow stack
+        let mut tpinning_slot_buffer = SlotBuffer { buffer: vec![] }; // need to be transitively pinned
+        let mut pinning_slot_buffer = SlotBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
         let mut node_buffer = vec![];
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
         let mut root_scan_task = |task: *const _jl_task_t, task_is_root: bool| {
             if !task.is_null() {
                 unsafe {
-                    crate::julia_scanning::mmtk_scan_gcstack(task, &mut slot_buffer);
+                    crate::julia_scanning::mmtk_scan_gcstack(
+                        task,
+                        &mut tpinning_slot_buffer,
+                        Some(&mut pinning_slot_buffer),
+                    );
                 }
                 if task_is_root {
                     // captures wrong root nodes before creating the work
@@ -134,12 +139,19 @@ impl Scanning<JuliaVM> for VMScanning {
 
         // Push work
         const CAPACITY_PER_PACKET: usize = 4096;
-        for tpinning_roots in slot_buffer
+        for tpinning_roots in tpinning_slot_buffer
             .buffer
             .chunks(CAPACITY_PER_PACKET)
             .map(|c| c.to_vec())
         {
             factory.create_process_tpinning_roots_work(tpinning_roots);
+        }
+        for pinning_roots in pinning_slot_buffer
+            .buffer
+            .chunks(CAPACITY_PER_PACKET)
+            .map(|c| c.to_vec())
+        {
+            factory.create_process_pinning_roots_work(pinning_roots);
         }
         for nodes in node_buffer.chunks(CAPACITY_PER_PACKET).map(|c| c.to_vec()) {
             factory.create_process_pinning_roots_work(nodes);
