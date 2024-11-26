@@ -507,5 +507,7 @@ pub extern "C" fn mmtk_is_pinned(_object: ObjectReference) -> bool {
 
 #[no_mangle]
 pub extern "C" fn get_mmtk_version() -> *const c_char {
-    crate::build_info::MMTK_JULIA_FULL_VERSION_STRING.as_c_str().as_ptr() as _
+    crate::build_info::MMTK_JULIA_FULL_VERSION_STRING
+        .as_c_str()
+        .as_ptr() as _
 }
