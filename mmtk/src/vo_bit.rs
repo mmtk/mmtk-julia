@@ -3,15 +3,17 @@ use core::sync::atomic::Ordering;
 use mmtk::util::Address;
 use std::sync::atomic::AtomicU8;
 
+// This module is a duplicate of MMTK core's side metadata to allow bulk setting for VO bit.
+// The problem is that VO bit is internal to MMTk core, and we cannot access VO bit.
+// FIXME: We should consider refactoring MMTk core to either expose `SideMetadataSpec` for VO bit,
+//        or allow the binding to construct `SideMetadataSpec` for VO bit. For either case, we can
+//        remove this module and remove this code duplication.
+
 // Functions to set the side metadata for the VO bit (copied from mmtk-core)
 pub const VO_BIT_LOG_NUM_OF_BITS: i32 = 0;
 pub const VO_BIT_LOG_BYTES_PER_REGION: usize = mmtk::util::constants::LOG_MIN_OBJECT_SIZE as usize;
 
-pub fn bulk_update_vo_bit(
-    start: Address,
-    size: usize,
-    update_meta_bits: &impl Fn(Address, u8, Address, u8),
-) {
+pub fn bulk_update_vo_bit(start: Address, size: usize) {
     // Update bits for a contiguous side metadata spec. We can simply calculate the data end address, and
     // calculate the metadata address for the data end.
     let update_contiguous = |data_start: Address, data_bytes: usize| {
@@ -22,7 +24,7 @@ pub fn bulk_update_vo_bit(
         let meta_start_shift = meta_byte_lshift(data_start);
         let meta_end = address_to_meta_address(data_start + data_bytes);
         let meta_end_shift = meta_byte_lshift(data_start + data_bytes);
-        update_meta_bits(meta_start, meta_start_shift, meta_end, meta_end_shift);
+        set_meta_bits(meta_start, meta_start_shift, meta_end, meta_end_shift);
     };
 
     // VO bit is global
