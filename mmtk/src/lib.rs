@@ -24,7 +24,6 @@ pub mod reference_glue;
 pub mod scanning;
 pub mod slots;
 pub mod util;
-mod vo_bit;
 
 pub mod julia_finalizer;
 pub mod julia_scanning;
