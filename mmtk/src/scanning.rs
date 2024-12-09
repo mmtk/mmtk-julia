@@ -14,8 +14,8 @@ use mmtk::Mutator;
 use mmtk::MMTK;
 
 use crate::jl_gc_mmtk_sweep_malloced_memory;
-use crate::jl_gc_sweep_stack_pools_and_mtarraylist_buffers;
 use crate::jl_gc_scan_vm_specific_roots;
+use crate::jl_gc_sweep_stack_pools_and_mtarraylist_buffers;
 use crate::JuliaVM;
 
 pub struct VMScanning {}
