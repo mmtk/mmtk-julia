@@ -19,6 +19,7 @@ pub mod active_plan;
 pub mod api;
 mod build_info;
 pub mod collection;
+pub mod conservative;
 pub mod object_model;
 pub mod reference_glue;
 pub mod scanning;
@@ -116,4 +117,18 @@ extern "C" {
     pub fn arraylist_grow(a: Address, n: usize);
     pub fn jl_get_gc_disable_counter() -> u32;
     pub fn jl_hrtime() -> u64;
+    pub fn jl_task_stack_buffer(
+        task: *const crate::julia_types::jl_task_t,
+        size: *mut u64,
+        ptid: *mut i32,
+    ) -> Address;
+}
+
+#[macro_export]
+macro_rules! early_return_for_non_moving {
+    ($ret_val:expr) => {
+        if cfg!(feature = "non_moving") {
+            return $ret_val;
+        }
+    };
 }

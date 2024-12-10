@@ -53,13 +53,18 @@ impl Scanning<JuliaVM> for VMScanning {
         use mmtk::util::Address;
 
         let ptls: &mut _jl_tls_states_t = unsafe { std::mem::transmute(mutator.mutator_tls) };
+        let pthread = ptls.system_id;
         let mut tpinning_slot_buffer = SlotBuffer { buffer: vec![] }; // need to be transitively pinned
         let mut pinning_slot_buffer = SlotBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
         let mut node_buffer = vec![];
 
+        // Conservatively scan registers saved with the thread
+        crate::conservative::mmtk_conservative_scan_ptls_registers(ptls);
+
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
         let mut root_scan_task = |task: *const _jl_task_t, task_is_root: bool| {
             if !task.is_null() {
+                // Scan gc preserve and shadow stacks
                 unsafe {
                     crate::julia_scanning::mmtk_scan_gcpreserve_stack(
                         task,
@@ -71,6 +76,17 @@ impl Scanning<JuliaVM> for VMScanning {
                         Some(&mut pinning_slot_buffer),
                     );
                 }
+
+                // Conservatively scan native stacks to make sure we won't move objects that the runtime is using.
+                log::debug!(
+                    "Scanning ptls {:?}, pthread {:x}",
+                    mutator.mutator_tls,
+                    pthread
+                );
+                // Conservative scan stack and registers
+                crate::conservative::mmtk_conservative_scan_task_stack(task);
+                crate::conservative::mmtk_conservative_scan_task_registers(task);
+
                 if task_is_root {
                     // captures wrong root nodes before creating the work
                     debug_assert!(
@@ -181,6 +197,9 @@ impl Scanning<JuliaVM> for VMScanning {
         process_object(object, slot_visitor);
     }
     fn notify_initial_thread_scan_complete(_partial_scan: bool, _tls: VMWorkerThread) {
+        // pin conservative roots from stack scanning
+        crate::conservative::pin_conservative_roots();
+
         let sweep_vm_specific_work = SweepVMSpecific::new();
         memory_manager::add_work_packet(
             &SINGLETON,
