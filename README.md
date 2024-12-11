@@ -5,11 +5,11 @@
 ```
 git clone https://github.com/mmtk/mmtk-julia
 git clone https://github.com/mmtk/julia
-(cd julia && git checkout dev && echo 'WITH_MMTK=1' > Make.user)
+(cd julia && git checkout dev && echo 'MMTK_PLAN=Immix' > Make.user) # or MMTK_PLAN=StickyImmix to use Sticky Immix
 export JULIA_PATH=`pwd`/julia
 export MMTK_JULIA_DIR=`pwd`/mmtk-julia
 (cd mmtk-julia/mmtk && cargo build --features immix --release)   # or drop "--release" for a debug build
-MMTK_PLAN=Immix MMTK_BUILD=release MMTK_JULIA_DIR=`pwd`/mmtk-julia make -C julia  # or "MMTK_BUILD=debug"
+MMTK_BUILD=release MMTK_JULIA_DIR=`pwd`/mmtk-julia make -C julia  # or "MMTK_BUILD=debug"
 ```
 
 If you would like debugging information in your release build of MMTk, add `debug = true` under `[profile.release]` in `mmtk/Cargo.toml`.
@@ -45,7 +45,7 @@ For a release build with debugging information, first add `debug = true` under `
 
 To build Julia with MMTk, first ensure you have the prerequisites for building both [Julia](https://github.com/JuliaLang/julia/blob/master/doc/src/devdocs/build/build.md#required-build-tools-and-external-libraries) and [MMTk](https://github.com/mmtk/mmtk-core#requirements).
 
-Next create a `Make.user` file in the top-level directory of the Julia repository consisting of the line `WITH_MMTK=1`.
+Next create a `Make.user` file in the top-level directory of the Julia repository consisting of the line `MMTK_PLAN=Immix` or `MMTK_PLAN=StickyImmix`.
 
 Finally, set the following environment variables:
 
@@ -60,7 +60,7 @@ Alternatively you can set the environment variables in your `Make.user`
 ```
 export MMTK_BUILD := release
 export MMTK_JULIA_DIR := <path-to-mmtk-julia>
-export MMTK_PLAN := Immix
+export MMTK_PLAN := Immix # or export MMTK_PLAN := StickyImmix
 ```
 
 ### Heap Size
