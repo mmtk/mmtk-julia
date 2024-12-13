@@ -1,3 +1,0 @@
-JULIA_BRANCH = add-makefile-support
-JULIA_SHA1 = 67f3f87f5e05ce9242eef079181ed4d7471a1507
-JULIA_GIT_URL := https://github.com/udesou/julia.git

@@ -3,7 +3,9 @@ MMTK_MOVING ?= 1
 MMTK_PLAN ?= Immix
 CURR_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-include $(CURR_PATH)/julia.version
+# Getting metadata about Julia repo from Cargo file
+JULIA_GIT_URL= $(shell cargo read-manifest --manifest-path=$(CURR_PATH)/mmtk/Cargo.toml | python -c 'import json,sys; print(json.load(sys.stdin)["metadata"]["julia"]["julia_repo"])')
+JULIA_VERSION= $(shell cargo read-manifest --manifest-path=$(CURR_PATH)/mmtk/Cargo.toml | python -c 'import json,sys; print(json.load(sys.stdin)["metadata"]["julia"]["julia_version"])')
 
 # If the Julia directory doesn't exist
 # Clone it as a sibling of mmtk-julia
@@ -31,11 +33,11 @@ clone-julia:
 		echo "Cloning repository from $(JULIA_GIT_URL)"; \
 		git clone $(JULIA_GIT_URL) $(JULIA_PATH) --quiet; \
 		cd $(JULIA_PATH) && \
-		if git checkout $(JULIA_SHA1) --quiet; then \
-			echo "Checked out commit $(JULIA_SHA1)"; \
+		if git checkout $(JULIA_VERSION) --quiet; then \
+			echo "Checked out commit $(JULIA_VERSION)"; \
 		else \
-			echo "Commit $(JULIA_SHA1) not found. Checking out tip of branch $(JULIA_BRANCH) instead."; \
-			git checkout $(JULIA_BRANCH) --quiet; \
+			echo "Error: Commit $(GIT_COMMIT) does not exist."; \
+			exit 1; \
 		fi; \
 	else \
 		echo "Directory $(JULIA_PATH) already exists. Skipping clone-julia."; \
@@ -57,7 +59,7 @@ julia: clone-julia
 	@echo "Building the Julia project in $(JULIA_PATH)";
 	@cd $(JULIA_PATH) && $(PROJECT_DIRS) $(MMTK_VARS) make
 
-# Build the Julia project using a debug build (which will do a binding-debug build as part of their deps build)
+# Build the Julia project using a debug build (which will do a release build of the binding, unless MMTK_BUILD=debug)
 julia-debug: clone-julia
 	@echo "Building the Julia project in $(JULIA_PATH)";
 	@cd $(JULIA_PATH) && $(PROJECT_DIRS) $(MMTK_VARS) make debug
