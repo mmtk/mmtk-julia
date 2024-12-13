@@ -22,7 +22,7 @@ $(error "Unsupported MMTk plan: $(MMTK_PLAN)")
 endif
 
 ifeq ($(MMTK_MOVING), 0)
-CARGO_FEATURES += non_moving
+CARGO_FEATURES +=,non_moving
 endif
 
 # Clone the repository if the directory does not exist
