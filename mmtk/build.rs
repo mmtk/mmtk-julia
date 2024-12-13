@@ -1,4 +1,5 @@
 extern crate bindgen;
+use std::path::Path;
 
 // Use bindgen to build Rust bindings for Julia
 
@@ -13,17 +14,28 @@ fn main() {
     };
 
     // running `make julia_version.h` in $JULIA_PATH/src to generate julia_version.h
-    std::process::Command::new("make")
-        .current_dir(format!("{}/src", julia_dir))
-        .args(["julia_version.h"])
-        .output()
-        .expect("failed to execute process");
+    if !Path::new(format!("{}/src/julia_version.h", julia_dir).as_str()).exists() {
+        std::process::Command::new("make")
+            .current_dir(format!("{}/src", julia_dir))
+            .args(["julia_version.h"])
+            .output()
+            .expect("failed to execute process");
+    }
 
     // runing `make` in $JULIA_PATH/deps to generate $JULIA_PATH/usr/include, in particular libunwind.h
-    std::process::Command::new("make")
-        .current_dir(format!("{}/deps", julia_dir))
-        .output()
-        .expect("failed to execute process");
+    // skip this process if that path already exists since
+    // the .h files could have already beeen generated when building via Makefile
+    if !Path::new(format!("{}/usr/include", julia_dir).as_str()).exists() {
+        println!(
+            "WARNING: running make inside {}/deps to generate the necessary .h files!",
+            julia_dir
+        );
+        std::process::Command::new("make")
+            .current_dir(format!("{}/deps", julia_dir))
+            .env("MMTK_PLAN", "None") // Make sure this call doesn't try to compile the binding again
+            .output()
+            .expect("failed to execute process");
+    }
 
     let bindings = bindgen::Builder::default()
         .header(format!("{}/src/julia.h", julia_dir))

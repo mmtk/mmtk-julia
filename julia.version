@@ -1,3 +1,3 @@
-JULIA_BRANCH = upstream-ready/immix
-JULIA_SHA1 = 3124e4e1c50dfb24161366474868507c2f6f186d
-JULIA_GIT_URL := https://github.com/mmtk/julia.git
+JULIA_BRANCH = add-makefile-support
+JULIA_SHA1 = 67f3f87f5e05ce9242eef079181ed4d7471a1507
+JULIA_GIT_URL := https://github.com/udesou/julia.git

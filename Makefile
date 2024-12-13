@@ -38,29 +38,29 @@ clone-julia:
 			git checkout $(JULIA_BRANCH) --quiet; \
 		fi; \
 	else \
-		echo "Directory $(JULIA_PATH) already exists. Skipping clone."; \
+		echo "Directory $(JULIA_PATH) already exists. Skipping clone-julia."; \
 	fi
 
 # Build the mmtk-julia project
 # Note that we might need to clone julia if it doesn't exist  
 # since we need to run bindgen as part of building mmtk-julia
-binding: clone-julia
+release: clone-julia
 	@echo "Building the Rust project in $(MMTK_JULIA_DIR)mmtk";
 	@cd $(MMTK_JULIA_DIR)mmtk && $(PROJECT_DIRS) cargo build --features $(CARGO_FEATURES) --release
 
-binding-debug: clone-julia
+debug: clone-julia
 	@echo "Building the Rust project in $(MMTK_JULIA_DIR) using a debug build";
 	@cd $(MMTK_JULIA_DIR)mmtk && $(PROJECT_DIRS) cargo build --features $(CARGO_FEATURES) 
 
 # Build the Julia project (which will build the binding as part of their deps build)
 julia: clone-julia
 	@echo "Building the Julia project in $(JULIA_PATH)";
-	@cd $(JULIA_PATH) && $(MMTK_VARS) make
+	@cd $(JULIA_PATH) && $(PROJECT_DIRS) $(MMTK_VARS) make
 
-# Build the Julia project using a debug build (which will do a binding-debug as part of their deps build)
+# Build the Julia project using a debug build (which will do a binding-debug build as part of their deps build)
 julia-debug: clone-julia
 	@echo "Building the Julia project in $(JULIA_PATH)";
-	@cd $(JULIA_PATH) && $(MMTK_VARS) make debug
+	@cd $(JULIA_PATH) && $(PROJECT_DIRS) $(MMTK_VARS) make debug
 
 # Clean up the build artifacts
 clean:
@@ -68,4 +68,4 @@ clean:
 	@cd $(JULIA_PATH) && make clean
 	@cd $(MMTK_JULIA_DIR)mmtk && cargo clean
 
-.PHONY: clone-julia binding binding-debug julia julia-debug
+.PHONY: clone-julia release debug julia julia-debug clean
