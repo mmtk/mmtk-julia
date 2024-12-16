@@ -36,10 +36,6 @@ fn main() {
     // skip this process if that path already exists since
     // the .h files could have already beeen generated when building via Makefile
     if !Path::new(format!("{}/usr/include", buildroot_dir).as_str()).exists() {
-        println!(
-            "WARNING: running make inside {}/deps to generate the necessary .h files!",
-            julia_dir
-        );
         std::process::Command::new("make")
             .current_dir(format!("{}/deps", julia_dir))
             .env("BUILDDIR", buildroot_dir.clone())
