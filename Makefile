@@ -7,9 +7,12 @@ CURR_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 JULIA_GIT_URL= $(shell cargo read-manifest --manifest-path=$(CURR_PATH)/mmtk/Cargo.toml | python -c 'import json,sys; print(json.load(sys.stdin)["metadata"]["julia"]["julia_repo"])')
 JULIA_VERSION= $(shell cargo read-manifest --manifest-path=$(CURR_PATH)/mmtk/Cargo.toml | python -c 'import json,sys; print(json.load(sys.stdin)["metadata"]["julia"]["julia_version"])')
 
-# If the Julia directory doesn't exist
-# Clone it as a sibling of mmtk-julia
-JULIA_PATH ?= $(CURR_PATH)../julia
+# If the Julia directory doesn't exist throw an error
+# since we need it to generate the bindgen bindings
+ifeq (${JULIA_PATH},)
+$(error "JULIA_PATH must be set to generate Rust bindings")
+endif
+
 MMTK_JULIA_DIR := $(CURR_PATH)
 
 PROJECT_DIRS := JULIA_PATH=$(JULIA_PATH) MMTK_JULIA_DIR=$(MMTK_JULIA_DIR)
@@ -27,40 +30,24 @@ ifeq ($(MMTK_MOVING), 0)
 CARGO_FEATURES := $(CARGO_FEATURES),non_moving
 endif
 
-# Clone the repository if the directory does not exist
-clone-julia:
-	@if [ ! -d "$(JULIA_PATH)" ]; then \
-		echo "Cloning repository from $(JULIA_GIT_URL)"; \
-		git clone $(JULIA_GIT_URL) $(JULIA_PATH) --quiet; \
-		cd $(JULIA_PATH) && \
-		if git checkout $(JULIA_VERSION) --quiet; then \
-			echo "Checked out commit $(JULIA_VERSION)"; \
-		else \
-			echo "Error: Commit $(GIT_COMMIT) does not exist."; \
-			exit 1; \
-		fi; \
-	else \
-		echo "Directory $(JULIA_PATH) already exists. Skipping clone-julia."; \
-	fi
-
 # Build the mmtk-julia project
 # Note that we might need to clone julia if it doesn't exist  
 # since we need to run bindgen as part of building mmtk-julia
-release: clone-julia
+release:
 	@echo "Building the Rust project in $(MMTK_JULIA_DIR)mmtk";
 	@cd $(MMTK_JULIA_DIR)mmtk && $(PROJECT_DIRS) cargo build --features $(CARGO_FEATURES) --release
 
-debug: clone-julia
+debug:
 	@echo "Building the Rust project in $(MMTK_JULIA_DIR) using a debug build";
 	@cd $(MMTK_JULIA_DIR)mmtk && $(PROJECT_DIRS) cargo build --features $(CARGO_FEATURES) 
 
 # Build the Julia project (which will build the binding as part of their deps build)
-julia: clone-julia
+julia:
 	@echo "Building the Julia project in $(JULIA_PATH)";
 	@cd $(JULIA_PATH) && $(PROJECT_DIRS) $(MMTK_VARS) make
 
 # Build the Julia project using a debug build (which will do a release build of the binding, unless MMTK_BUILD=debug)
-julia-debug: clone-julia
+julia-debug:
 	@echo "Building the Julia project in $(JULIA_PATH)";
 	@cd $(JULIA_PATH) && $(PROJECT_DIRS) $(MMTK_VARS) make debug
 
@@ -70,4 +57,4 @@ clean:
 	@cd $(JULIA_PATH) && make clean
 	@cd $(MMTK_JULIA_DIR)mmtk && cargo clean
 
-.PHONY: clone-julia release debug julia julia-debug clean
+.PHONY: release debug julia julia-debug clean
