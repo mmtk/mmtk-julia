@@ -9,7 +9,9 @@ lazy_static! {
     pub static ref CONSERVATIVE_ROOTS: Mutex<HashSet<ObjectReference>> = Mutex::new(HashSet::new());
 }
 pub fn pin_conservative_roots() {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
+
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
     let n_roots = roots.len();
     roots.retain(|obj| mmtk::memory_manager::pin_object(*obj));
@@ -17,7 +19,9 @@ pub fn pin_conservative_roots() {
     log::debug!("Conservative roots: {}, pinned: {}", n_roots, n_pinned);
 }
 pub fn unpin_conservative_roots() {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
+
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
     let n_pinned = roots.len();
     let mut n_live = 0;
@@ -34,7 +38,9 @@ pub fn unpin_conservative_roots() {
     );
 }
 pub fn mmtk_conservative_scan_task_stack(ta: *const jl_task_t) {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
+
     let mut size: u64 = 0;
     let mut ptid: i32 = 0;
     log::info!("mmtk_conservative_scan_native_stack begin ta = {:?}", ta);
@@ -58,12 +64,16 @@ pub fn mmtk_conservative_scan_task_stack(ta: *const jl_task_t) {
     }
 }
 pub fn mmtk_conservative_scan_task_registers(ta: *const jl_task_t) {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
+
     let (lo, hi) = get_range(&unsafe { &*ta }.ctx);
     conservative_scan_range(lo, hi);
 }
 pub fn mmtk_conservative_scan_ptls_registers(ptls: &mut _jl_tls_states_t) {
-    crate::early_return_for_non_moving!(());
+    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_current_gc!();
+
     let (lo, hi) = get_range(&((*ptls).gc_tls.ctx_at_the_time_gc_started));
     conservative_scan_range(lo, hi);
 }
