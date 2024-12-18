@@ -4,7 +4,7 @@ use crate::{
     jl_hrtime, jl_throw_out_of_memory_error,
 };
 use crate::{JuliaVM, USER_TRIGGERED_GC};
-use log::{info, trace};
+use log::{debug, trace};
 use mmtk::util::alloc::AllocationError;
 use mmtk::util::heap::GCTriggerPolicy;
 use mmtk::util::opaque_pointer::*;
@@ -15,6 +15,7 @@ use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering};
 use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
 
 pub static GC_START: AtomicU64 = AtomicU64::new(0);
+static CURRENT_GC_MAY_MOVE: AtomicBool = AtomicBool::new(true);
 
 use std::collections::HashSet;
 use std::sync::RwLock;
@@ -52,11 +53,18 @@ impl Collection<JuliaVM> for VMCollection {
 
         trace!("Stopped the world!");
 
+        // Store if the current GC may move objects -- we will use it when the current GC finishes.
+        // We cache the value here just in case MMTk may clear it before we use the value.
+        CURRENT_GC_MAY_MOVE.store(
+            crate::SINGLETON.get_plan().current_gc_may_move_object(),
+            Ordering::SeqCst,
+        );
+
         // Tell MMTk the stacks are ready.
         {
             use mmtk::vm::ActivePlan;
             for mutator in crate::active_plan::VMActivePlan::mutators() {
-                info!("stop_all_mutators: visiting {:?}", mutator.mutator_tls);
+                debug!("stop_all_mutators: visiting {:?}", mutator.mutator_tls);
                 mutator_visitor(mutator);
             }
         }
@@ -68,6 +76,9 @@ impl Collection<JuliaVM> for VMCollection {
     }
 
     fn resume_mutators(_tls: VMWorkerThread) {
+        // unpin conservative roots
+        crate::conservative::unpin_conservative_roots();
+
         // Get the end time of the GC
         let end = unsafe { jl_hrtime() };
         trace!("gc_end = {}", end);
@@ -86,7 +97,7 @@ impl Collection<JuliaVM> for VMCollection {
         let (_, cvar) = &*STW_COND.clone();
         cvar.notify_all();
 
-        info!(
+        debug!(
             "Live bytes = {}, total bytes = {}",
             crate::api::mmtk_used_bytes(),
             crate::api::mmtk_total_bytes()
@@ -96,11 +107,11 @@ impl Collection<JuliaVM> for VMCollection {
     }
 
     fn block_for_gc(_tls: VMMutatorThread) {
-        info!("Triggered GC!");
+        debug!("Triggered GC!");
 
         unsafe { jl_gc_prepare_to_collect() };
 
-        info!("Finished blocking mutator for GC!");
+        debug!("Finished blocking mutator for GC!");
     }
 
     fn spawn_gc_thread(_tls: VMThread, ctx: GCThreadContext<JuliaVM>) {
@@ -158,6 +169,10 @@ pub fn is_current_gc_nursery() -> bool {
     }
 }
 
+pub fn is_current_gc_moving() -> bool {
+    CURRENT_GC_MAY_MOVE.load(Ordering::SeqCst)
+}
+
 #[no_mangle]
 pub extern "C" fn mmtk_block_thread_for_gc() {
     AtomicBool::store(&BLOCK_FOR_GC, true, Ordering::SeqCst);
@@ -165,7 +180,7 @@ pub extern "C" fn mmtk_block_thread_for_gc() {
     let (lock, cvar) = &*STW_COND.clone();
     let mut count = lock.lock().unwrap();
 
-    info!("Blocking for GC!");
+    debug!("Blocking for GC!");
 
     AtomicBool::store(&WORLD_HAS_STOPPED, true, Ordering::SeqCst);
 

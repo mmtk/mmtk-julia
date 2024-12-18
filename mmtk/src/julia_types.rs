@@ -2328,6 +2328,99 @@ const _: () = {
     ["Offset of field: _jl_excstack_t::reserved_size"]
         [::std::mem::offset_of!(_jl_excstack_t, reserved_size) - 8usize];
 };
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct _bigval_t {
+    pub next: *mut _bigval_t,
+    pub prev: *mut _bigval_t,
+    pub sz: usize,
+    pub _padding: [*mut ::std::os::raw::c_void; 4usize],
+    pub __bindgen_anon_1: _bigval_t__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union _bigval_t__bindgen_ty_1 {
+    pub header: usize,
+    pub bits: _bigval_t__bindgen_ty_1__bindgen_ty_1,
+}
+#[repr(C)]
+#[repr(align(8))]
+#[derive(Debug, Copy, Clone)]
+pub struct _bigval_t__bindgen_ty_1__bindgen_ty_1 {
+    pub _bitfield_align_1: [u8; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 1usize]>,
+    pub __bindgen_padding_0: [u8; 7usize],
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _bigval_t__bindgen_ty_1__bindgen_ty_1"]
+        [::std::mem::size_of::<_bigval_t__bindgen_ty_1__bindgen_ty_1>() - 8usize];
+    ["Alignment of _bigval_t__bindgen_ty_1__bindgen_ty_1"]
+        [::std::mem::align_of::<_bigval_t__bindgen_ty_1__bindgen_ty_1>() - 8usize];
+};
+impl _bigval_t__bindgen_ty_1__bindgen_ty_1 {
+    #[inline]
+    pub fn gc(&self) -> usize {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 2u8) as u64) }
+    }
+    #[inline]
+    pub fn set_gc(&mut self, val: usize) {
+        unsafe {
+            let val: u64 = ::std::mem::transmute(val);
+            self._bitfield_1.set(0usize, 2u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn gc_raw(this: *const Self) -> usize {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 1usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                0usize,
+                2u8,
+            ) as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_gc_raw(this: *mut Self, val: usize) {
+        unsafe {
+            let val: u64 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 1usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                0usize,
+                2u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn new_bitfield_1(gc: usize) -> __BindgenBitfieldUnit<[u8; 1usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 1usize]> = Default::default();
+        __bindgen_bitfield_unit.set(0usize, 2u8, {
+            let gc: u64 = unsafe { ::std::mem::transmute(gc) };
+            gc as u64
+        });
+        __bindgen_bitfield_unit
+    }
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _bigval_t__bindgen_ty_1"][::std::mem::size_of::<_bigval_t__bindgen_ty_1>() - 8usize];
+    ["Alignment of _bigval_t__bindgen_ty_1"]
+        [::std::mem::align_of::<_bigval_t__bindgen_ty_1>() - 8usize];
+    ["Offset of field: _bigval_t__bindgen_ty_1::header"]
+        [::std::mem::offset_of!(_bigval_t__bindgen_ty_1, header) - 0usize];
+    ["Offset of field: _bigval_t__bindgen_ty_1::bits"]
+        [::std::mem::offset_of!(_bigval_t__bindgen_ty_1, bits) - 0usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _bigval_t"][::std::mem::size_of::<_bigval_t>() - 64usize];
+    ["Alignment of _bigval_t"][::std::mem::align_of::<_bigval_t>() - 8usize];
+    ["Offset of field: _bigval_t::next"][::std::mem::offset_of!(_bigval_t, next) - 0usize];
+    ["Offset of field: _bigval_t::prev"][::std::mem::offset_of!(_bigval_t, prev) - 8usize];
+    ["Offset of field: _bigval_t::sz"][::std::mem::offset_of!(_bigval_t, sz) - 16usize];
+    ["Offset of field: _bigval_t::_padding"][::std::mem::offset_of!(_bigval_t, _padding) - 24usize];
+};
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of template specialization: std_atomic_open0_size_t_close0"]
