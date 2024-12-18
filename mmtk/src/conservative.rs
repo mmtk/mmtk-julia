@@ -43,21 +43,21 @@ pub fn mmtk_conservative_scan_task_stack(ta: *const jl_task_t) {
 
     let mut size: u64 = 0;
     let mut ptid: i32 = 0;
-    log::info!("mmtk_conservative_scan_native_stack begin ta = {:?}", ta);
+    log::debug!("mmtk_conservative_scan_native_stack begin ta = {:?}", ta);
     let stk = unsafe { jl_task_stack_buffer(ta, &mut size as *mut _, &mut ptid as *mut _) };
-    log::info!(
+    log::debug!(
         "mmtk_conservative_scan_native_stack continue stk = {}, size = {}, ptid = {:x}",
         stk,
         size,
         ptid
     );
     if !stk.is_zero() {
-        log::info!("Conservatively scan the stack");
+        log::debug!("Conservatively scan the stack");
         // See jl_guard_size
         // TODO: Are we sure there are always guard pages we need to skip?
         const JL_GUARD_PAGE: usize = 4096 * 8;
         let guard_page_start = stk + JL_GUARD_PAGE;
-        log::info!("Skip guard page: {}, {}", stk, guard_page_start);
+        log::debug!("Skip guard page: {}, {}", stk, guard_page_start);
         conservative_scan_range(guard_page_start, stk + size as usize);
     } else {
         log::warn!("Skip stack for {:?}", ta);
@@ -92,7 +92,7 @@ fn conservative_scan_range(lo: Address, hi: Address) {
         hi.align_down(BYTES_IN_ADDRESS)
     };
     let lo = lo.align_up(BYTES_IN_ADDRESS);
-    log::info!("Scan {} (lo) {} (hi)", lo, hi);
+    log::trace!("Scan {} (lo) {} (hi)", lo, hi);
     let mut cursor = hi;
     while cursor >= lo {
         let addr = unsafe { cursor.load::<Address>() };
