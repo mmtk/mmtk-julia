@@ -3,10 +3,6 @@ MMTK_MOVING ?= 1
 MMTK_PLAN ?= Immix
 CURR_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# Getting metadata about Julia repo from Cargo file
-JULIA_GIT_URL= $(shell cargo read-manifest --manifest-path=$(CURR_PATH)/mmtk/Cargo.toml | python -c 'import json,sys; print(json.load(sys.stdin)["metadata"]["julia"]["julia_repo"])')
-JULIA_VERSION= $(shell cargo read-manifest --manifest-path=$(CURR_PATH)/mmtk/Cargo.toml | python -c 'import json,sys; print(json.load(sys.stdin)["metadata"]["julia"]["julia_version"])')
-
 # If the Julia directory doesn't exist throw an error
 # since we need it to generate the bindgen bindings
 ifeq (${JULIA_PATH},)
