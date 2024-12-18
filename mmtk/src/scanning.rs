@@ -83,9 +83,11 @@ impl Scanning<JuliaVM> for VMScanning {
                     mutator.mutator_tls,
                     pthread
                 );
-                // Conservative scan stack and registers
-                crate::conservative::mmtk_conservative_scan_task_stack(task);
-                crate::conservative::mmtk_conservative_scan_task_registers(task);
+                // Conservative scan stack and registers. If the task hasn't been started, we do not need to scan its stack and registers.
+                if unsafe { (*task).start == crate::jl_true } {
+                    crate::conservative::mmtk_conservative_scan_task_stack(task);
+                    crate::conservative::mmtk_conservative_scan_task_registers(task);
+                }
 
                 if task_is_root {
                     // captures wrong root nodes before creating the work

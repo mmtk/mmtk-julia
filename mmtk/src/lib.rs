@@ -122,6 +122,7 @@ extern "C" {
         size: *mut u64,
         ptid: *mut i32,
     ) -> Address;
+    pub static jl_true: *mut crate::julia_types::jl_value_t;
 }
 
 #[macro_export]
