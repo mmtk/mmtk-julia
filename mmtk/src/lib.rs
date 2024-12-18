@@ -19,6 +19,7 @@ pub mod active_plan;
 pub mod api;
 mod build_info;
 pub mod collection;
+pub mod conservative;
 pub mod object_model;
 pub mod reference_glue;
 pub mod scanning;
@@ -116,4 +117,29 @@ extern "C" {
     pub fn arraylist_grow(a: Address, n: usize);
     pub fn jl_get_gc_disable_counter() -> u32;
     pub fn jl_hrtime() -> u64;
+    pub fn jl_task_stack_buffer(
+        task: *const crate::julia_types::jl_task_t,
+        size: *mut u64,
+        ptid: *mut i32,
+    ) -> Address;
+    pub static jl_true: *mut crate::julia_types::jl_value_t;
+}
+
+#[macro_export]
+macro_rules! early_return_for_non_moving_build {
+    ($ret_val:expr) => {
+        if cfg!(feature = "non_moving") {
+            return $ret_val;
+        }
+    };
+}
+
+/// Skip some methods if the current GC does not move objects
+#[macro_export]
+macro_rules! early_return_for_current_gc {
+    () => {
+        if !crate::collection::is_current_gc_moving() {
+            return;
+        }
+    };
 }

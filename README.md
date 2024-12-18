@@ -13,6 +13,7 @@ MMTK_BUILD=release MMTK_JULIA_DIR=`pwd`/mmtk-julia make -C julia  # or "MMTK_BUI
 ```
 
 If you would like debugging information in your release build of MMTk, add `debug = true` under `[profile.release]` in `mmtk/Cargo.toml`.
+If you would like disable object movement, add the `non_moving` feature when building the Rust binding.
 
 ### Checking out and Building Julia with MMTk
 
@@ -38,6 +39,7 @@ Before building Julia, build the binding in `mmtk-julia/mmtk`. You must have alr
 
 In `mmtk-core` we currently support either Immix or StickyImmix implementations.
 Build it with `cargo build --features immix` or `cargo build --features stickyimmix`.
+Optionally, add the `non_moving` feature when building the Rust binding for disabling object movement, which is enabled by default (although we are currently pinning the vast majority of objects).
 Add `--release` at the end if you would like to have a release build, otherwise it is a debug build.
 For a release build with debugging information, first add `debug = true` under `[profile.release]` in `mmtk/Cargo.toml`.
 
