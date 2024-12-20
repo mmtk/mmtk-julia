@@ -1,6 +1,15 @@
 0.30.0 (2024-12-20)
 ===
 
+## What's Changed
+* Update mmtk-core to v0.30.0
+
+**Full Changelog**: https://github.com/mmtk/mmtk-julia/compare/v0.29.0..v0.30.0
+
+
+0.29.0 (2024-12-18)
+===
+
 The initial release for MMTk Julia. It includes support for a non-moving Immix plan.
 The version follows MMTk projects convention that the binding uses the same version as mmtk-core.
 
@@ -94,4 +103,4 @@ The version follows MMTk projects convention that the binding uses the same vers
 * @wks made their first contribution in https://github.com/mmtk/mmtk-julia/pull/127
 * @stephenrkell made their first contribution in https://github.com/mmtk/mmtk-julia/pull/195
 
-**Full Changelog**: https://github.com/mmtk/mmtk-julia/commits/v0.30.0
+**Full Changelog**: https://github.com/mmtk/mmtk-julia/commits/v0.29.0
