@@ -50,7 +50,6 @@ julia-debug:
 # Clean up the build artifacts
 clean:
 	@echo "Cleaning up build artifacts in $(JULIA_PATH) and $(MMTK_JULIA_DIR)";
-	@cd $(JULIA_PATH) && make clean
 	@cd $(MMTK_JULIA_DIR)mmtk && cargo clean
 
 .PHONY: release debug julia julia-debug clean
