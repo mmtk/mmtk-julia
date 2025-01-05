@@ -3,6 +3,11 @@ MMTK_MOVING ?= 1
 MMTK_PLAN ?= Immix
 CURR_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+# Disable some variables set inside Julia 
+# that may interfere with building the binding
+PKG_CONFIG_LIBDIR=
+PKG_CONFIG_PATH=
+
 # If the Julia directory doesn't exist throw an error
 # since we need it to generate the bindgen bindings
 ifeq (${JULIA_PATH},)
@@ -50,7 +55,6 @@ julia-debug:
 # Clean up the build artifacts
 clean:
 	@echo "Cleaning up build artifacts in $(JULIA_PATH) and $(MMTK_JULIA_DIR)";
-	@cd $(JULIA_PATH) && make clean
 	@cd $(MMTK_JULIA_DIR)mmtk && cargo clean
 
 .PHONY: release debug julia julia-debug clean
