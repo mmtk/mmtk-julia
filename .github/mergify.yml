@@ -21,17 +21,3 @@ pull_request_rules:
         assignees:
           - "{{ author }}"
         label_conflicts: backport-conflicts
-<<<<<<< HEAD
-=======
-  - name: backport patches to dev
-    conditions:
-      - base=master
-      - label=backport-dev
-    actions:
-      backport:
-        branches:
-          - dev
-        assignees:
-          - "{{ author }}"
-        label_conflicts: backport-conflicts
->>>>>>> 73e9c84 (Move to Rust 1.83 (#211))
