@@ -8,13 +8,15 @@ CURR_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PKG_CONFIG_LIBDIR=
 PKG_CONFIG_PATH=
 
-# If the Julia directory doesn't exist throw an error
-# since we need it to generate the bindgen bindings
-ifeq (${JULIA_PATH},)
+MMTK_JULIA_DIR := $(CURR_PATH)
+
+# If we need to generate the FFI bindings with bindgen
+# and the Julia directory doesn't exist throw an error
+ifeq ("$(wildcard $(MMTK_JULIA_DIR)/mmtk/src/julia_types.rs)","")
+ifeq (${JULIA_PATH},) 
 $(error "JULIA_PATH must be set to generate Rust bindings")
 endif
-
-MMTK_JULIA_DIR := $(CURR_PATH)
+endif
 
 PROJECT_DIRS := JULIA_PATH=$(JULIA_PATH) MMTK_JULIA_DIR=$(MMTK_JULIA_DIR)
 MMTK_VARS := MMTK_PLAN=$(MMTK_PLAN) MMTK_MOVING=$(MMTK_MOVING)
