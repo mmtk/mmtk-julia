@@ -33,7 +33,11 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI
+<<<<<<< HEAD
 mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "2e548e5912ec195cce8d12811902a8617c4143e2" }
+=======
+mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "ec745353a8de72b645613e0fef3ab7f5f1ad9bd1" }
+>>>>>>> 73e9c84 (Move to Rust 1.83 (#211))
 # Uncomment the following to build locally
 # mmtk = { path = "../repos/mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
