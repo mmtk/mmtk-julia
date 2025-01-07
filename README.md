@@ -2,24 +2,31 @@
 
 ### Quick Building Guide
 
+To quickly build Julia with MMTk, check out Julia from its main repository instead and create a `Make.user` file containing `MMTK_PLAN=Immix`. 
+
 ```
-git clone https://github.com/mmtk/mmtk-julia
-git clone https://github.com/mmtk/julia
-(cd julia && git checkout dev && echo 'MMTK_PLAN=Immix' > Make.user) # or MMTK_PLAN=StickyImmix to use Sticky Immix
-export JULIA_PATH=`pwd`/julia
-export MMTK_JULIA_DIR=`pwd`/mmtk-julia
-(cd mmtk-julia/mmtk && cargo build --features immix --release)   # or drop "--release" for a debug build
-MMTK_BUILD=release MMTK_JULIA_DIR=`pwd`/mmtk-julia make -C julia  # or "MMTK_BUILD=debug"
+git clone https://github.com/JuliaLang/julia
+cd julia && echo 'MMTK_PLAN=Immix' > Make.user && make
+```
+
+This should automatically check out a (binary) version of this repo, and link it when building Julia itself.
+
+To build only the mmtk-julia binding from source, run:
+
+```
+git clone https://github.com/mmtk/mmtk-julia -b master
+(cd mmtk-julia && make release)  # or "make debug" for a debug build
 ```
 
 If you would like debugging information in your release build of MMTk, add `debug = true` under `[profile.release]` in `mmtk/Cargo.toml`.
+Below, we provide some instructions on how to build the mmtk-julia binding from source _and_ link it when building Julia.
 
 ### Checking out and Building Julia with MMTk
 
-Besides checking out the binding (this repository), it is also necessary to checkout a fork containing a modified version of the Julia repository (https://github.com/mmtk/julia).
-_Use the `dev` branch of the Julia repository._
-For example, we check out the fork as a sibling of `mmtk-julia`.
-For step-by-step instructions, read the section "Quick Building Guide".
+If you'd like to try out Julia with MMTk, simply clone the Julia repository from https://github.com/JuliaLang/julia and create a `Make.user` file inside the `julia` folder containing `MMTK_PLAN=Immix`. This will automatically checkout the latest release of the mmtk-julia binding and link it while building Julia itself.
+
+To build the binding from source, besides checking out this repository, it is also necessary to checkout a version of the Julia repository (https://github.com/JuliaLang/julia). We recommend checking out the latest master, but any commit after [this](https://github.com/JuliaLang/julia/commit/22134ca28e92df321bdd08502ddd86ad2d6d614f) should work.
+For example, we check out Julia as a sibling of `mmtk-julia`.
 
 The directory structure should look like the diagram below:
 
@@ -34,34 +41,39 @@ Your working directory/
 
 #### Build Julia binding in Rust
 
-Before building Julia, build the binding in `mmtk-julia/mmtk`. You must have already checked out Julia, set `JULIA_PATH` to point to the checkout (remember to check out the `dev` branch!) and set `MMTK_JULIA_DIR` to the binding's top-level directory.
+Before building Julia, build the binding in `mmtk-julia`. Set `MMTK_JULIA_DIR` to the absolute path containing the binding's top-level directory and build the binding by running `make release` or `make debug` from that directory.
 
-In `mmtk-core` we currently support either Immix or StickyImmix implementations.
-Build it with `cargo build --features immix` or `cargo build --features stickyimmix`.
-Add `--release` at the end if you would like to have a release build, otherwise it is a debug build.
+We currently only support a (non-moving) Immix implementation. We hope to add support for non-moving StickyImmix and the respective moving versions of both collectors in the near future. We also only support x86_64 Linux, more architectures should also be supported in the near future.
 For a release build with debugging information, first add `debug = true` under `[profile.release]` in `mmtk/Cargo.toml`.
+Make sure you have the prerequisites for building [MMTk](https://github.com/mmtk/mmtk-core#requirements).
 
-#### Build Julia with MMTk
+#### Build Julia with MMTk (from source)
 
-To build Julia with MMTk, first ensure you have the prerequisites for building both [Julia](https://github.com/JuliaLang/julia/blob/master/doc/src/devdocs/build/build.md#required-build-tools-and-external-libraries) and [MMTk](https://github.com/mmtk/mmtk-core#requirements).
+To build Julia with MMTk using the version built in the previous step, first ensure you have the prerequisites for building [Julia](https://github.com/JuliaLang/julia/blob/master/doc/src/devdocs/build/build.md#required-build-tools-and-external-libraries).
 
-Next create a `Make.user` file in the top-level directory of the Julia repository consisting of the line `MMTK_PLAN=Immix` or `MMTK_PLAN=StickyImmix`.
+Next create a `Make.user` file in the top-level directory of the Julia repository consisting of the line `MMTK_PLAN=Immix`.
 
-Finally, set the following environment variables:
+Finally, if you have not done it already, set the following environment variable:
 
 ```
-export MMTK_BUILD=release # or debug depending on how you build the Julia binding in Rust
 export MMTK_JULIA_DIR=<path-to-mmtk-julia>
 ```
-... and run `make`.
+... and run `make` from Julia's top-level directory.
 
 Alternatively you can set the environment variables in your `Make.user` 
 
 ```
-export MMTK_BUILD := release
 export MMTK_JULIA_DIR := <path-to-mmtk-julia>
-export MMTK_PLAN := Immix # or export MMTK_PLAN := StickyImmix
+export MMTK_PLAN := Immix
 ```
+
+If you have done a debug build of the binding, make sure to also set `MMTK_BUILD=debug` before building Julia.
+
+### Rust FFI bindings from Julia
+
+The mmtk-julia binding requires a set of Rust FFI bindings that are automatically generated from the Julia repository using [bindgen](https://github.com/rust-lang/rust-bindgen). In this repository, the FFI bindings have already been generated, and added to the file `mmtk/src/julia_types.rs`. 
+However, if Julia changes the object representation of any of the types defined in the FFI bindings in `mmtk/src/julia_types.rs`, that file will become outdated.
+To generate the FFI bindings again (and rebuild the binding), checkout the Julia repository following the steps described [previously](#checking-out-and-building-julia-with-mmtk), set the environment variable `JULIA_PATH` to point to the `julia` directory and run `make regen-bindgen-ffi` from the binding's top-level directory, note that this step will already do a release build of mmtk-julia containing the new version of `julia_types.rs`. Make sure you have all the [requirements](https://rust-lang.github.io/rust-bindgen/requirements.html) to running `bindgen`.
 
 ### Heap Size
 

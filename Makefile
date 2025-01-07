@@ -54,9 +54,15 @@ julia-debug:
 	@echo "Building the Julia project in $(JULIA_PATH)";
 	@cd $(JULIA_PATH) && $(PROJECT_DIRS) $(MMTK_VARS) make debug
 
+regen-bindgen-ffi:
+	@echo "Regenerating the Rust FFI bindings for Julia (and rebuilding the binding)";
+	@cd $(MMTK_JULIA_DIR) && rm -rf mmtk/src/julia_types.rs
+	@$(MAKE) clean
+	@$(MAKE) release
+
 # Clean up the build artifacts
 clean:
 	@echo "Cleaning up build artifacts in $(JULIA_PATH) and $(MMTK_JULIA_DIR)";
 	@cd $(MMTK_JULIA_DIR)mmtk && cargo clean
 
-.PHONY: release debug julia julia-debug clean
+.PHONY: release debug julia julia-debug clean regen-bindgen-ffi
