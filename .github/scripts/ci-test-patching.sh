@@ -46,6 +46,7 @@ declare -a tests_to_skip=(
     '@test length(\[a for a in prof.allocs if a.type == MyType\]) >= 1' "$JULIA_PATH/stdlib/Profile/test/allocs.jl"
     '@test length(prof.allocs) >= 1' "$JULIA_PATH/stdlib/Profile/test/allocs.jl"
     '@test length(filter(a->a.type <: type, profile.allocs)) >= NUM_TASKS' "$JULIA_PATH/stdlib/Profile/test/allocs.jl"
+    '@test length(profile.allocs) >= 2\*NUM_TASKS' "$JULIA_PATH/stdlib/Profile/test/allocs.jl"
     
     # Test that expects information from heap snapshot which is currently not available in MMTk
     '@test contains(sshot, "redact_this")' "$JULIA_PATH/stdlib/Profile/test/runtests.jl"
