@@ -1,0 +1,26 @@
+name: Test Julia Binding
+
+on:
+  pull_request:
+    branches:
+      - master
+      - v1.8.2\+RAI
+      - v1.9.2\+RAI
+      - dev
+
+concurrency:
+  # Cancels pending runs when a PR gets updated.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  binding-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        gc_plan: [Immix]
+        moving: [Non_Moving]
+    uses: ./.github/workflows/binding-tests.yml
+    with:
+      gc_plan: ${{ matrix.gc_plan }}
+      moving: ${{ matrix.moving }}
