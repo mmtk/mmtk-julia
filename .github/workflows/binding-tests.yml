@@ -9,6 +9,12 @@ on:
       moving:
         required: true
         type: string
+      julia_repo:
+        required: true
+        type: string
+      julia_ref:
+        required: true
+        type: string
 
 jobs:
   build-debug:
@@ -17,7 +23,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Setup environments
         run: |
-          ./.github/scripts/ci-checkout.sh
+          ./.github/scripts/ci-checkout.sh ${{ inputs.julia_repo }} ${{ inputs.julia_ref }}
           ./.github/scripts/ci-setup.sh
           # removing these as they cause a conflict within bindgen
           sudo rm -rf /usr/lib/llvm-14  
@@ -39,7 +45,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Setup environments
         run: |
-          ./.github/scripts/ci-checkout.sh
+          ./.github/scripts/ci-checkout.sh ${{ inputs.julia_repo }} ${{ inputs.julia_ref }}
           ./.github/scripts/ci-setup.sh
           # removing these as they cause a conflict within bindgen
           sudo rm -rf /usr/lib/llvm-14  
@@ -61,7 +67,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Setup environments
         run: |
-          ./.github/scripts/ci-checkout.sh
+          ./.github/scripts/ci-checkout.sh ${{ inputs.julia_repo }} ${{ inputs.julia_ref }}
           ./.github/scripts/ci-setup.sh
           # removing these as they cause a conflict within bindgen
           sudo rm -rf /usr/lib/llvm-14  
@@ -83,7 +89,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Setup environments
         run: |
-          ./.github/scripts/ci-checkout.sh
+          ./.github/scripts/ci-checkout.sh ${{ inputs.julia_repo }} ${{ inputs.julia_ref }}
           ./.github/scripts/ci-setup.sh
           # removing these as they cause a conflict within bindgen
           sudo rm -rf /usr/lib/llvm-14  
