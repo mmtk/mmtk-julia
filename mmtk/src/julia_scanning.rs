@@ -230,7 +230,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             println!("scan_julia_obj {}: genericmemory how = {}\n", obj, how);
         }
 
-        if how == 0 {
+        if how == 0 && !cfg!(feature = "non_moving") {
             assert!(crate::api::mmtk_is_object_pinned(ObjectReference::from_raw_address_unchecked(obj)), "Data for {} is inlined, but the object is not pinned", obj);
         }
 
