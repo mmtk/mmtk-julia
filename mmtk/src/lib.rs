@@ -117,11 +117,13 @@ extern "C" {
     pub fn arraylist_grow(a: Address, n: usize);
     pub fn jl_get_gc_disable_counter() -> u32;
     pub fn jl_hrtime() -> u64;
-    pub fn jl_task_stack_buffer(
+    pub fn jl_active_task_stack(
         task: *const crate::julia_types::jl_task_t,
-        size: *mut u64,
-        ptid: *mut i32,
-    ) -> Address;
+        active_start: *mut Address,
+        active_end: *mut Address,
+        total_start: *mut Address,
+        total_end: *mut Address
+    );
     pub static jl_true: *mut crate::julia_types::jl_value_t;
 }
 
