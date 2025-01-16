@@ -316,9 +316,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             let restriction = (*bpart_ptr).restriction._M_i;
             let offset = mmtk_decode_restriction_value(restriction);
             let slot = Address::from_ptr(::std::ptr::addr_of!((*bpart_ptr).restriction));
-            if restriction - offset != 0 {
-                process_offset_slot(closure, slot, offset);
-            }
+            process_offset_slot(closure, slot, offset);
         }
         debug_assert!(
             (*layout).nfields > 0 && (*layout).fielddesc_type_custom() != 3,
