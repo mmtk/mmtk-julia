@@ -33,7 +33,6 @@ The directory structure should look like the diagram below:
 ```
 Your working directory/
 ├─ mmtk-julia/
-│  ├─ julia/
 │  └─ mmtk/
 ├─ julia/ (should be cloned manually)
 └─ mmtk-core/ (optional)
