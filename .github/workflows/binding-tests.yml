@@ -31,6 +31,10 @@ jobs:
       - name: Build Julia (Debug)
         run: |
           ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
+      - name: Print Julia version info
+        run: |
+          JULIA_PATH=$(realpath $(dirname "$0"))/../mmtk-julia/mmtk-julia/vm/julia
+          $JULIA_PATH/julia --project=. -e "using InteractiveUtils; versioninfo()"
       - name: Style check
         run: |
           ./.github/scripts/ci-style.sh
@@ -52,6 +56,10 @@ jobs:
       - name: Build Julia (Debug)
         run: |
           ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
+      - name: Print Julia version info
+        run: |
+          JULIA_PATH=$(realpath $(dirname "$0"))/../mmtk-julia/mmtk-julia/vm/julia
+          $JULIA_PATH/julia --project=. -e "using InteractiveUtils; versioninfo()"
       - name: Style check
         run: |
           ./.github/scripts/ci-style.sh
@@ -95,6 +103,10 @@ jobs:
       - name: Build Julia (Release)
         run: |
           ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
+      - name: Print Julia version info
+        run: |
+          JULIA_PATH=$(realpath $(dirname "$0"))/../mmtk-julia/mmtk-julia/vm/julia
+          $JULIA_PATH/julia --project=. -e "using InteractiveUtils; versioninfo()"
       - name: Test Julia
         run: |
           ./.github/scripts/ci-test-other.sh
@@ -117,6 +129,10 @@ jobs:
       - name: Build Julia (Release)
         run: |
           ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
+      - name: Print Julia version info
+        run: |
+          JULIA_PATH=$(realpath $(dirname "$0"))/../mmtk-julia/mmtk-julia/vm/julia
+          $JULIA_PATH/julia --project=. -e "using InteractiveUtils; versioninfo()"
       - name: Test Julia
         run: |
           ./.github/scripts/ci-test-stdlib.sh
@@ -136,6 +152,10 @@ jobs:
       - name: Build Julia (Release)
         run: |
           ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
+      - name: Print Julia version info
+        run: |
+          JULIA_PATH=$(realpath $(dirname "$0"))/../mmtk-julia/mmtk-julia/vm/julia
+          $JULIA_PATH/julia --project=. -e "using InteractiveUtils; versioninfo()"
       - name: Test Julia
         run: |
           ./.github/scripts/ci-test-LinearAlgebra.sh
