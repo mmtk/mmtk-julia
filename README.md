@@ -40,9 +40,9 @@ Your working directory/
 
 #### Build Julia binding in Rust
 
-Before building Julia, build the binding in `mmtk-julia`. Set `MMTK_JULIA_DIR` to the absolute path containing the binding's top-level directory and build the binding by running `make release` or `make debug` from that directory.
-
-We currently only support a (non-moving) Immix implementation. We hope to add support for non-moving StickyImmix and the respective moving versions of both collectors in the near future. We also only support x86_64 Linux, more architectures should also be supported in the near future.
+Before building Julia, build the binding in `mmtk-julia`. Set `MMTK_JULIA_DIR` to the absolute path containing the binding's top-level directory. Also set `MMTK_MOVING=0`, since 
+we currently only support a (non-moving) Immix implementation. We hope to add support for non-moving StickyImmix and the respective moving versions of both collectors in the near future.
+Build the binding by running `make release` or `make debug` from the `MMTK_JULIA_DIR` directory. Note that we also only support x86_64 Linux, more architectures should also be supported in the near future.
 For a release build with debugging information, first add `debug = true` under `[profile.release]` in `mmtk/Cargo.toml`.
 Make sure you have the prerequisites for building [MMTk](https://github.com/mmtk/mmtk-core#requirements).
 
