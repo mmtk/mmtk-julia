@@ -1,0 +1,141 @@
+name: Test Julia Binding
+
+on:
+  workflow_call:
+    inputs:
+      gc_plan:
+        required: true
+        type: string
+      moving:
+        required: true
+        type: string
+      julia_repo:
+        required: true
+        type: string
+      julia_ref:
+        required: true
+        type: string
+
+jobs:
+  build-debug:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup environments
+        run: |
+          ./.github/scripts/ci-checkout.sh ${{ inputs.julia_repo }} ${{ inputs.julia_ref }}
+          ./.github/scripts/ci-setup.sh
+          # removing these as they cause a conflict within bindgen
+          sudo rm -rf /usr/lib/llvm-14
+          sudo rm -rf /usr/lib/llvm-13
+      - name: Build Julia (Debug)
+        run: |
+          ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
+      - name: Style check
+        run: |
+          ./.github/scripts/ci-style.sh
+
+  build-debug-regen-ffi:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup environments
+        run: |
+          ./.github/scripts/ci-checkout.sh ${{ inputs.julia_repo }} ${{ inputs.julia_ref }}
+          ./.github/scripts/ci-setup.sh
+          # removing these as they cause a conflict within bindgen
+          sudo rm -rf /usr/lib/llvm-14
+          sudo rm -rf /usr/lib/llvm-13
+      - name: Check FFI bindings
+        run: |
+          ./.github/scripts/ci-ffi.sh
+      - name: Build Julia (Debug)
+        run: |
+          ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
+      - name: Style check
+        run: |
+          ./.github/scripts/ci-style.sh
+
+  check-ffi:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup environments
+        run: |
+          ./.github/scripts/ci-checkout.sh ${{ inputs.julia_repo }} ${{ inputs.julia_ref }}
+          ./.github/scripts/ci-setup.sh
+          # removing these as they cause a conflict within bindgen
+          sudo rm -rf /usr/lib/llvm-14
+          sudo rm -rf /usr/lib/llvm-13
+      - name: Regenerate FFI bindings
+        run: |
+          ./.github/scripts/ci-ffi.sh
+      - run: |
+          MMTK_JULIA_DIR=$(realpath $(dirname "$0"))/../mmtk-julia/mmtk-julia
+          if ! git diff --exit-code $MMTK_JULIA_DIR/mmtk/src/julia_types.rs; then
+            echo "Rust FFI bindings in \`julia_types.rs\` are outdated. Run \`make regen-bindgen-ffi\` from the mmtk-julia directory and make sure to include the updated file in the pull request."
+            exit 1
+          fi
+
+  build-test-other:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup environments
+        run: |
+          ./.github/scripts/ci-checkout.sh ${{ inputs.julia_repo }} ${{ inputs.julia_ref }}
+          ./.github/scripts/ci-setup.sh
+          # removing these as they cause a conflict within bindgen
+          sudo rm -rf /usr/lib/llvm-14  
+          sudo rm -rf /usr/lib/llvm-13
+      - name: Patching unsupported tests
+        run: |
+          ./.github/scripts/ci-test-patching.sh
+      - name: Build Julia (Release)
+        run: |
+          ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
+      - name: Test Julia
+        run: |
+          ./.github/scripts/ci-test-other.sh
+
+  build-test-stdlib:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup environments
+        run: |
+          ./.github/scripts/ci-checkout.sh ${{ inputs.julia_repo }} ${{ inputs.julia_ref }}
+          ./.github/scripts/ci-setup.sh
+          # removing these as they cause a conflict within bindgen
+          sudo rm -rf /usr/lib/llvm-14  
+          sudo rm -rf /usr/lib/llvm-13
+      - name: Patching unsupported tests
+        run: |
+          ./.github/scripts/ci-test-patching.sh
+      - name: Build Julia (Release)
+        run: |
+          ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
+      - name: Test Julia
+        run: |
+          ./.github/scripts/ci-test-stdlib.sh
+
+  build-test-LinearAlgebra:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup environments
+        run: |
+          ./.github/scripts/ci-checkout.sh ${{ inputs.julia_repo }} ${{ inputs.julia_ref }}
+          ./.github/scripts/ci-setup.sh
+          # removing these as they cause a conflict within bindgen
+          sudo rm -rf /usr/lib/llvm-14  
+          sudo rm -rf /usr/lib/llvm-13
+      - name: Build Julia (Release)
+        run: |
+          ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}
+      - name: Test Julia
+        run: |
+          ./.github/scripts/ci-test-LinearAlgebra.sh

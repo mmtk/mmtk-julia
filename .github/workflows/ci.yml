@@ -1,0 +1,49 @@
+name: Test Julia Binding
+
+on:
+  pull_request:
+    branches:
+      - master
+      - v1.8.2\+RAI
+      - v1.9.2\+RAI
+      - dev
+
+concurrency:
+  # Cancels pending runs when a PR gets updated.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  julia-version:
+    runs-on: ubuntu-latest
+    env:
+      JULIA_REPO_DEFAULT: JuliaLang/julia
+      JULIA_REF_DEFAULT: master
+    outputs:
+      julia_repo: ${{ steps.print.outputs.julia_repo }}
+      julia_ref: ${{ steps.print.outputs.julia_ref }}
+    steps:
+      - name: Check Julia revisions
+        uses: qinsoon/comment-env-vars@1.1.0
+        with:
+          pull_request: ${{ github.event.pull_request.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          default_env: 'JULIA_REPO=${{ env.JULIA_REPO_DEFAULT }},JULIA_REF=${{ env.JULIA_REF_DEFAULT }}'
+      - id: print
+        run: |
+          echo "julia_repo=${{ env.JULIA_REPO }}" >> $GITHUB_OUTPUT
+          echo "julia_ref=${{ env.JULIA_REF }}" >> $GITHUB_OUTPUT
+
+  binding-tests:
+    needs: julia-version
+    strategy:
+      fail-fast: false
+      matrix:
+        gc_plan: [Immix]
+        moving: [Non_Moving]
+    uses: ./.github/workflows/binding-tests.yml
+    with:
+      gc_plan: ${{ matrix.gc_plan }}
+      moving: ${{ matrix.moving }}
+      julia_repo: ${{ needs.julia-version.outputs.julia_repo }}
+      julia_ref: ${{ needs.julia-version.outputs.julia_ref }}

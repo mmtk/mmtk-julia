@@ -190,134 +190,6 @@ const _: () = {
 pub type pthread_t = ::std::os::raw::c_ulong;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct fenv_t {
-    pub __control_word: ::std::os::raw::c_ushort,
-    pub __glibc_reserved1: ::std::os::raw::c_ushort,
-    pub __status_word: ::std::os::raw::c_ushort,
-    pub __glibc_reserved2: ::std::os::raw::c_ushort,
-    pub __tags: ::std::os::raw::c_ushort,
-    pub __glibc_reserved3: ::std::os::raw::c_ushort,
-    pub __eip: ::std::os::raw::c_uint,
-    pub __cs_selector: ::std::os::raw::c_ushort,
-    pub _bitfield_align_1: [u16; 0],
-    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 2usize]>,
-    pub __data_offset: ::std::os::raw::c_uint,
-    pub __data_selector: ::std::os::raw::c_ushort,
-    pub __glibc_reserved5: ::std::os::raw::c_ushort,
-    pub __mxcsr: ::std::os::raw::c_uint,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of fenv_t"][::std::mem::size_of::<fenv_t>() - 32usize];
-    ["Alignment of fenv_t"][::std::mem::align_of::<fenv_t>() - 4usize];
-    ["Offset of field: fenv_t::__control_word"]
-        [::std::mem::offset_of!(fenv_t, __control_word) - 0usize];
-    ["Offset of field: fenv_t::__glibc_reserved1"]
-        [::std::mem::offset_of!(fenv_t, __glibc_reserved1) - 2usize];
-    ["Offset of field: fenv_t::__status_word"]
-        [::std::mem::offset_of!(fenv_t, __status_word) - 4usize];
-    ["Offset of field: fenv_t::__glibc_reserved2"]
-        [::std::mem::offset_of!(fenv_t, __glibc_reserved2) - 6usize];
-    ["Offset of field: fenv_t::__tags"][::std::mem::offset_of!(fenv_t, __tags) - 8usize];
-    ["Offset of field: fenv_t::__glibc_reserved3"]
-        [::std::mem::offset_of!(fenv_t, __glibc_reserved3) - 10usize];
-    ["Offset of field: fenv_t::__eip"][::std::mem::offset_of!(fenv_t, __eip) - 12usize];
-    ["Offset of field: fenv_t::__cs_selector"]
-        [::std::mem::offset_of!(fenv_t, __cs_selector) - 16usize];
-    ["Offset of field: fenv_t::__data_offset"]
-        [::std::mem::offset_of!(fenv_t, __data_offset) - 20usize];
-    ["Offset of field: fenv_t::__data_selector"]
-        [::std::mem::offset_of!(fenv_t, __data_selector) - 24usize];
-    ["Offset of field: fenv_t::__glibc_reserved5"]
-        [::std::mem::offset_of!(fenv_t, __glibc_reserved5) - 26usize];
-    ["Offset of field: fenv_t::__mxcsr"][::std::mem::offset_of!(fenv_t, __mxcsr) - 28usize];
-};
-impl fenv_t {
-    #[inline]
-    pub fn __opcode(&self) -> ::std::os::raw::c_uint {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 11u8) as u32) }
-    }
-    #[inline]
-    pub fn set___opcode(&mut self, val: ::std::os::raw::c_uint) {
-        unsafe {
-            let val: u32 = ::std::mem::transmute(val);
-            self._bitfield_1.set(0usize, 11u8, val as u64)
-        }
-    }
-    #[inline]
-    pub unsafe fn __opcode_raw(this: *const Self) -> ::std::os::raw::c_uint {
-        unsafe {
-            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
-                ::std::ptr::addr_of!((*this)._bitfield_1),
-                0usize,
-                11u8,
-            ) as u32)
-        }
-    }
-    #[inline]
-    pub unsafe fn set___opcode_raw(this: *mut Self, val: ::std::os::raw::c_uint) {
-        unsafe {
-            let val: u32 = ::std::mem::transmute(val);
-            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
-                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
-                0usize,
-                11u8,
-                val as u64,
-            )
-        }
-    }
-    #[inline]
-    pub fn __glibc_reserved4(&self) -> ::std::os::raw::c_uint {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(11usize, 5u8) as u32) }
-    }
-    #[inline]
-    pub fn set___glibc_reserved4(&mut self, val: ::std::os::raw::c_uint) {
-        unsafe {
-            let val: u32 = ::std::mem::transmute(val);
-            self._bitfield_1.set(11usize, 5u8, val as u64)
-        }
-    }
-    #[inline]
-    pub unsafe fn __glibc_reserved4_raw(this: *const Self) -> ::std::os::raw::c_uint {
-        unsafe {
-            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
-                ::std::ptr::addr_of!((*this)._bitfield_1),
-                11usize,
-                5u8,
-            ) as u32)
-        }
-    }
-    #[inline]
-    pub unsafe fn set___glibc_reserved4_raw(this: *mut Self, val: ::std::os::raw::c_uint) {
-        unsafe {
-            let val: u32 = ::std::mem::transmute(val);
-            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
-                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
-                11usize,
-                5u8,
-                val as u64,
-            )
-        }
-    }
-    #[inline]
-    pub fn new_bitfield_1(
-        __opcode: ::std::os::raw::c_uint,
-        __glibc_reserved4: ::std::os::raw::c_uint,
-    ) -> __BindgenBitfieldUnit<[u8; 2usize]> {
-        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 2usize]> = Default::default();
-        __bindgen_bitfield_unit.set(0usize, 11u8, {
-            let __opcode: u32 = unsafe { ::std::mem::transmute(__opcode) };
-            __opcode as u64
-        });
-        __bindgen_bitfield_unit.set(11usize, 5u8, {
-            let __glibc_reserved4: u32 = unsafe { ::std::mem::transmute(__glibc_reserved4) };
-            __glibc_reserved4 as u64
-        });
-        __bindgen_bitfield_unit
-    }
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
 pub struct arraylist_t {
     pub len: usize,
     pub max: usize,
@@ -2219,7 +2091,6 @@ pub struct _jl_task_t {
     pub last_started_running_at: std_atomic<u64>,
     pub running_time_ns: std_atomic<u64>,
     pub finished_at: std_atomic<u64>,
-    pub fenv: fenv_t,
     pub tid: std_atomic<i16>,
     pub threadpoolid: i8,
     pub reentrant_timing: u8,
@@ -2232,7 +2103,7 @@ pub struct _jl_task_t {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _jl_task_t"][::std::mem::size_of::<_jl_task_t>() - 256usize];
+    ["Size of _jl_task_t"][::std::mem::size_of::<_jl_task_t>() - 224usize];
     ["Alignment of _jl_task_t"][::std::mem::align_of::<_jl_task_t>() - 8usize];
     ["Offset of field: _jl_task_t::next"][::std::mem::offset_of!(_jl_task_t, next) - 0usize];
     ["Offset of field: _jl_task_t::queue"][::std::mem::offset_of!(_jl_task_t, queue) - 8usize];
@@ -2262,21 +2133,20 @@ const _: () = {
         [::std::mem::offset_of!(_jl_task_t, running_time_ns) - 128usize];
     ["Offset of field: _jl_task_t::finished_at"]
         [::std::mem::offset_of!(_jl_task_t, finished_at) - 136usize];
-    ["Offset of field: _jl_task_t::fenv"][::std::mem::offset_of!(_jl_task_t, fenv) - 144usize];
-    ["Offset of field: _jl_task_t::tid"][::std::mem::offset_of!(_jl_task_t, tid) - 176usize];
+    ["Offset of field: _jl_task_t::tid"][::std::mem::offset_of!(_jl_task_t, tid) - 144usize];
     ["Offset of field: _jl_task_t::threadpoolid"]
-        [::std::mem::offset_of!(_jl_task_t, threadpoolid) - 178usize];
+        [::std::mem::offset_of!(_jl_task_t, threadpoolid) - 146usize];
     ["Offset of field: _jl_task_t::reentrant_timing"]
-        [::std::mem::offset_of!(_jl_task_t, reentrant_timing) - 179usize];
+        [::std::mem::offset_of!(_jl_task_t, reentrant_timing) - 147usize];
     ["Offset of field: _jl_task_t::gcstack"]
-        [::std::mem::offset_of!(_jl_task_t, gcstack) - 184usize];
+        [::std::mem::offset_of!(_jl_task_t, gcstack) - 152usize];
     ["Offset of field: _jl_task_t::world_age"]
-        [::std::mem::offset_of!(_jl_task_t, world_age) - 192usize];
-    ["Offset of field: _jl_task_t::ptls"][::std::mem::offset_of!(_jl_task_t, ptls) - 200usize];
+        [::std::mem::offset_of!(_jl_task_t, world_age) - 160usize];
+    ["Offset of field: _jl_task_t::ptls"][::std::mem::offset_of!(_jl_task_t, ptls) - 168usize];
     ["Offset of field: _jl_task_t::excstack"]
-        [::std::mem::offset_of!(_jl_task_t, excstack) - 208usize];
-    ["Offset of field: _jl_task_t::eh"][::std::mem::offset_of!(_jl_task_t, eh) - 216usize];
-    ["Offset of field: _jl_task_t::ctx"][::std::mem::offset_of!(_jl_task_t, ctx) - 224usize];
+        [::std::mem::offset_of!(_jl_task_t, excstack) - 176usize];
+    ["Offset of field: _jl_task_t::eh"][::std::mem::offset_of!(_jl_task_t, eh) - 184usize];
+    ["Offset of field: _jl_task_t::ctx"][::std::mem::offset_of!(_jl_task_t, ctx) - 192usize];
 };
 pub type jl_task_t = _jl_task_t;
 #[repr(C)]
