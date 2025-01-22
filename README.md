@@ -48,7 +48,12 @@ Make sure you have the prerequisites for building [MMTk](https://github.com/mmtk
 
 To build Julia with MMTk using the version built in the previous step, first ensure you have the prerequisites for building [Julia](https://github.com/JuliaLang/julia/blob/master/doc/src/devdocs/build/build.md#required-build-tools-and-external-libraries).
 
-Next create a `Make.user` file in the top-level directory of the Julia repository consisting of the line `MMTK_PLAN=Immix`.
+Next create a `Make.user` file in the top-level directory of the Julia repository consisting of the lines:
+
+```
+MMTK_PLAN=Immix
+USE_BINARYBUILDER_MMTK_JULIA=0
+```
 
 Finally, if you have not done it already, set the following environment variable:
 
