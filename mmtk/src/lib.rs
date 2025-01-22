@@ -143,3 +143,37 @@ macro_rules! early_return_for_current_gc {
         }
     };
 }
+
+pub(crate) fn set_panic_hook() {
+    let old_hook = std::panic::take_hook();
+
+    std::panic::set_hook(Box::new(move |panic_info| {
+        if crate::collection::is_gc_thread() {
+            eprintln!("ERROR: An MMTk GC thread panicked.  This is a bug.");
+            eprintln!("{panic_info}");
+
+            let bt = std::backtrace::Backtrace::capture();
+            match bt.status() {
+                std::backtrace::BacktraceStatus::Unsupported => {
+                    eprintln!("Backtrace is unsupported.")
+                }
+                std::backtrace::BacktraceStatus::Disabled => {
+                    eprintln!("Backtrace is disabled.");
+                    eprintln!(
+                        "run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+                    );
+                }
+                std::backtrace::BacktraceStatus::Captured => {
+                    eprintln!("{bt}");
+                }
+                s => {
+                    eprintln!("Unknown backtrace status: {s:?}");
+                }
+            }
+
+            std::process::abort();
+        } else {
+            old_hook(panic_info);
+        }
+    }));
+}
