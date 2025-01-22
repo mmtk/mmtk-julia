@@ -16,6 +16,27 @@ use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
 static GC_START: AtomicU64 = AtomicU64::new(0);
 static CURRENT_GC_MAY_MOVE: AtomicBool = AtomicBool::new(true);
 
+use std::collections::HashSet;
+use std::sync::RwLock;
+use std::thread::ThreadId;
+
+lazy_static! {
+    static ref GC_THREADS: RwLock<HashSet<ThreadId>> = RwLock::new(HashSet::new());
+}
+
+pub(crate) fn register_gc_thread() {
+    let id = std::thread::current().id();
+    GC_THREADS.write().unwrap().insert(id);
+}
+pub(crate) fn unregister_gc_thread() {
+    let id = std::thread::current().id();
+    GC_THREADS.write().unwrap().remove(&id);
+}
+pub(crate) fn is_gc_thread() -> bool {
+    let id = std::thread::current().id();
+    GC_THREADS.read().unwrap().contains(&id)
+}
+
 pub struct VMCollection {}
 
 impl Collection<JuliaVM> for VMCollection {
@@ -99,6 +120,11 @@ impl Collection<JuliaVM> for VMCollection {
             .spawn(move || {
                 use mmtk::util::opaque_pointer::*;
                 use mmtk::util::Address;
+
+                // Remember this GC thread
+                register_gc_thread();
+
+                // Start the worker loop
                 let worker_tls = VMWorkerThread(VMThread(OpaquePointer::from_address(unsafe {
                     Address::from_usize(thread_id::get())
                 })));
@@ -107,6 +133,9 @@ impl Collection<JuliaVM> for VMCollection {
                         mmtk::memory_manager::start_worker(&SINGLETON, worker_tls, w)
                     }
                 }
+
+                // The GC thread quits somehow. Unresgister this GC thread
+                unregister_gc_thread();
             });
     }
 
