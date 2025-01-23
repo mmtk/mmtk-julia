@@ -254,6 +254,7 @@ pub struct _jl_value_t {
     _unused: [u8; 0],
 }
 pub type sig_atomic_t = __sig_atomic_t;
+pub type jl_value_t = _jl_value_t;
 #[repr(C)]
 #[repr(align(8))]
 pub struct MMTkMutatorContext {
@@ -613,7 +614,89 @@ const _: () = {
     ["Offset of field: _jl_tls_states_t::engine_nqueued"]
         [::std::mem::offset_of!(_jl_tls_states_t, engine_nqueued) - 2552usize];
 };
-pub type jl_value_t = _jl_value_t;
+pub type jl_function_t = jl_value_t;
+pub type jl_timing_block_t = _jl_timing_block_t;
+pub type jl_excstack_t = _jl_excstack_t;
+pub type jl_handler_t = _jl_handler_t;
+#[repr(C)]
+pub struct _jl_task_t {
+    pub next: *mut jl_value_t,
+    pub queue: *mut jl_value_t,
+    pub tls: *mut jl_value_t,
+    pub donenotify: *mut jl_value_t,
+    pub result: *mut jl_value_t,
+    pub scope: *mut jl_value_t,
+    pub start: *mut jl_function_t,
+    pub _state: std_atomic<u8>,
+    pub sticky: u8,
+    pub priority: u16,
+    pub _isexception: std_atomic<u8>,
+    pub pad0: [u8; 3usize],
+    pub rngState: [u64; 5usize],
+    pub metrics_enabled: u8,
+    pub pad1: [u8; 3usize],
+    pub first_enqueued_at: std_atomic<u64>,
+    pub last_started_running_at: std_atomic<u64>,
+    pub running_time_ns: std_atomic<u64>,
+    pub finished_at: std_atomic<u64>,
+    pub tid: std_atomic<i16>,
+    pub threadpoolid: i8,
+    pub reentrant_timing: u8,
+    pub gcstack: *mut jl_gcframe_t,
+    pub world_age: usize,
+    pub ptls: jl_ptls_t,
+    pub excstack: *mut jl_excstack_t,
+    pub eh: *mut jl_handler_t,
+    pub ctx: jl_ucontext_t,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _jl_task_t"][::std::mem::size_of::<_jl_task_t>() - 224usize];
+    ["Alignment of _jl_task_t"][::std::mem::align_of::<_jl_task_t>() - 8usize];
+    ["Offset of field: _jl_task_t::next"][::std::mem::offset_of!(_jl_task_t, next) - 0usize];
+    ["Offset of field: _jl_task_t::queue"][::std::mem::offset_of!(_jl_task_t, queue) - 8usize];
+    ["Offset of field: _jl_task_t::tls"][::std::mem::offset_of!(_jl_task_t, tls) - 16usize];
+    ["Offset of field: _jl_task_t::donenotify"]
+        [::std::mem::offset_of!(_jl_task_t, donenotify) - 24usize];
+    ["Offset of field: _jl_task_t::result"][::std::mem::offset_of!(_jl_task_t, result) - 32usize];
+    ["Offset of field: _jl_task_t::scope"][::std::mem::offset_of!(_jl_task_t, scope) - 40usize];
+    ["Offset of field: _jl_task_t::start"][::std::mem::offset_of!(_jl_task_t, start) - 48usize];
+    ["Offset of field: _jl_task_t::_state"][::std::mem::offset_of!(_jl_task_t, _state) - 56usize];
+    ["Offset of field: _jl_task_t::sticky"][::std::mem::offset_of!(_jl_task_t, sticky) - 57usize];
+    ["Offset of field: _jl_task_t::priority"]
+        [::std::mem::offset_of!(_jl_task_t, priority) - 58usize];
+    ["Offset of field: _jl_task_t::_isexception"]
+        [::std::mem::offset_of!(_jl_task_t, _isexception) - 60usize];
+    ["Offset of field: _jl_task_t::pad0"][::std::mem::offset_of!(_jl_task_t, pad0) - 61usize];
+    ["Offset of field: _jl_task_t::rngState"]
+        [::std::mem::offset_of!(_jl_task_t, rngState) - 64usize];
+    ["Offset of field: _jl_task_t::metrics_enabled"]
+        [::std::mem::offset_of!(_jl_task_t, metrics_enabled) - 104usize];
+    ["Offset of field: _jl_task_t::pad1"][::std::mem::offset_of!(_jl_task_t, pad1) - 105usize];
+    ["Offset of field: _jl_task_t::first_enqueued_at"]
+        [::std::mem::offset_of!(_jl_task_t, first_enqueued_at) - 112usize];
+    ["Offset of field: _jl_task_t::last_started_running_at"]
+        [::std::mem::offset_of!(_jl_task_t, last_started_running_at) - 120usize];
+    ["Offset of field: _jl_task_t::running_time_ns"]
+        [::std::mem::offset_of!(_jl_task_t, running_time_ns) - 128usize];
+    ["Offset of field: _jl_task_t::finished_at"]
+        [::std::mem::offset_of!(_jl_task_t, finished_at) - 136usize];
+    ["Offset of field: _jl_task_t::tid"][::std::mem::offset_of!(_jl_task_t, tid) - 144usize];
+    ["Offset of field: _jl_task_t::threadpoolid"]
+        [::std::mem::offset_of!(_jl_task_t, threadpoolid) - 146usize];
+    ["Offset of field: _jl_task_t::reentrant_timing"]
+        [::std::mem::offset_of!(_jl_task_t, reentrant_timing) - 147usize];
+    ["Offset of field: _jl_task_t::gcstack"]
+        [::std::mem::offset_of!(_jl_task_t, gcstack) - 152usize];
+    ["Offset of field: _jl_task_t::world_age"]
+        [::std::mem::offset_of!(_jl_task_t, world_age) - 160usize];
+    ["Offset of field: _jl_task_t::ptls"][::std::mem::offset_of!(_jl_task_t, ptls) - 168usize];
+    ["Offset of field: _jl_task_t::excstack"]
+        [::std::mem::offset_of!(_jl_task_t, excstack) - 176usize];
+    ["Offset of field: _jl_task_t::eh"][::std::mem::offset_of!(_jl_task_t, eh) - 184usize];
+    ["Offset of field: _jl_task_t::ctx"][::std::mem::offset_of!(_jl_task_t, ctx) - 192usize];
+};
+pub type jl_task_t = _jl_task_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _jl_taggedvalue_bits {
@@ -890,7 +973,6 @@ const _: () = {
     ["Offset of field: jl_array_t::dimsize"][::std::mem::offset_of!(jl_array_t, dimsize) - 16usize];
 };
 pub type jl_typemap_t = jl_value_t;
-pub type jl_function_t = jl_value_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct jl_typename_t {
@@ -2031,8 +2113,6 @@ const _: () = {
         [::std::mem::offset_of!(_jl_gcframe_t, nroots) - 0usize];
     ["Offset of field: _jl_gcframe_t::prev"][::std::mem::offset_of!(_jl_gcframe_t, prev) - 8usize];
 };
-pub type jl_timing_block_t = _jl_timing_block_t;
-pub type jl_excstack_t = _jl_excstack_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _jl_handler_t {
@@ -2069,86 +2149,6 @@ const _: () = {
     ["Offset of field: _jl_handler_t::world_age"]
         [::std::mem::offset_of!(_jl_handler_t, world_age) - 256usize];
 };
-pub type jl_handler_t = _jl_handler_t;
-#[repr(C)]
-pub struct _jl_task_t {
-    pub next: *mut jl_value_t,
-    pub queue: *mut jl_value_t,
-    pub tls: *mut jl_value_t,
-    pub donenotify: *mut jl_value_t,
-    pub result: *mut jl_value_t,
-    pub scope: *mut jl_value_t,
-    pub start: *mut jl_function_t,
-    pub _state: std_atomic<u8>,
-    pub sticky: u8,
-    pub priority: u16,
-    pub _isexception: std_atomic<u8>,
-    pub pad0: [u8; 3usize],
-    pub rngState: [u64; 5usize],
-    pub metrics_enabled: u8,
-    pub pad1: [u8; 3usize],
-    pub first_enqueued_at: std_atomic<u64>,
-    pub last_started_running_at: std_atomic<u64>,
-    pub running_time_ns: std_atomic<u64>,
-    pub finished_at: std_atomic<u64>,
-    pub tid: std_atomic<i16>,
-    pub threadpoolid: i8,
-    pub reentrant_timing: u8,
-    pub gcstack: *mut jl_gcframe_t,
-    pub world_age: usize,
-    pub ptls: jl_ptls_t,
-    pub excstack: *mut jl_excstack_t,
-    pub eh: *mut jl_handler_t,
-    pub ctx: jl_ucontext_t,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of _jl_task_t"][::std::mem::size_of::<_jl_task_t>() - 224usize];
-    ["Alignment of _jl_task_t"][::std::mem::align_of::<_jl_task_t>() - 8usize];
-    ["Offset of field: _jl_task_t::next"][::std::mem::offset_of!(_jl_task_t, next) - 0usize];
-    ["Offset of field: _jl_task_t::queue"][::std::mem::offset_of!(_jl_task_t, queue) - 8usize];
-    ["Offset of field: _jl_task_t::tls"][::std::mem::offset_of!(_jl_task_t, tls) - 16usize];
-    ["Offset of field: _jl_task_t::donenotify"]
-        [::std::mem::offset_of!(_jl_task_t, donenotify) - 24usize];
-    ["Offset of field: _jl_task_t::result"][::std::mem::offset_of!(_jl_task_t, result) - 32usize];
-    ["Offset of field: _jl_task_t::scope"][::std::mem::offset_of!(_jl_task_t, scope) - 40usize];
-    ["Offset of field: _jl_task_t::start"][::std::mem::offset_of!(_jl_task_t, start) - 48usize];
-    ["Offset of field: _jl_task_t::_state"][::std::mem::offset_of!(_jl_task_t, _state) - 56usize];
-    ["Offset of field: _jl_task_t::sticky"][::std::mem::offset_of!(_jl_task_t, sticky) - 57usize];
-    ["Offset of field: _jl_task_t::priority"]
-        [::std::mem::offset_of!(_jl_task_t, priority) - 58usize];
-    ["Offset of field: _jl_task_t::_isexception"]
-        [::std::mem::offset_of!(_jl_task_t, _isexception) - 60usize];
-    ["Offset of field: _jl_task_t::pad0"][::std::mem::offset_of!(_jl_task_t, pad0) - 61usize];
-    ["Offset of field: _jl_task_t::rngState"]
-        [::std::mem::offset_of!(_jl_task_t, rngState) - 64usize];
-    ["Offset of field: _jl_task_t::metrics_enabled"]
-        [::std::mem::offset_of!(_jl_task_t, metrics_enabled) - 104usize];
-    ["Offset of field: _jl_task_t::pad1"][::std::mem::offset_of!(_jl_task_t, pad1) - 105usize];
-    ["Offset of field: _jl_task_t::first_enqueued_at"]
-        [::std::mem::offset_of!(_jl_task_t, first_enqueued_at) - 112usize];
-    ["Offset of field: _jl_task_t::last_started_running_at"]
-        [::std::mem::offset_of!(_jl_task_t, last_started_running_at) - 120usize];
-    ["Offset of field: _jl_task_t::running_time_ns"]
-        [::std::mem::offset_of!(_jl_task_t, running_time_ns) - 128usize];
-    ["Offset of field: _jl_task_t::finished_at"]
-        [::std::mem::offset_of!(_jl_task_t, finished_at) - 136usize];
-    ["Offset of field: _jl_task_t::tid"][::std::mem::offset_of!(_jl_task_t, tid) - 144usize];
-    ["Offset of field: _jl_task_t::threadpoolid"]
-        [::std::mem::offset_of!(_jl_task_t, threadpoolid) - 146usize];
-    ["Offset of field: _jl_task_t::reentrant_timing"]
-        [::std::mem::offset_of!(_jl_task_t, reentrant_timing) - 147usize];
-    ["Offset of field: _jl_task_t::gcstack"]
-        [::std::mem::offset_of!(_jl_task_t, gcstack) - 152usize];
-    ["Offset of field: _jl_task_t::world_age"]
-        [::std::mem::offset_of!(_jl_task_t, world_age) - 160usize];
-    ["Offset of field: _jl_task_t::ptls"][::std::mem::offset_of!(_jl_task_t, ptls) - 168usize];
-    ["Offset of field: _jl_task_t::excstack"]
-        [::std::mem::offset_of!(_jl_task_t, excstack) - 176usize];
-    ["Offset of field: _jl_task_t::eh"][::std::mem::offset_of!(_jl_task_t, eh) - 184usize];
-    ["Offset of field: _jl_task_t::ctx"][::std::mem::offset_of!(_jl_task_t, ctx) - 192usize];
-};
-pub type jl_task_t = _jl_task_t;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct _jl_bt_element_t {
@@ -2289,34 +2289,6 @@ const _: () = {
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of template specialization: std_atomic_open0_jl_ptr_kind_union_t_close0"]
-        [::std::mem::size_of::<std_atomic<jl_ptr_kind_union_t>>() - 8usize];
-    ["Align of template specialization: std_atomic_open0_jl_ptr_kind_union_t_close0"]
-        [::std::mem::align_of::<std_atomic<jl_ptr_kind_union_t>>() - 8usize];
-};
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of template specialization: std_atomic_open0_size_t_close0"]
-        [::std::mem::size_of::<std_atomic<usize>>() - 8usize];
-    ["Align of template specialization: std_atomic_open0_size_t_close0"]
-        [::std::mem::align_of::<std_atomic<usize>>() - 8usize];
-};
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of template specialization: std_atomic_open0_uint32_t_close0"]
-        [::std::mem::size_of::<std_atomic<u32>>() - 4usize];
-    ["Align of template specialization: std_atomic_open0_uint32_t_close0"]
-        [::std::mem::align_of::<std_atomic<u32>>() - 4usize];
-};
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of template specialization: std_atomic_open0_intptr_t_close0"]
-        [::std::mem::size_of::<std_atomic<isize>>() - 8usize];
-    ["Align of template specialization: std_atomic_open0_intptr_t_close0"]
-        [::std::mem::align_of::<std_atomic<isize>>() - 8usize];
-};
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
     ["Size of template specialization: std_atomic_open0_uint8_t_close0"]
         [::std::mem::size_of::<std_atomic<u8>>() - 1usize];
     ["Align of template specialization: std_atomic_open0_uint8_t_close0"]
@@ -2363,4 +2335,32 @@ const _: () = {
         [::std::mem::size_of::<std_atomic<i16>>() - 2usize];
     ["Align of template specialization: std_atomic_open0_int16_t_close0"]
         [::std::mem::align_of::<std_atomic<i16>>() - 2usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_jl_ptr_kind_union_t_close0"]
+        [::std::mem::size_of::<std_atomic<jl_ptr_kind_union_t>>() - 8usize];
+    ["Align of template specialization: std_atomic_open0_jl_ptr_kind_union_t_close0"]
+        [::std::mem::align_of::<std_atomic<jl_ptr_kind_union_t>>() - 8usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_size_t_close0"]
+        [::std::mem::size_of::<std_atomic<usize>>() - 8usize];
+    ["Align of template specialization: std_atomic_open0_size_t_close0"]
+        [::std::mem::align_of::<std_atomic<usize>>() - 8usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_uint32_t_close0"]
+        [::std::mem::size_of::<std_atomic<u32>>() - 4usize];
+    ["Align of template specialization: std_atomic_open0_uint32_t_close0"]
+        [::std::mem::align_of::<std_atomic<u32>>() - 4usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_intptr_t_close0"]
+        [::std::mem::size_of::<std_atomic<isize>>() - 8usize];
+    ["Align of template specialization: std_atomic_open0_intptr_t_close0"]
+        [::std::mem::align_of::<std_atomic<isize>>() - 8usize];
 };
