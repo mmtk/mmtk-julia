@@ -15,11 +15,18 @@ use std::sync::atomic::Ordering;
 use crate::jl_hrtime;
 
 const DEFAULT_COLLECT_INTERVAL: usize = 5600 * 1024 * std::mem::size_of::<usize>();
-// const GC_ALWAYS_SWEEP_FULL: bool = false;
+const GC_ALWAYS_SWEEP_FULL: bool = false;
 
 /// This tries to implement Julia-style GC triggering heuristics.
-/// Note that the heuristics only consider full heap ("full sweep") collections.
-/// The code below will have to be modified to support sticky Immix.
+/// Note that for generational GC, Julia may trigger a full sweep collection for the following reasons:
+/// 1. FULL_SWEEP_REASON_SWEEP_ALWAYS_FULL: always triggers a full sweep collection
+/// 2. FULL_SWEEP_REASON_FORCED_FULL_SWEEP: if a full collection is forced by the user
+/// 3. FULL_SWEEP_REASON_USER_MAX_EXCEEDED: i.e. heap_size > user_max
+/// 4. FULL_SWEEP_REASON_LARGE_PROMOTION_RATE: using the size of the remembered set (promotion rate).
+///
+/// We support the reasons 1, 2, and 3. However, we do not support 4, since MMTk does not collect
+/// promotion rate information about remembered sets.
+/// For Immix, we obviously always do full heap collections.
 pub struct JuliaGCTrigger {
     heap_target: AtomicUsize,
     max_total_memory: AtomicUsize,
@@ -109,8 +116,6 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
         );
     }
     fn on_gc_end(&self, mmtk: &'static MMTK<JuliaVM>) {
-        // FIXME: ignoring prev_sweep_full until we implement stickyImmix
-
         // note that we get the end time at this point but the actual end time
         // is recorded at collection::VMCollection::resume_mutators
         let gc_end_time = unsafe { jl_hrtime() };
@@ -254,6 +259,33 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
             self.heap_target
                 .store(target_heap as usize, Ordering::Relaxed);
         }
+
+        let mut sweep_full = false;
+
+        // FULL_SWEEP_REASON_SWEEP_ALWAYS_FULL
+        if GC_ALWAYS_SWEEP_FULL {
+            trace!("Always do a full heap collection.");
+            sweep_full = true;
+        }
+
+        // FULL_SWEEP_REASON_USER_MAX_EXCEEDED
+        if heap_size > user_max {
+            trace!("Heap size exceeds user limit");
+            sweep_full = true;
+        }
+
+        // FULL_SWEEP_REASON_FORCED_FULL_SWEEP
+        if !gc_auto && !self.prev_sweep_full.load(Ordering::Relaxed) {
+            trace!("Forced full heap collection.");
+            sweep_full = true;
+        }
+
+        if sweep_full {
+            if let Some(gen) = mmtk.get_plan().generational() {
+                // Force full heap in the next GC
+                gen.force_full_heap_collection();
+            }
+        }
     }
 
     fn on_pending_allocation(&self, pages: usize) {
@@ -311,17 +343,26 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
 fn mmtk_jl_gc_smooth(old_val: usize, new_val: usize, factor: f64) -> usize {
     let est = factor * old_val as f64 + (1.0 - factor) * new_val as f64;
     if est <= 1.0 {
-        1_usize
+        1_usize // avoid issues with <= 0
     } else if est > (2usize << 36) as f64 {
-        2usize << 36
+        2usize << 36 // avoid overflow
     } else {
         est as usize
     }
 }
 
+// copy of overallocation from gc-stock.c
+// an overallocation curve inspired by array allocations
+// grows very fast initially, then much slower at large heaps
 fn mmtk_overallocation(old_val: usize, val: usize, max_val: usize) -> usize {
+    // compute maxsize = maxsize + 4*maxsize^(7/8) + maxsize/8
+    // for small n, we grow much faster than O(n)
+    // for large n, we grow at O(n/8)
+    // and as we reach O(memory) for memory>>1MB,
+    // this means we end by adding about 10% of memory each time at most
     let exp2 = usize::BITS as usize - old_val.leading_zeros() as usize;
     let inc = (1usize << (exp2 * 7 / 8)) * 4 + old_val / 8;
+    // once overallocation would exceed max_val, grow by no more than 5% of max_val
     if inc + val > max_val && inc > max_val / 20 {
         max_val / 20
     } else {
