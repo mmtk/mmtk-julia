@@ -45,7 +45,15 @@ pub fn mmtk_conservative_scan_task_stack(ta: *const jl_task_t) {
     let mut active_end = Address::ZERO;
     let mut total_start = Address::ZERO;
     let mut total_end = Address::ZERO;
-    unsafe { crate::jl_active_task_stack(ta, &mut active_start as _, &mut active_end as _, &mut total_start as _, &mut total_end as _) };
+    unsafe {
+        crate::jl_active_task_stack(
+            ta,
+            &mut active_start as _,
+            &mut active_end as _,
+            &mut total_start as _,
+            &mut total_end as _,
+        )
+    };
     log::debug!(
         "mmtk_conservative_scan_native_stack continue, active = {},{}, total = {},{}",
         active_start,
