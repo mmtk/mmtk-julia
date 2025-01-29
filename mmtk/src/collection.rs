@@ -1,11 +1,12 @@
 use crate::SINGLETON;
 use crate::{
-    jl_get_gc_disable_counter, jl_hrtime, jl_mmtk_prepare_to_collect, jl_mmtk_update_gc_stats,
-    jl_throw_out_of_memory_error,
+    jl_gc_get_max_memory, jl_gc_prepare_to_collect, jl_gc_update_stats, jl_get_gc_disable_counter,
+    jl_hrtime, jl_throw_out_of_memory_error,
 };
 use crate::{JuliaVM, USER_TRIGGERED_GC};
 use log::{debug, trace};
 use mmtk::util::alloc::AllocationError;
+use mmtk::util::heap::GCTriggerPolicy;
 use mmtk::util::opaque_pointer::*;
 use mmtk::vm::{Collection, GCThreadContext};
 use mmtk::Mutator;
@@ -83,7 +84,7 @@ impl Collection<JuliaVM> for VMCollection {
         trace!("gc_end = {}", end);
         let gc_time = end - GC_START.load(Ordering::Relaxed);
         unsafe {
-            jl_mmtk_update_gc_stats(
+            jl_gc_update_stats(
                 gc_time,
                 crate::api::mmtk_used_bytes(),
                 is_current_gc_nursery(),
@@ -93,7 +94,7 @@ impl Collection<JuliaVM> for VMCollection {
         AtomicBool::store(&BLOCK_FOR_GC, false, Ordering::SeqCst);
         AtomicBool::store(&WORLD_HAS_STOPPED, false, Ordering::SeqCst);
 
-        let &(_, ref cvar) = &*STW_COND.clone();
+        let (_, cvar) = &*STW_COND.clone();
         cvar.notify_all();
 
         debug!(
@@ -108,7 +109,7 @@ impl Collection<JuliaVM> for VMCollection {
     fn block_for_gc(_tls: VMMutatorThread) {
         debug!("Triggered GC!");
 
-        unsafe { jl_mmtk_prepare_to_collect() };
+        unsafe { jl_gc_prepare_to_collect() };
 
         debug!("Finished blocking mutator for GC!");
     }
@@ -152,7 +153,13 @@ impl Collection<JuliaVM> for VMCollection {
     }
 
     fn is_collection_enabled() -> bool {
-        unsafe { jl_get_gc_disable_counter() <= 0 }
+        unsafe { jl_get_gc_disable_counter() == 0 }
+    }
+
+    fn create_gc_trigger() -> Box<dyn GCTriggerPolicy<JuliaVM>> {
+        use crate::gc_trigger::*;
+        let max_memory = unsafe { jl_gc_get_max_memory() };
+        Box::new(JuliaGCTrigger::new(max_memory))
     }
 }
 
@@ -171,7 +178,7 @@ pub fn is_current_gc_moving() -> bool {
 pub extern "C" fn mmtk_block_thread_for_gc() {
     AtomicBool::store(&BLOCK_FOR_GC, true, Ordering::SeqCst);
 
-    let &(ref lock, ref cvar) = &*STW_COND.clone();
+    let (lock, cvar) = &*STW_COND.clone();
     let mut count = lock.lock().unwrap();
 
     debug!("Blocking for GC!");

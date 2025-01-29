@@ -1,6 +1,6 @@
 use crate::api::mmtk_get_obj_size;
-use crate::jl_mmtk_genericmemory_how;
-use crate::jl_mmtk_update_inlined_array;
+use crate::jl_gc_genericmemory_how;
+use crate::jl_gc_update_inlined_array;
 use crate::julia_scanning::{
     jl_genericmemory_typename, jl_small_typeof, mmtk_jl_typeof, mmtk_jl_typetagof,
 };
@@ -85,7 +85,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             let vt = mmtk_jl_typeof(from.to_raw_address());
 
             if (*vt).name == jl_genericmemory_typename {
-                jl_mmtk_update_inlined_array(from.to_raw_address(), to_obj.to_raw_address())
+                jl_gc_update_inlined_array(from.to_raw_address(), to_obj.to_raw_address())
             }
         }
 
@@ -99,7 +99,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
 
             Self::LOCAL_FORWARDING_BITS_SPEC.store_atomic::<JuliaVM, u8>(
                 from,
-                0b10 as u8, // BEING_FORWARDED
+                0b10_u8, // BEING_FORWARDED
                 None,
                 Ordering::SeqCst,
             );
@@ -151,12 +151,11 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
 
     #[inline(always)]
     fn ref_to_object_start(object: ObjectReference) -> Address {
-        let res = if is_object_in_los(&object) {
+        if is_object_in_los(&object) {
             object.to_raw_address() - 48
         } else {
             unsafe { get_object_start_ref(object) }
-        };
-        res
+        }
     }
 
     #[inline(always)]
@@ -208,7 +207,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
         vtag = Address::from_usize(vtag_usize);
     } else if vtag_usize < ((jl_small_typeof_tags_jl_max_tags as usize) << 4) {
         if vtag_usize == ((jl_small_typeof_tags_jl_simplevector_tag as usize) << 4) {
-            let length = (*obj_address.to_ptr::<jl_svec_t>()).length as usize;
+            let length = (*obj_address.to_ptr::<jl_svec_t>()).length;
             let dtsz = length * std::mem::size_of::<Address>() + std::mem::size_of::<jl_svec_t>();
 
             debug_assert!(
@@ -218,7 +217,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             );
 
             return llt_align(dtsz + JULIA_HEADER_SIZE, 16);
-        } else if vtag_usize == ((jl_small_typeof_tags_jl_module_tag as usize) << 4) as usize {
+        } else if vtag_usize == ((jl_small_typeof_tags_jl_module_tag as usize) << 4) {
             let dtsz = std::mem::size_of::<jl_module_t>();
             debug_assert!(
                 dtsz + JULIA_HEADER_SIZE <= 2032,
@@ -282,12 +281,12 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
     assert_eq!(obj_type, vt);
     if (*vt).name == jl_genericmemory_typename {
         let m = obj_address.to_ptr::<jl_genericmemory_t>();
-        let how = jl_mmtk_genericmemory_how(obj_address);
+        let how = jl_gc_genericmemory_how(obj_address);
         let res = if how == 0 {
             let layout = (*(mmtk_jl_typetagof(obj_address).to_ptr::<jl_datatype_t>())).layout;
-            let mut sz = (*layout).size as usize * (*m).length as usize;
+            let mut sz = (*layout).size as usize * (*m).length;
             if (*layout).flags.arrayelem_isunion() != 0 {
-                sz += (*m).length as usize;
+                sz += (*m).length;
             }
 
             let dtsz = llt_align(std::mem::size_of::<jl_genericmemory_t>(), 16);
@@ -310,14 +309,14 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
         dtsz + JULIA_HEADER_SIZE
     );
 
-    return llt_align(dtsz + JULIA_HEADER_SIZE, 16);
+    llt_align(dtsz + JULIA_HEADER_SIZE, 16)
 }
 
 #[inline(always)]
 pub unsafe fn get_lo_object_size(object: ObjectReference) -> usize {
     let obj_address = object.to_raw_address();
     let julia_big_object = obj_address.to_ptr::<_bigval_t>();
-    return (*julia_big_object).sz;
+    (*julia_big_object).sz
 }
 
 #[inline(always)]

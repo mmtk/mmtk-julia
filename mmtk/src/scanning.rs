@@ -13,9 +13,9 @@ use mmtk::vm::VMBinding;
 use mmtk::Mutator;
 use mmtk::MMTK;
 
-use crate::jl_mmtk_scan_vm_specific_roots;
-use crate::jl_mmtk_sweep_malloced_memory;
-use crate::jl_mmtk_sweep_stack_pools;
+use crate::jl_gc_mmtk_sweep_malloced_memory;
+use crate::jl_gc_scan_vm_specific_roots;
+use crate::jl_gc_sweep_stack_pools_and_mtarraylist_buffers;
 use crate::JuliaVM;
 
 pub struct VMScanning {}
@@ -84,9 +84,11 @@ impl Scanning<JuliaVM> for VMScanning {
                     pthread
                 );
                 // Conservative scan stack and registers. If the task hasn't been started, we do not need to scan its stack and registers.
-                if unsafe { (*task).start == crate::jl_true } {
-                    crate::conservative::mmtk_conservative_scan_task_stack(task);
-                    crate::conservative::mmtk_conservative_scan_task_registers(task);
+                unsafe {
+                    if (*task).start == crate::jl_true {
+                        crate::conservative::mmtk_conservative_scan_task_stack(task);
+                        crate::conservative::mmtk_conservative_scan_task_registers(task);
+                    }
                 }
 
                 if task_is_root {
@@ -134,27 +136,29 @@ impl Scanning<JuliaVM> for VMScanning {
         // Scan backtrace buffer: See gc_queue_bt_buf in gc.c
         let mut i = 0;
         while i < ptls.bt_size {
-            let bt_entry = unsafe { ptls.bt_data.add(i) };
-            let bt_entry_size = mmtk_jl_bt_entry_size(bt_entry);
-            if mmtk_jl_bt_is_native(bt_entry) {
+            unsafe {
+                let bt_entry = ptls.bt_data.add(i);
+                let bt_entry_size = mmtk_jl_bt_entry_size(bt_entry);
+                if mmtk_jl_bt_is_native(bt_entry) {
+                    i += bt_entry_size;
+                    continue;
+                }
+                let njlvals = mmtk_jl_bt_num_jlvals(bt_entry);
+                for j in 0..njlvals {
+                    let bt_entry_value = mmtk_jl_bt_entry_jlvalue(bt_entry, j);
+
+                    // captures wrong root nodes before creating the work
+                    debug_assert!(
+                        bt_entry_value.to_raw_address().as_usize() % 16 == 0
+                            || bt_entry_value.to_raw_address().as_usize() % 8 == 0,
+                        "root node {:?} is not aligned to 8 or 16",
+                        bt_entry_value
+                    );
+
+                    node_buffer.push(bt_entry_value);
+                }
                 i += bt_entry_size;
-                continue;
             }
-            let njlvals = mmtk_jl_bt_num_jlvals(bt_entry);
-            for j in 0..njlvals {
-                let bt_entry_value = mmtk_jl_bt_entry_jlvalue(bt_entry, j);
-
-                // captures wrong root nodes before creating the work
-                debug_assert!(
-                    bt_entry_value.to_raw_address().as_usize() % 16 == 0
-                        || bt_entry_value.to_raw_address().as_usize() % 8 == 0,
-                    "root node {:?} is not aligned to 8 or 16",
-                    bt_entry_value
-                );
-
-                node_buffer.push(bt_entry_value);
-            }
-            i += bt_entry_size;
         }
 
         // We do not need gc_queue_remset from gc.c (we are not using remset in the thread)
@@ -187,7 +191,7 @@ impl Scanning<JuliaVM> for VMScanning {
         use crate::slots::RootsWorkClosure;
         let mut roots_closure = RootsWorkClosure::from_roots_work_factory(&mut factory);
         unsafe {
-            jl_mmtk_scan_vm_specific_roots(&mut roots_closure as _);
+            jl_gc_scan_vm_specific_roots(&mut roots_closure as _);
         }
     }
 
@@ -251,11 +255,17 @@ impl SweepVMSpecific {
     }
 }
 
+impl Default for SweepVMSpecific {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<VM: VMBinding> GCWork<VM> for SweepVMSpecific {
     fn do_work(&mut self, _worker: &mut GCWorker<VM>, _mmtk: &'static MMTK<VM>) {
         // call sweep malloced arrays and sweep stack pools
-        unsafe { jl_mmtk_sweep_malloced_memory() }
-        unsafe { jl_mmtk_sweep_stack_pools() }
+        unsafe { jl_gc_mmtk_sweep_malloced_memory() }
+        unsafe { jl_gc_sweep_stack_pools_and_mtarraylist_buffers() }
         self.swept = true;
     }
 }
