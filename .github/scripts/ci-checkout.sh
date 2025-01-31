@@ -2,8 +2,10 @@ set -ex
 
 . $(dirname "$0")/common.sh
 
-JULIA_URL=`cargo read-manifest --manifest-path=$BINDING_PATH/mmtk/Cargo.toml | python -c 'import json,sys; print(json.load(sys.stdin)["metadata"]["julia"]["julia_repo"])'`
-JULIA_VERSION=`cargo read-manifest --manifest-path=$BINDING_PATH/mmtk/Cargo.toml | python -c 'import json,sys; print(json.load(sys.stdin)["metadata"]["julia"]["julia_version"])'`
+# We may later allow setting up a specific version of Julia using comments
+# in the PR, but for now we just use the latest master from JuliaLang
+JULIA_URL=https://github.com/$1.git
+JULIA_VERSION=$2
 
 rm -rf $JULIA_PATH
 git clone $JULIA_URL $JULIA_PATH
