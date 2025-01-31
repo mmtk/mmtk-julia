@@ -21,3 +21,14 @@ pull_request_rules:
         assignees:
           - "{{ author }}"
         label_conflicts: backport-conflicts
+  - name: backport patches to dev
+    conditions:
+      - base=master
+      - label=backport-dev
+    actions:
+      backport:
+        branches:
+          - dev
+        assignees:
+          - "{{ author }}"
+        label_conflicts: backport-conflicts

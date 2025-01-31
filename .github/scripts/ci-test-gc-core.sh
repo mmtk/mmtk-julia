@@ -27,5 +27,3 @@ do
         ci_run_jl_test $test
     fi
 done
-
-
