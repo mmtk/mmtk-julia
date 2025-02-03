@@ -27,7 +27,7 @@ declare -a tests_to_skip=(
     "SparseArrays"
     # Running LinearAlgebra in a separate job
     "LinearAlgebra"
-    # Skipping Distributed tests
+    # Skipping distributed tests because of https://github.com/JuliaLang/Distributed.jl/issues/132
     "Distributed"
 )
 # These tests need multiple workers.

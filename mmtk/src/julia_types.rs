@@ -248,7 +248,6 @@ const _: () = {
 pub type sigjmp_buf = [__jmp_buf_tag; 1usize];
 pub type jl_taggedvalue_t = _jl_taggedvalue_t;
 pub type jl_ptls_t = *mut _jl_tls_states_t;
-pub type jl_genericmemory_t = _jl_genericmemory_t;
 pub type sig_atomic_t = __sig_atomic_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -944,6 +943,7 @@ const _: () = {
     ["Offset of field: _jl_genericmemory_t::ptr"]
         [::std::mem::offset_of!(_jl_genericmemory_t, ptr) - 8usize];
 };
+pub type jl_genericmemory_t = _jl_genericmemory_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct jl_genericmemoryref_t {
