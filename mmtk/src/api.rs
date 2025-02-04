@@ -485,6 +485,7 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
     }
 }
 
+#[allow(unused_variables)]
 fn assert_is_object(object: ObjectReference) {
     // The checks are quite expensive. Dont run it in normal builds.
     const ASSERT_OBJECT: bool = false;

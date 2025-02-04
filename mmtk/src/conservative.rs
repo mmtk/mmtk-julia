@@ -74,7 +74,7 @@ pub unsafe fn mmtk_conservative_scan_task_stack(ta: *const jl_task_t) {
         const JL_GUARD_PAGE: usize = 4096 * 8;
         let guard_page_start = active_start + JL_GUARD_PAGE;
         log::debug!("Skip guard page: {}, {}", active_start, guard_page_start);
-        conservative_scan_range(guard_page_start, active_start + size as usize);
+        conservative_scan_range(guard_page_start, active_start + size);
     } else {
         log::warn!("Skip stack for {:?}", ta);
     }
