@@ -548,38 +548,39 @@ pub extern "C" fn mmtk_is_object_pinned(object: ObjectReference) -> bool {
     memory_manager::is_pinned(object)
 }
 
-#[no_mangle]
-pub extern "C" fn mmtk_pin_pointer(addr: Address) -> bool {
-    crate::early_return_for_non_moving_build!(false);
-    if mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
-        if !crate::object_model::is_addr_in_immixspace(addr) {
-            // We don't need to pin it.
-            // Also we will use VO bit in the following check. But if the object is not in immix space or LOS, we cannot do the check.
-            return false;
-        }
-        if addr.is_aligned_to(ObjectReference::ALIGNMENT) {
-            if let Some(obj) = memory_manager::is_mmtk_object(addr) {
-                return memory_manager::pin_object(obj);
+macro_rules! handle_potential_internal_pointer {
+    ($func: path, $addr: expr) => {{
+        if $addr.is_aligned_to(ObjectReference::ALIGNMENT) {
+            if let Some(obj) = memory_manager::is_mmtk_object($addr) {
+                return $func(obj);
             }
         }
-        let maybe_objref = memory_manager::find_object_from_internal_pointer(addr, usize::MAX);
+        let maybe_objref = memory_manager::find_object_from_internal_pointer($addr, usize::MAX);
         if let Some(obj) = maybe_objref {
             trace!(
                 "Attempt to pin {:?}, but it is an internal reference of {:?}",
-                addr,
+                $addr,
                 obj
             );
-            memory_manager::pin_object(obj)
+            $func(obj)
         } else {
-            // Possibly the object is in the VM space, and we do not set VO bit properly.
             warn!(
                 "Attempt to pin {:?}, but it is not recognised as a object",
-                addr
+                $addr
             );
             false
         }
+    }};
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_pin_pointer(addr: Address) -> bool {
+    crate::early_return_for_non_moving_build!(false);
+
+    if crate::object_model::is_addr_in_immixspace(addr) {
+        handle_potential_internal_pointer!(memory_manager::pin_object, addr)
     } else {
-        debug!("Object is not managed by mmtk - pinning it via this function isn't supported.");
+        debug!("Object is not in Immix space. MMTk will not move the object. No need to pin the object.");
         false
     }
 }
@@ -588,34 +589,10 @@ pub extern "C" fn mmtk_pin_pointer(addr: Address) -> bool {
 pub extern "C" fn mmtk_unpin_pointer(addr: Address) -> bool {
     crate::early_return_for_non_moving_build!(false);
 
-    if mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
-        if !crate::object_model::is_addr_in_immixspace(addr) {
-            // We don't need to pin it.
-            // Also we will use VO bit in the following check. But if the object is not in immix space or LOS, we cannot do the check.
-            return false;
-        }
-        if addr.is_aligned_to(ObjectReference::ALIGNMENT) {
-            if let Some(obj) = memory_manager::is_mmtk_object(addr) {
-                return memory_manager::unpin_object(obj);
-            }
-        }
-        let maybe_objref = memory_manager::find_object_from_internal_pointer(addr, usize::MAX);
-        if let Some(obj) = maybe_objref {
-            trace!(
-                "Attempt to unpin {:?}, but it is an internal reference of {:?}",
-                addr,
-                obj
-            );
-            memory_manager::unpin_object(obj)
-        } else {
-            warn!(
-                "Attempt to unpin {:?}, but it is not recognised as a object",
-                addr
-            );
-            false
-        }
+    if crate::object_model::is_addr_in_immixspace(addr) {
+        handle_potential_internal_pointer!(memory_manager::unpin_object, addr)
     } else {
-        debug!("Object is not managed by mmtk - unpinning it via this function isn't supported.");
+        debug!("Object is not in Immix space. MMTk will not move the object. No need to unpin the object.");
         false
     }
 }
@@ -624,32 +601,13 @@ pub extern "C" fn mmtk_unpin_pointer(addr: Address) -> bool {
 pub extern "C" fn mmtk_is_pointer_pinned(addr: Address) -> bool {
     crate::early_return_for_non_moving_build!(false);
 
-    if mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
-        if !crate::object_model::is_addr_in_immixspace(addr) {
-            // We don't need to pin it.
-            // Also we will use VO bit in the following check. But if the object is not in immix space or LOS, we cannot do the check.
-            return true;
-        }
-        if addr.is_aligned_to(ObjectReference::ALIGNMENT) {
-            if let Some(obj) = memory_manager::is_mmtk_object(addr) {
-                return memory_manager::is_pinned(obj);
-            }
-        }
-        let maybe_objref = memory_manager::find_object_from_internal_pointer(addr, usize::MAX);
-        if let Some(obj) = maybe_objref {
-            trace!(
-                "Attempt to check is_pinned for {:?}, but it is an internal reference of {:?}",
-                addr,
-                obj
-            );
-            memory_manager::is_pinned(obj)
-        } else {
-            warn!(
-                "Attempt to check is_pinned for {:?}, but it is not recognised as a object",
-                addr
-            );
-            false
-        }
+    if crate::object_model::is_addr_in_immixspace(addr) {
+        handle_potential_internal_pointer!(memory_manager::is_pinned, addr)
+    } else if !mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
+        debug!(
+            "Object is not in Immix space. MMTk will not move the object. We assume it is pinned."
+        );
+        true
     } else {
         debug!("Object is not managed by mmtk - checking pinning state via this function isn't supported.");
         false
