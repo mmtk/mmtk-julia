@@ -128,9 +128,8 @@ impl GCTriggerPolicy<JuliaVM> for JuliaGCTrigger {
         let heap_size = conversions::pages_to_bytes(reserved_pages_now);
 
         let user_max = self.max_total_memory.load(Ordering::Relaxed) * 80 / 100;
-        let alloc_diff = self.before_free_heap_size.load(Ordering::Relaxed)
-            - self.old_heap_size.load(Ordering::Relaxed);
-        let freed_diff = self.before_free_heap_size.load(Ordering::Relaxed) - heap_size;
+        let alloc_diff = self.before_free_heap_size.load(Ordering::Relaxed).saturating_sub(self.old_heap_size.load(Ordering::Relaxed));
+        let freed_diff = self.before_free_heap_size.load(Ordering::Relaxed).saturating_sub(heap_size);
         self.old_heap_size.store(heap_size, Ordering::Relaxed);
 
         // update the heap target only if the user did not force a GC
