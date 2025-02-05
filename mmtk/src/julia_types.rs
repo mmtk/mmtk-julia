@@ -643,6 +643,7 @@ pub struct _jl_task_t {
     pub threadpoolid: i8,
     pub reentrant_timing: u8,
     pub gcstack: *mut jl_gcframe_t,
+    pub gcpreserve_stack: *mut jl_gcframe_t,
     pub world_age: usize,
     pub ptls: jl_ptls_t,
     pub excstack: *mut jl_excstack_t,
@@ -651,7 +652,7 @@ pub struct _jl_task_t {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _jl_task_t"][::std::mem::size_of::<_jl_task_t>() - 224usize];
+    ["Size of _jl_task_t"][::std::mem::size_of::<_jl_task_t>() - 232usize];
     ["Alignment of _jl_task_t"][::std::mem::align_of::<_jl_task_t>() - 8usize];
     ["Offset of field: _jl_task_t::next"][::std::mem::offset_of!(_jl_task_t, next) - 0usize];
     ["Offset of field: _jl_task_t::queue"][::std::mem::offset_of!(_jl_task_t, queue) - 8usize];
@@ -688,13 +689,15 @@ const _: () = {
         [::std::mem::offset_of!(_jl_task_t, reentrant_timing) - 147usize];
     ["Offset of field: _jl_task_t::gcstack"]
         [::std::mem::offset_of!(_jl_task_t, gcstack) - 152usize];
+    ["Offset of field: _jl_task_t::gcpreserve_stack"]
+        [::std::mem::offset_of!(_jl_task_t, gcpreserve_stack) - 160usize];
     ["Offset of field: _jl_task_t::world_age"]
-        [::std::mem::offset_of!(_jl_task_t, world_age) - 160usize];
-    ["Offset of field: _jl_task_t::ptls"][::std::mem::offset_of!(_jl_task_t, ptls) - 168usize];
+        [::std::mem::offset_of!(_jl_task_t, world_age) - 168usize];
+    ["Offset of field: _jl_task_t::ptls"][::std::mem::offset_of!(_jl_task_t, ptls) - 176usize];
     ["Offset of field: _jl_task_t::excstack"]
-        [::std::mem::offset_of!(_jl_task_t, excstack) - 176usize];
-    ["Offset of field: _jl_task_t::eh"][::std::mem::offset_of!(_jl_task_t, eh) - 184usize];
-    ["Offset of field: _jl_task_t::ctx"][::std::mem::offset_of!(_jl_task_t, ctx) - 192usize];
+        [::std::mem::offset_of!(_jl_task_t, excstack) - 184usize];
+    ["Offset of field: _jl_task_t::eh"][::std::mem::offset_of!(_jl_task_t, eh) - 192usize];
+    ["Offset of field: _jl_task_t::ctx"][::std::mem::offset_of!(_jl_task_t, ctx) - 200usize];
 };
 pub type jl_task_t = _jl_task_t;
 #[repr(C)]
