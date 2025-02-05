@@ -121,11 +121,13 @@ extern "C" {
     pub fn jl_gc_get_owner_address_to_mmtk(m: Address) -> Address;
     pub fn jl_gc_genericmemory_how(m: Address) -> usize;
     pub fn jl_gc_get_max_memory() -> usize;
-    pub fn jl_task_stack_buffer(
+    pub fn jl_active_task_stack(
         task: *const crate::julia_types::jl_task_t,
-        size: *mut u64,
-        ptid: *mut i32,
-    ) -> Address;
+        active_start: *mut Address,
+        active_end: *mut Address,
+        total_start: *mut Address,
+        total_end: *mut Address,
+    );
     pub static jl_true: *mut crate::julia_types::jl_value_t;
 }
 

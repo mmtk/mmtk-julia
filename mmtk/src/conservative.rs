@@ -1,4 +1,3 @@
-use crate::jl_task_stack_buffer;
 use crate::julia_types::*;
 use mmtk::memory_manager;
 use mmtk::util::constants::BYTES_IN_ADDRESS;
@@ -44,24 +43,38 @@ pub unsafe fn mmtk_conservative_scan_task_stack(ta: *const jl_task_t) {
     crate::early_return_for_non_moving_build!(());
     crate::early_return_for_current_gc!();
 
-    let mut size: u64 = 0;
-    let mut ptid: i32 = 0;
     log::debug!("mmtk_conservative_scan_native_stack begin ta = {:?}", ta);
-    let stk = unsafe { jl_task_stack_buffer(ta, &mut size as *mut _, &mut ptid as *mut _) };
+    let mut active_start = Address::ZERO;
+    let mut active_end = Address::ZERO;
+    let mut total_start = Address::ZERO;
+    let mut total_end = Address::ZERO;
+    unsafe {
+        crate::jl_active_task_stack(
+            ta,
+            &mut active_start as _,
+            &mut active_end as _,
+            &mut total_start as _,
+            &mut total_end as _,
+        )
+    };
     log::debug!(
-        "mmtk_conservative_scan_native_stack continue stk = {}, size = {}, ptid = {:x}",
-        stk,
-        size,
-        ptid
+        "mmtk_conservative_scan_native_stack continue, active = {},{}, total = {},{}",
+        active_start,
+        active_end,
+        total_start,
+        total_end,
     );
-    if !stk.is_zero() {
+
+    let size = active_end - active_start;
+
+    if !active_start.is_zero() {
         log::debug!("Conservatively scan the stack");
         // See jl_guard_size
         // TODO: Are we sure there are always guard pages we need to skip?
         const JL_GUARD_PAGE: usize = 4096 * 8;
-        let guard_page_start = stk + JL_GUARD_PAGE;
-        log::debug!("Skip guard page: {}, {}", stk, guard_page_start);
-        conservative_scan_range(guard_page_start, stk + size as usize);
+        let guard_page_start = active_start + JL_GUARD_PAGE;
+        log::debug!("Skip guard page: {}, {}", active_start, guard_page_start);
+        conservative_scan_range(guard_page_start, active_start + size);
     } else {
         log::warn!("Skip stack for {:?}", ta);
     }
