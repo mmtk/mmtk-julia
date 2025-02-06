@@ -2122,6 +2122,7 @@ pub struct _jl_module_t {
     pub bindingkeyset: u64,
     pub file: *mut jl_sym_t,
     pub line: i32,
+    pub usings_backedges: *mut jl_value_t,
     pub usings: arraylist_t,
     pub build_id: jl_uuid_t,
     pub uuid: jl_uuid_t,
@@ -2137,7 +2138,7 @@ pub struct _jl_module_t {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _jl_module_t"][::std::mem::size_of::<_jl_module_t>() - 376usize];
+    ["Size of _jl_module_t"][::std::mem::size_of::<_jl_module_t>() - 384usize];
     ["Alignment of _jl_module_t"][::std::mem::align_of::<_jl_module_t>() - 8usize];
     ["Offset of field: _jl_module_t::name"][::std::mem::offset_of!(_jl_module_t, name) - 0usize];
     ["Offset of field: _jl_module_t::parent"]
@@ -2148,27 +2149,29 @@ const _: () = {
         [::std::mem::offset_of!(_jl_module_t, bindingkeyset) - 24usize];
     ["Offset of field: _jl_module_t::file"][::std::mem::offset_of!(_jl_module_t, file) - 32usize];
     ["Offset of field: _jl_module_t::line"][::std::mem::offset_of!(_jl_module_t, line) - 40usize];
+    ["Offset of field: _jl_module_t::usings_backedges"]
+        [::std::mem::offset_of!(_jl_module_t, usings_backedges) - 48usize];
     ["Offset of field: _jl_module_t::usings"]
-        [::std::mem::offset_of!(_jl_module_t, usings) - 48usize];
+        [::std::mem::offset_of!(_jl_module_t, usings) - 56usize];
     ["Offset of field: _jl_module_t::build_id"]
-        [::std::mem::offset_of!(_jl_module_t, build_id) - 304usize];
-    ["Offset of field: _jl_module_t::uuid"][::std::mem::offset_of!(_jl_module_t, uuid) - 320usize];
+        [::std::mem::offset_of!(_jl_module_t, build_id) - 312usize];
+    ["Offset of field: _jl_module_t::uuid"][::std::mem::offset_of!(_jl_module_t, uuid) - 328usize];
     ["Offset of field: _jl_module_t::counter"]
-        [::std::mem::offset_of!(_jl_module_t, counter) - 336usize];
+        [::std::mem::offset_of!(_jl_module_t, counter) - 344usize];
     ["Offset of field: _jl_module_t::nospecialize"]
-        [::std::mem::offset_of!(_jl_module_t, nospecialize) - 340usize];
+        [::std::mem::offset_of!(_jl_module_t, nospecialize) - 348usize];
     ["Offset of field: _jl_module_t::optlevel"]
-        [::std::mem::offset_of!(_jl_module_t, optlevel) - 344usize];
+        [::std::mem::offset_of!(_jl_module_t, optlevel) - 352usize];
     ["Offset of field: _jl_module_t::compile"]
-        [::std::mem::offset_of!(_jl_module_t, compile) - 345usize];
+        [::std::mem::offset_of!(_jl_module_t, compile) - 353usize];
     ["Offset of field: _jl_module_t::infer"]
-        [::std::mem::offset_of!(_jl_module_t, infer) - 346usize];
+        [::std::mem::offset_of!(_jl_module_t, infer) - 354usize];
     ["Offset of field: _jl_module_t::istopmod"]
-        [::std::mem::offset_of!(_jl_module_t, istopmod) - 347usize];
+        [::std::mem::offset_of!(_jl_module_t, istopmod) - 355usize];
     ["Offset of field: _jl_module_t::max_methods"]
-        [::std::mem::offset_of!(_jl_module_t, max_methods) - 348usize];
-    ["Offset of field: _jl_module_t::lock"][::std::mem::offset_of!(_jl_module_t, lock) - 352usize];
-    ["Offset of field: _jl_module_t::hash"][::std::mem::offset_of!(_jl_module_t, hash) - 368usize];
+        [::std::mem::offset_of!(_jl_module_t, max_methods) - 356usize];
+    ["Offset of field: _jl_module_t::lock"][::std::mem::offset_of!(_jl_module_t, lock) - 360usize];
+    ["Offset of field: _jl_module_t::hash"][::std::mem::offset_of!(_jl_module_t, hash) - 376usize];
 };
 pub type jl_module_t = _jl_module_t;
 #[repr(C)]
