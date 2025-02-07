@@ -54,6 +54,7 @@ fn main() {
         let bindings = bindgen::Builder::default()
             .header(format!("{}/src/julia.h", julia_dir))
             .header(format!("{}/src/julia_internal.h", julia_dir))
+            .header(format!("{}/src/gc-common.h", julia_dir))
             // Including the paths to depending .h files
             .clang_arg("-I")
             .clang_arg(format!("{}/mmtk/api", mmtk_dir))
@@ -77,6 +78,7 @@ fn main() {
             .allowlist_item("jl_bt_element_t")
             .allowlist_item("jl_taggedvalue_t")
             .allowlist_item("MMTkMutatorContext")
+            .allowlist_item("_bigval_t")
             // --opaque-type MMTkMutatorContext
             .opaque_type("MMTkMutatorContext")
             // compile using c++

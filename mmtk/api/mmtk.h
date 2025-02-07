@@ -49,7 +49,9 @@ extern int mmtk_object_is_managed_by_mmtk(void* addr);
 extern void mmtk_runtime_panic(void);
 extern void mmtk_unreachable(void);
 extern unsigned char mmtk_pin_object(void* obj);
-extern bool mmtk_is_pinned(void* obj);
+extern bool mmtk_is_object_pinned(void* obj);
+extern unsigned char mmtk_pin_pointer(void* ptr);
+extern bool mmtk_is_pointer_pinned(void* ptr);
 extern const char* get_mmtk_version(void);
 
 extern void mmtk_set_vm_space(void* addr, size_t size);
@@ -85,7 +87,7 @@ extern void mmtk_block_thread_for_gc(void);
 extern void* mmtk_new_mutator_iterator(void);
 extern void* mmtk_get_next_mutator_tls(void*);
 extern void* mmtk_close_mutator_iterator(void*);
-
+extern void mmtk_store_obj_size_c(void* obj, size_t size);
 
 /**
  * VM Accounting
@@ -105,6 +107,11 @@ extern void mmtk_add_phantom_candidate(void* ref);
 
 extern void mmtk_harness_begin(void *tls);
 extern void mmtk_harness_end(void);
+
+/**
+ * Copying
+ */
+extern const void* MMTK_SIDE_VO_BIT_BASE_ADDRESS;
 
 #ifdef __cplusplus
 }
