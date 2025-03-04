@@ -2,6 +2,11 @@ set -xe
 
 . $(dirname "$0")/common.sh
 
+# plan to use
+plan=$1
+
+export MMTK_PLAN=$plan
+
 # Get all the tests
 CHOOSE_TESTS_JL_PATH=$JULIA_PATH/test/choosetests.jl
 CHOOSE_TESTS_JL_CONTENT=`cat $CHOOSE_TESTS_JL_PATH`
