@@ -109,7 +109,7 @@ jobs:
           $JULIA_PATH/julia --project=. -e "using InteractiveUtils; versioninfo()"
       - name: Test Julia
         run: |
-          ./.github/scripts/ci-test-other.sh
+          ./.github/scripts/ci-test-other.sh ${{ inputs.gc_plan }}
 
   build-test-stdlib:
     runs-on: ubuntu-22.04
@@ -135,7 +135,7 @@ jobs:
           $JULIA_PATH/julia --project=. -e "using InteractiveUtils; versioninfo()"
       - name: Test Julia
         run: |
-          ./.github/scripts/ci-test-stdlib.sh
+          ./.github/scripts/ci-test-stdlib.sh ${{ inputs.gc_plan }}
 
   build-test-LinearAlgebra:
     runs-on: ubuntu-22.04
@@ -158,4 +158,4 @@ jobs:
           $JULIA_PATH/julia --project=. -e "using InteractiveUtils; versioninfo()"
       - name: Test Julia
         run: |
-          ./.github/scripts/ci-test-LinearAlgebra.sh
+          ./.github/scripts/ci-test-LinearAlgebra.sh ${{ inputs.gc_plan }}

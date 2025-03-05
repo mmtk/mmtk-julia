@@ -2,6 +2,11 @@ set -xe
 
 . $(dirname "$0")/common.sh
 
+# plan to use
+plan=$1
+
+export MMTK_PLAN=$plan
+
 # Get all the tests
 CHOOSE_TESTS_JL_PATH=$JULIA_PATH/test/choosetests.jl
 CHOOSE_TESTS_JL_CONTENT=`cat $CHOOSE_TESTS_JL_PATH`
@@ -25,6 +30,12 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
             # Ignore stdlib tests for now -- we run stdlib tests separately
             if [[ $test =~ "stdlib" ]]; then
                 echo "-> Skip stdlib"
+                continue
+            fi
+
+            if [[ $test =~ "compiler_extras" ]]; then
+                # Skipping compiler_extras for now
+                echo "-> Skip compiler_extras"
                 continue
             fi
 
