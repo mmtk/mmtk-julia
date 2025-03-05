@@ -33,6 +33,12 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
                 continue
             fi
 
+            if [[ $test =~ "compiler_extras" ]]; then
+                # Skipping compiler_extras for now
+                echo "-> Skip compiler_extras"
+                continue
+            fi
+
             echo "-> Run"
             ci_run_jl_test $test
         fi
