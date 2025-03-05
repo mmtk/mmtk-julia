@@ -13,6 +13,8 @@ cur=$(realpath $(dirname "$0"))
 cd $cur
 ./ci-build.sh release Immix
 
+export MMTK_PLAN=Immix
+
 # Use release build to run tests
 cd $cur
 ./ci-test-gc-core.sh

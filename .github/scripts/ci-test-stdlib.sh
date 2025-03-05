@@ -5,6 +5,11 @@ set -e
 
 . $(dirname "$0")/common.sh
 
+# plan to use
+plan=$1
+
+export MMTK_PLAN=$plan
+
 # These tests seem to fail. We skip them.
 declare -a tests_to_skip=(
     # Test Failed at /home/runner/work/mmtk-julia/mmtk-julia/vm/julia/usr/share/julia/stdlib/v1.8/Dates/test/io.jl:45
