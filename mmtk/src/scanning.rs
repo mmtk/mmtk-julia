@@ -84,10 +84,12 @@ impl Scanning<JuliaVM> for VMScanning {
                     pthread
                 );
                 // Conservative scan stack and registers. If the task hasn't been started, we do not need to scan its stack and registers.
-                if unsafe { (*task).start == crate::jl_true } {
+                // We cannot use `task->start` to skip conservative scanning, as before a task is started, the runtime may evaluate the code and we need to make sure the runtime objects are properly scanned.
+                // However, without this check, we may timeout in a test that spawns a lot of tasks.
+                // if unsafe { (*task).start == crate::jl_true } {
                     crate::conservative::mmtk_conservative_scan_task_stack(task);
                     crate::conservative::mmtk_conservative_scan_task_registers(task);
-                }
+                // }
 
                 if task_is_root {
                     // captures wrong root nodes before creating the work
