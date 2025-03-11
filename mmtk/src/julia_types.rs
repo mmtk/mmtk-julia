@@ -248,12 +248,12 @@ const _: () = {
 pub type sigjmp_buf = [__jmp_buf_tag; 1usize];
 pub type jl_taggedvalue_t = _jl_taggedvalue_t;
 pub type jl_ptls_t = *mut _jl_tls_states_t;
+pub type sig_atomic_t = __sig_atomic_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _jl_value_t {
     _unused: [u8; 0],
 }
-pub type sig_atomic_t = __sig_atomic_t;
 pub type jl_value_t = _jl_value_t;
 #[repr(C)]
 #[repr(align(8))]
@@ -930,19 +930,20 @@ const _: () = {
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct jl_genericmemory_t {
+pub struct _jl_genericmemory_t {
     pub length: usize,
     pub ptr: *mut ::std::os::raw::c_void,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of jl_genericmemory_t"][::std::mem::size_of::<jl_genericmemory_t>() - 16usize];
-    ["Alignment of jl_genericmemory_t"][::std::mem::align_of::<jl_genericmemory_t>() - 8usize];
-    ["Offset of field: jl_genericmemory_t::length"]
-        [::std::mem::offset_of!(jl_genericmemory_t, length) - 0usize];
-    ["Offset of field: jl_genericmemory_t::ptr"]
-        [::std::mem::offset_of!(jl_genericmemory_t, ptr) - 8usize];
+    ["Size of _jl_genericmemory_t"][::std::mem::size_of::<_jl_genericmemory_t>() - 16usize];
+    ["Alignment of _jl_genericmemory_t"][::std::mem::align_of::<_jl_genericmemory_t>() - 8usize];
+    ["Offset of field: _jl_genericmemory_t::length"]
+        [::std::mem::offset_of!(_jl_genericmemory_t, length) - 0usize];
+    ["Offset of field: _jl_genericmemory_t::ptr"]
+        [::std::mem::offset_of!(_jl_genericmemory_t, ptr) - 8usize];
 };
+pub type jl_genericmemory_t = _jl_genericmemory_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct jl_genericmemoryref_t {
@@ -1936,15 +1937,14 @@ const _: () = {
         [::std::mem::offset_of!(_jl_weakref_t, value) - 0usize];
 };
 pub type jl_weakref_t = _jl_weakref_t;
-pub type jl_ptr_kind_union_t = usize;
 #[repr(C)]
 #[derive(Debug)]
 pub struct _jl_binding_partition_t {
-    pub restriction: std_atomic<jl_ptr_kind_union_t>,
+    pub restriction: *mut jl_value_t,
     pub min_world: usize,
     pub max_world: std_atomic<usize>,
     pub next: u64,
-    pub reserved: usize,
+    pub kind: usize,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1959,8 +1959,8 @@ const _: () = {
         [::std::mem::offset_of!(_jl_binding_partition_t, max_world) - 16usize];
     ["Offset of field: _jl_binding_partition_t::next"]
         [::std::mem::offset_of!(_jl_binding_partition_t, next) - 24usize];
-    ["Offset of field: _jl_binding_partition_t::reserved"]
-        [::std::mem::offset_of!(_jl_binding_partition_t, reserved) - 32usize];
+    ["Offset of field: _jl_binding_partition_t::kind"]
+        [::std::mem::offset_of!(_jl_binding_partition_t, kind) - 32usize];
 };
 pub type jl_binding_partition_t = _jl_binding_partition_t;
 #[repr(C)]
@@ -1985,6 +1985,8 @@ pub struct _jl_module_t {
     pub bindingkeyset: u64,
     pub file: *mut jl_sym_t,
     pub line: i32,
+    pub usings_backedges: *mut jl_value_t,
+    pub scanned_methods: *mut jl_value_t,
     pub usings: arraylist_t,
     pub build_id: jl_uuid_t,
     pub uuid: jl_uuid_t,
@@ -1995,12 +1997,13 @@ pub struct _jl_module_t {
     pub infer: i8,
     pub istopmod: u8,
     pub max_methods: i8,
+    pub export_set_changed_since_require_world: std_atomic<i8>,
     pub lock: jl_mutex_t,
     pub hash: isize,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _jl_module_t"][::std::mem::size_of::<_jl_module_t>() - 376usize];
+    ["Size of _jl_module_t"][::std::mem::size_of::<_jl_module_t>() - 392usize];
     ["Alignment of _jl_module_t"][::std::mem::align_of::<_jl_module_t>() - 8usize];
     ["Offset of field: _jl_module_t::name"][::std::mem::offset_of!(_jl_module_t, name) - 0usize];
     ["Offset of field: _jl_module_t::parent"]
@@ -2011,27 +2014,33 @@ const _: () = {
         [::std::mem::offset_of!(_jl_module_t, bindingkeyset) - 24usize];
     ["Offset of field: _jl_module_t::file"][::std::mem::offset_of!(_jl_module_t, file) - 32usize];
     ["Offset of field: _jl_module_t::line"][::std::mem::offset_of!(_jl_module_t, line) - 40usize];
+    ["Offset of field: _jl_module_t::usings_backedges"]
+        [::std::mem::offset_of!(_jl_module_t, usings_backedges) - 48usize];
+    ["Offset of field: _jl_module_t::scanned_methods"]
+        [::std::mem::offset_of!(_jl_module_t, scanned_methods) - 56usize];
     ["Offset of field: _jl_module_t::usings"]
-        [::std::mem::offset_of!(_jl_module_t, usings) - 48usize];
+        [::std::mem::offset_of!(_jl_module_t, usings) - 64usize];
     ["Offset of field: _jl_module_t::build_id"]
-        [::std::mem::offset_of!(_jl_module_t, build_id) - 304usize];
-    ["Offset of field: _jl_module_t::uuid"][::std::mem::offset_of!(_jl_module_t, uuid) - 320usize];
+        [::std::mem::offset_of!(_jl_module_t, build_id) - 320usize];
+    ["Offset of field: _jl_module_t::uuid"][::std::mem::offset_of!(_jl_module_t, uuid) - 336usize];
     ["Offset of field: _jl_module_t::counter"]
-        [::std::mem::offset_of!(_jl_module_t, counter) - 336usize];
+        [::std::mem::offset_of!(_jl_module_t, counter) - 352usize];
     ["Offset of field: _jl_module_t::nospecialize"]
-        [::std::mem::offset_of!(_jl_module_t, nospecialize) - 340usize];
+        [::std::mem::offset_of!(_jl_module_t, nospecialize) - 356usize];
     ["Offset of field: _jl_module_t::optlevel"]
-        [::std::mem::offset_of!(_jl_module_t, optlevel) - 344usize];
+        [::std::mem::offset_of!(_jl_module_t, optlevel) - 360usize];
     ["Offset of field: _jl_module_t::compile"]
-        [::std::mem::offset_of!(_jl_module_t, compile) - 345usize];
+        [::std::mem::offset_of!(_jl_module_t, compile) - 361usize];
     ["Offset of field: _jl_module_t::infer"]
-        [::std::mem::offset_of!(_jl_module_t, infer) - 346usize];
+        [::std::mem::offset_of!(_jl_module_t, infer) - 362usize];
     ["Offset of field: _jl_module_t::istopmod"]
-        [::std::mem::offset_of!(_jl_module_t, istopmod) - 347usize];
+        [::std::mem::offset_of!(_jl_module_t, istopmod) - 363usize];
     ["Offset of field: _jl_module_t::max_methods"]
-        [::std::mem::offset_of!(_jl_module_t, max_methods) - 348usize];
-    ["Offset of field: _jl_module_t::lock"][::std::mem::offset_of!(_jl_module_t, lock) - 352usize];
-    ["Offset of field: _jl_module_t::hash"][::std::mem::offset_of!(_jl_module_t, hash) - 368usize];
+        [::std::mem::offset_of!(_jl_module_t, max_methods) - 364usize];
+    ["Offset of field: _jl_module_t::export_set_changed_since_require_world"]
+        [::std::mem::offset_of!(_jl_module_t, export_set_changed_since_require_world) - 365usize];
+    ["Offset of field: _jl_module_t::lock"][::std::mem::offset_of!(_jl_module_t, lock) - 368usize];
+    ["Offset of field: _jl_module_t::hash"][::std::mem::offset_of!(_jl_module_t, hash) - 384usize];
 };
 pub type jl_module_t = _jl_module_t;
 #[repr(C)]
@@ -2338,13 +2347,6 @@ const _: () = {
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of template specialization: std_atomic_open0_jl_ptr_kind_union_t_close0"]
-        [::std::mem::size_of::<std_atomic<jl_ptr_kind_union_t>>() - 8usize];
-    ["Align of template specialization: std_atomic_open0_jl_ptr_kind_union_t_close0"]
-        [::std::mem::align_of::<std_atomic<jl_ptr_kind_union_t>>() - 8usize];
-};
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
     ["Size of template specialization: std_atomic_open0_size_t_close0"]
         [::std::mem::size_of::<std_atomic<usize>>() - 8usize];
     ["Align of template specialization: std_atomic_open0_size_t_close0"]
@@ -2356,6 +2358,13 @@ const _: () = {
         [::std::mem::size_of::<std_atomic<u32>>() - 4usize];
     ["Align of template specialization: std_atomic_open0_uint32_t_close0"]
         [::std::mem::align_of::<std_atomic<u32>>() - 4usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_int8_t_close0"]
+        [::std::mem::size_of::<std_atomic<i8>>() - 1usize];
+    ["Align of template specialization: std_atomic_open0_int8_t_close0"]
+        [::std::mem::align_of::<std_atomic<i8>>() - 1usize];
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
