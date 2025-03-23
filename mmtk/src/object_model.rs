@@ -315,7 +315,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
 #[inline(always)]
 pub unsafe fn get_lo_object_size(object: ObjectReference) -> usize {
     let obj_address = object.to_raw_address();
-    let julia_big_object = obj_address.to_ptr::<_bigval_t>();
+    let julia_big_object = (obj_address - std::mem::size_of::<_bigval_t>()).to_ptr::<_bigval_t>();
     (*julia_big_object).sz
 }
 
