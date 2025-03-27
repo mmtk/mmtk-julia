@@ -33,6 +33,10 @@ ifeq ($(MMTK_MOVING), 0)
 CARGO_FEATURES := $(CARGO_FEATURES),non_moving
 endif
 
+ifeq ($(MMTK_MOVING_STRESS), 1)
+CARGO_FEATURES := $(CARGO_FEATURES),immix_stress_copying
+endif
+
 # Build the mmtk-julia project
 # Note that we might need to clone julia if it doesn't exist  
 # since we need to run bindgen as part of building mmtk-julia
