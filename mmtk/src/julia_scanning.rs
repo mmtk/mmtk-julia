@@ -4,6 +4,7 @@ use crate::slots::JuliaVMSlot;
 use crate::slots::OffsetSlot;
 use crate::JULIA_BUFF_TAG;
 use memoffset::offset_of;
+use mmtk::memory_manager;
 use mmtk::util::{Address, ObjectReference};
 use mmtk::vm::slot::SimpleSlot;
 use mmtk::vm::SlotVisitor;
@@ -246,12 +247,49 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             let owner_addr = mmtk_jl_genericmemory_data_owner_field_address(m);
             process_slot(closure, owner_addr);
 
+            let ptr_addr = Address::from_ptr((*m).ptr);
+            // m.ptr might be an internal pointer
+            // find the beginning of the object and trace it since the object may have moved
+            if crate::object_model::is_addr_in_immixspace(ptr_addr) {
+                let object =
+                    memory_manager::find_object_from_internal_pointer(ptr_addr, usize::MAX)
+                        .unwrap();
+                let offset = Address::from_ptr((*m).ptr) - object.to_raw_address();
+                let ptr_address = Address::from_ptr((::std::ptr::addr_of!((*m).ptr)));
+                process_offset_slot(closure, ptr_address, offset);
+            }
+
             return;
         }
 
         if (*m).length == 0 {
             return;
         }
+
+        if how == 1 {
+            let ptr_addr = Address::from_ptr((*m).ptr);
+            // m.ptr might be an internal pointer
+            // find the beginning of the object and trace it since the object may have moved
+            if crate::object_model::is_addr_in_immixspace(ptr_addr) {
+                let object =
+                    memory_manager::find_object_from_internal_pointer(ptr_addr, usize::MAX)
+                        .unwrap();
+                let offset = Address::from_ptr((*m).ptr) - object.to_raw_address();
+                println!(
+                    "obj = {}, m->ptr = {}, offset = {}",
+                    object.to_raw_address(),
+                    Address::from_ptr((*m).ptr),
+                    offset
+                );
+                let ptr_address = Address::from_ptr((::std::ptr::addr_of!((*m).ptr)));
+                process_offset_slot(closure, ptr_address, offset);
+                return;
+            }
+        }
+
+        // m.ptr is interior to the same object
+        // or malloced
+        // debug_assert!((how == 0 || how == 2) && is_malloced_obj() || is_interior_pointer())
 
         let layout = (*vt).layout;
         if (*layout).flags.arrayelem_isboxed() != 0 {
