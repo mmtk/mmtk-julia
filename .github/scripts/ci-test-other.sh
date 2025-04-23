@@ -13,6 +13,11 @@ CHOOSE_TESTS_JL_CONTENT=`cat $CHOOSE_TESTS_JL_PATH`
 
 REGEX_PATTERN='.*const TESTNAMES = \[([^\[]*)^\].*'
 
+# These tests run with a single worker
+declare -a tests_with_single_worker=(
+    “rounding”,
+)
+
 if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
     RAW_TEST_NAMES=${BASH_REMATCH[1]}
 
@@ -36,6 +41,12 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
             if [[ $test =~ "compiler_extras" ]]; then
                 # Skipping compiler_extras for now
                 echo "-> Skip compiler_extras"
+                continue
+            fi
+
+            if [[ $test =~ "rounding" ]]; then
+                echo "-> Run single threaded"
+                ci_run_jl_test $test 1
                 continue
             fi
 
