@@ -2,7 +2,7 @@ use crate::api::mmtk_get_obj_size;
 use crate::jl_gc_genericmemory_how;
 use crate::jl_gc_update_inlined_array;
 use crate::julia_scanning::{
-    jl_genericmemory_typename, jl_small_typeof, mmtk_jl_typeof, mmtk_jl_typetagof,
+    jl_genericmemory_typename, jl_small_typeof, mmtk_jl_typeof, mmtk_jl_typetagof, jl_method_type
 };
 use crate::julia_types::*;
 use crate::{JuliaVM, JULIA_BUFF_TAG, JULIA_HEADER_SIZE};
@@ -302,6 +302,15 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
         debug_assert!(res <= 2032, "size {} greater than minimum!", res);
 
         return res;
+    } else if vt == jl_method_type {
+        let dtsz = std::mem::size_of::<jl_method_t>();
+        debug_assert!(
+            dtsz + JULIA_HEADER_SIZE <= 2032,
+            "size {} greater than minimum!",
+            dtsz + JULIA_HEADER_SIZE
+        );
+
+        return llt_align(dtsz + JULIA_HEADER_SIZE, 16);
     }
 
     let layout = (*vt).layout;

@@ -71,6 +71,7 @@ fn main() {
             .allowlist_item("jl_*_tag")
             .allowlist_item("jl_svec_t")
             .allowlist_item("jl_module_t")
+            .allowlist_item("jl_method_t")
             .allowlist_item("jl_task_t")
             .allowlist_item("jl_datatype_t")
             .allowlist_item("jl_weakref_t")

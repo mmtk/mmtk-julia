@@ -1110,7 +1110,759 @@ const _: () = {
     ["Offset of field: jl_array_t::ref_"][::std::mem::offset_of!(jl_array_t, ref_) - 0usize];
     ["Offset of field: jl_array_t::dimsize"][::std::mem::offset_of!(jl_array_t, dimsize) - 16usize];
 };
+pub type jl_method_instance_t = _jl_method_instance_t;
 pub type jl_typemap_t = jl_value_t;
+pub type jl_call_t = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut jl_value_t,
+        arg2: *mut *mut jl_value_t,
+        arg3: u32,
+        arg4: *mut _jl_code_instance_t,
+    ) -> *mut jl_value_t,
+>;
+pub type jl_callptr_t = jl_call_t;
+pub type jl_fptr_args_t = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut jl_value_t,
+        arg2: *mut *mut jl_value_t,
+        arg3: u32,
+    ) -> *mut jl_value_t,
+>;
+pub type jl_fptr_sparam_t = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut jl_value_t,
+        arg2: *mut *mut jl_value_t,
+        arg3: u32,
+        arg4: *mut jl_svec_t,
+    ) -> *mut jl_value_t,
+>;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _jl_debuginfo_t {
+    pub def: *mut jl_value_t,
+    pub linetable: *mut _jl_debuginfo_t,
+    pub edges: *mut jl_svec_t,
+    pub codelocs: *mut jl_value_t,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _jl_debuginfo_t"][::std::mem::size_of::<_jl_debuginfo_t>() - 32usize];
+    ["Alignment of _jl_debuginfo_t"][::std::mem::align_of::<_jl_debuginfo_t>() - 8usize];
+    ["Offset of field: _jl_debuginfo_t::def"]
+        [::std::mem::offset_of!(_jl_debuginfo_t, def) - 0usize];
+    ["Offset of field: _jl_debuginfo_t::linetable"]
+        [::std::mem::offset_of!(_jl_debuginfo_t, linetable) - 8usize];
+    ["Offset of field: _jl_debuginfo_t::edges"]
+        [::std::mem::offset_of!(_jl_debuginfo_t, edges) - 16usize];
+    ["Offset of field: _jl_debuginfo_t::codelocs"]
+        [::std::mem::offset_of!(_jl_debuginfo_t, codelocs) - 24usize];
+};
+pub type jl_debuginfo_t = _jl_debuginfo_t;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union __jl_purity_overrides_t {
+    pub overrides: __jl_purity_overrides_t__bindgen_ty_1,
+    pub bits: u16,
+}
+#[repr(C)]
+#[repr(align(2))]
+#[derive(Debug, Copy, Clone)]
+pub struct __jl_purity_overrides_t__bindgen_ty_1 {
+    pub _bitfield_align_1: [u8; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 2usize]>,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of __jl_purity_overrides_t__bindgen_ty_1"]
+        [::std::mem::size_of::<__jl_purity_overrides_t__bindgen_ty_1>() - 2usize];
+    ["Alignment of __jl_purity_overrides_t__bindgen_ty_1"]
+        [::std::mem::align_of::<__jl_purity_overrides_t__bindgen_ty_1>() - 2usize];
+};
+impl __jl_purity_overrides_t__bindgen_ty_1 {
+    #[inline]
+    pub fn ipo_consistent(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_consistent(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(0usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_consistent_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                0usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_consistent_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                0usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn ipo_effect_free(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(1usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_effect_free(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(1usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_effect_free_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                1usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_effect_free_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                1usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn ipo_nothrow(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(2usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_nothrow(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(2usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_nothrow_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                2usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_nothrow_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                2usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn ipo_terminates_globally(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(3usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_terminates_globally(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(3usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_terminates_globally_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                3usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_terminates_globally_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                3usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn ipo_terminates_locally(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(4usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_terminates_locally(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(4usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_terminates_locally_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                4usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_terminates_locally_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                4usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn ipo_notaskstate(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(5usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_notaskstate(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(5usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_notaskstate_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                5usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_notaskstate_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                5usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn ipo_inaccessiblememonly(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(6usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_inaccessiblememonly(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(6usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_inaccessiblememonly_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                6usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_inaccessiblememonly_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                6usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn ipo_noub(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(7usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_noub(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(7usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_noub_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                7usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_noub_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                7usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn ipo_noub_if_noinbounds(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(8usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_noub_if_noinbounds(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(8usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_noub_if_noinbounds_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                8usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_noub_if_noinbounds_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                8usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn ipo_consistent_overlay(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(9usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_consistent_overlay(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(9usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_consistent_overlay_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                9usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_consistent_overlay_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                9usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn ipo_nortcall(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(10usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_ipo_nortcall(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(10usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn ipo_nortcall_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                10usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_ipo_nortcall_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                10usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn new_bitfield_1(
+        ipo_consistent: u16,
+        ipo_effect_free: u16,
+        ipo_nothrow: u16,
+        ipo_terminates_globally: u16,
+        ipo_terminates_locally: u16,
+        ipo_notaskstate: u16,
+        ipo_inaccessiblememonly: u16,
+        ipo_noub: u16,
+        ipo_noub_if_noinbounds: u16,
+        ipo_consistent_overlay: u16,
+        ipo_nortcall: u16,
+    ) -> __BindgenBitfieldUnit<[u8; 2usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 2usize]> = Default::default();
+        __bindgen_bitfield_unit.set(0usize, 1u8, {
+            let ipo_consistent: u16 = unsafe { ::std::mem::transmute(ipo_consistent) };
+            ipo_consistent as u64
+        });
+        __bindgen_bitfield_unit.set(1usize, 1u8, {
+            let ipo_effect_free: u16 = unsafe { ::std::mem::transmute(ipo_effect_free) };
+            ipo_effect_free as u64
+        });
+        __bindgen_bitfield_unit.set(2usize, 1u8, {
+            let ipo_nothrow: u16 = unsafe { ::std::mem::transmute(ipo_nothrow) };
+            ipo_nothrow as u64
+        });
+        __bindgen_bitfield_unit.set(3usize, 1u8, {
+            let ipo_terminates_globally: u16 =
+                unsafe { ::std::mem::transmute(ipo_terminates_globally) };
+            ipo_terminates_globally as u64
+        });
+        __bindgen_bitfield_unit.set(4usize, 1u8, {
+            let ipo_terminates_locally: u16 =
+                unsafe { ::std::mem::transmute(ipo_terminates_locally) };
+            ipo_terminates_locally as u64
+        });
+        __bindgen_bitfield_unit.set(5usize, 1u8, {
+            let ipo_notaskstate: u16 = unsafe { ::std::mem::transmute(ipo_notaskstate) };
+            ipo_notaskstate as u64
+        });
+        __bindgen_bitfield_unit.set(6usize, 1u8, {
+            let ipo_inaccessiblememonly: u16 =
+                unsafe { ::std::mem::transmute(ipo_inaccessiblememonly) };
+            ipo_inaccessiblememonly as u64
+        });
+        __bindgen_bitfield_unit.set(7usize, 1u8, {
+            let ipo_noub: u16 = unsafe { ::std::mem::transmute(ipo_noub) };
+            ipo_noub as u64
+        });
+        __bindgen_bitfield_unit.set(8usize, 1u8, {
+            let ipo_noub_if_noinbounds: u16 =
+                unsafe { ::std::mem::transmute(ipo_noub_if_noinbounds) };
+            ipo_noub_if_noinbounds as u64
+        });
+        __bindgen_bitfield_unit.set(9usize, 1u8, {
+            let ipo_consistent_overlay: u16 =
+                unsafe { ::std::mem::transmute(ipo_consistent_overlay) };
+            ipo_consistent_overlay as u64
+        });
+        __bindgen_bitfield_unit.set(10usize, 1u8, {
+            let ipo_nortcall: u16 = unsafe { ::std::mem::transmute(ipo_nortcall) };
+            ipo_nortcall as u64
+        });
+        __bindgen_bitfield_unit
+    }
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of __jl_purity_overrides_t"][::std::mem::size_of::<__jl_purity_overrides_t>() - 2usize];
+    ["Alignment of __jl_purity_overrides_t"]
+        [::std::mem::align_of::<__jl_purity_overrides_t>() - 2usize];
+    ["Offset of field: __jl_purity_overrides_t::overrides"]
+        [::std::mem::offset_of!(__jl_purity_overrides_t, overrides) - 0usize];
+    ["Offset of field: __jl_purity_overrides_t::bits"]
+        [::std::mem::offset_of!(__jl_purity_overrides_t, bits) - 0usize];
+};
+pub type _jl_purity_overrides_t = __jl_purity_overrides_t;
+#[repr(C)]
+pub struct _jl_method_t {
+    pub name: *mut jl_sym_t,
+    pub module: *mut _jl_module_t,
+    pub file: *mut jl_sym_t,
+    pub line: i32,
+    pub primary_world: std_atomic<usize>,
+    pub deleted_world: std_atomic<usize>,
+    pub sig: *mut jl_value_t,
+    pub specializations: u64,
+    pub speckeyset: u64,
+    pub slot_syms: *mut jl_value_t,
+    pub external_mt: *mut jl_value_t,
+    pub source: *mut jl_value_t,
+    pub debuginfo: *mut jl_debuginfo_t,
+    pub unspecialized: u64,
+    pub generator: *mut jl_value_t,
+    pub roots: *mut jl_array_t,
+    pub root_blocks: *mut jl_array_t,
+    pub nroots_sysimg: i32,
+    pub ccallable: *mut jl_svec_t,
+    pub invokes: u64,
+    pub recursion_relation: *mut jl_value_t,
+    pub nargs: u32,
+    pub called: u32,
+    pub nospecialize: u32,
+    pub nkw: u32,
+    pub isva: u8,
+    pub is_for_opaque_closure: u8,
+    pub nospecializeinfer: u8,
+    pub did_scan_source: std_atomic<u8>,
+    pub constprop: u8,
+    pub max_varargs: u8,
+    pub purity: _jl_purity_overrides_t,
+    pub writelock: jl_mutex_t,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _jl_method_t"][::std::mem::size_of::<_jl_method_t>() - 208usize];
+    ["Alignment of _jl_method_t"][::std::mem::align_of::<_jl_method_t>() - 8usize];
+    ["Offset of field: _jl_method_t::name"][::std::mem::offset_of!(_jl_method_t, name) - 0usize];
+    ["Offset of field: _jl_method_t::module"]
+        [::std::mem::offset_of!(_jl_method_t, module) - 8usize];
+    ["Offset of field: _jl_method_t::file"][::std::mem::offset_of!(_jl_method_t, file) - 16usize];
+    ["Offset of field: _jl_method_t::line"][::std::mem::offset_of!(_jl_method_t, line) - 24usize];
+    ["Offset of field: _jl_method_t::primary_world"]
+        [::std::mem::offset_of!(_jl_method_t, primary_world) - 32usize];
+    ["Offset of field: _jl_method_t::deleted_world"]
+        [::std::mem::offset_of!(_jl_method_t, deleted_world) - 40usize];
+    ["Offset of field: _jl_method_t::sig"][::std::mem::offset_of!(_jl_method_t, sig) - 48usize];
+    ["Offset of field: _jl_method_t::specializations"]
+        [::std::mem::offset_of!(_jl_method_t, specializations) - 56usize];
+    ["Offset of field: _jl_method_t::speckeyset"]
+        [::std::mem::offset_of!(_jl_method_t, speckeyset) - 64usize];
+    ["Offset of field: _jl_method_t::slot_syms"]
+        [::std::mem::offset_of!(_jl_method_t, slot_syms) - 72usize];
+    ["Offset of field: _jl_method_t::external_mt"]
+        [::std::mem::offset_of!(_jl_method_t, external_mt) - 80usize];
+    ["Offset of field: _jl_method_t::source"]
+        [::std::mem::offset_of!(_jl_method_t, source) - 88usize];
+    ["Offset of field: _jl_method_t::debuginfo"]
+        [::std::mem::offset_of!(_jl_method_t, debuginfo) - 96usize];
+    ["Offset of field: _jl_method_t::unspecialized"]
+        [::std::mem::offset_of!(_jl_method_t, unspecialized) - 104usize];
+    ["Offset of field: _jl_method_t::generator"]
+        [::std::mem::offset_of!(_jl_method_t, generator) - 112usize];
+    ["Offset of field: _jl_method_t::roots"]
+        [::std::mem::offset_of!(_jl_method_t, roots) - 120usize];
+    ["Offset of field: _jl_method_t::root_blocks"]
+        [::std::mem::offset_of!(_jl_method_t, root_blocks) - 128usize];
+    ["Offset of field: _jl_method_t::nroots_sysimg"]
+        [::std::mem::offset_of!(_jl_method_t, nroots_sysimg) - 136usize];
+    ["Offset of field: _jl_method_t::ccallable"]
+        [::std::mem::offset_of!(_jl_method_t, ccallable) - 144usize];
+    ["Offset of field: _jl_method_t::invokes"]
+        [::std::mem::offset_of!(_jl_method_t, invokes) - 152usize];
+    ["Offset of field: _jl_method_t::recursion_relation"]
+        [::std::mem::offset_of!(_jl_method_t, recursion_relation) - 160usize];
+    ["Offset of field: _jl_method_t::nargs"]
+        [::std::mem::offset_of!(_jl_method_t, nargs) - 168usize];
+    ["Offset of field: _jl_method_t::called"]
+        [::std::mem::offset_of!(_jl_method_t, called) - 172usize];
+    ["Offset of field: _jl_method_t::nospecialize"]
+        [::std::mem::offset_of!(_jl_method_t, nospecialize) - 176usize];
+    ["Offset of field: _jl_method_t::nkw"][::std::mem::offset_of!(_jl_method_t, nkw) - 180usize];
+    ["Offset of field: _jl_method_t::isva"][::std::mem::offset_of!(_jl_method_t, isva) - 184usize];
+    ["Offset of field: _jl_method_t::is_for_opaque_closure"]
+        [::std::mem::offset_of!(_jl_method_t, is_for_opaque_closure) - 185usize];
+    ["Offset of field: _jl_method_t::nospecializeinfer"]
+        [::std::mem::offset_of!(_jl_method_t, nospecializeinfer) - 186usize];
+    ["Offset of field: _jl_method_t::did_scan_source"]
+        [::std::mem::offset_of!(_jl_method_t, did_scan_source) - 187usize];
+    ["Offset of field: _jl_method_t::constprop"]
+        [::std::mem::offset_of!(_jl_method_t, constprop) - 188usize];
+    ["Offset of field: _jl_method_t::max_varargs"]
+        [::std::mem::offset_of!(_jl_method_t, max_varargs) - 189usize];
+    ["Offset of field: _jl_method_t::purity"]
+        [::std::mem::offset_of!(_jl_method_t, purity) - 190usize];
+    ["Offset of field: _jl_method_t::writelock"]
+        [::std::mem::offset_of!(_jl_method_t, writelock) - 192usize];
+};
+pub type jl_method_t = _jl_method_t;
+#[repr(C)]
+pub struct _jl_method_instance_t {
+    pub def: _jl_method_instance_t__bindgen_ty_1,
+    pub specTypes: *mut jl_value_t,
+    pub sparam_vals: *mut jl_svec_t,
+    pub backedges: *mut jl_array_t,
+    pub cache: u64,
+    pub cache_with_orig: u8,
+    pub flags: std_atomic<u8>,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union _jl_method_instance_t__bindgen_ty_1 {
+    pub value: *mut jl_value_t,
+    pub module: *mut _jl_module_t,
+    pub method: *mut jl_method_t,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _jl_method_instance_t__bindgen_ty_1"]
+        [::std::mem::size_of::<_jl_method_instance_t__bindgen_ty_1>() - 8usize];
+    ["Alignment of _jl_method_instance_t__bindgen_ty_1"]
+        [::std::mem::align_of::<_jl_method_instance_t__bindgen_ty_1>() - 8usize];
+    ["Offset of field: _jl_method_instance_t__bindgen_ty_1::value"]
+        [::std::mem::offset_of!(_jl_method_instance_t__bindgen_ty_1, value) - 0usize];
+    ["Offset of field: _jl_method_instance_t__bindgen_ty_1::module"]
+        [::std::mem::offset_of!(_jl_method_instance_t__bindgen_ty_1, module) - 0usize];
+    ["Offset of field: _jl_method_instance_t__bindgen_ty_1::method"]
+        [::std::mem::offset_of!(_jl_method_instance_t__bindgen_ty_1, method) - 0usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _jl_method_instance_t"][::std::mem::size_of::<_jl_method_instance_t>() - 48usize];
+    ["Alignment of _jl_method_instance_t"]
+        [::std::mem::align_of::<_jl_method_instance_t>() - 8usize];
+    ["Offset of field: _jl_method_instance_t::def"]
+        [::std::mem::offset_of!(_jl_method_instance_t, def) - 0usize];
+    ["Offset of field: _jl_method_instance_t::specTypes"]
+        [::std::mem::offset_of!(_jl_method_instance_t, specTypes) - 8usize];
+    ["Offset of field: _jl_method_instance_t::sparam_vals"]
+        [::std::mem::offset_of!(_jl_method_instance_t, sparam_vals) - 16usize];
+    ["Offset of field: _jl_method_instance_t::backedges"]
+        [::std::mem::offset_of!(_jl_method_instance_t, backedges) - 24usize];
+    ["Offset of field: _jl_method_instance_t::cache"]
+        [::std::mem::offset_of!(_jl_method_instance_t, cache) - 32usize];
+    ["Offset of field: _jl_method_instance_t::cache_with_orig"]
+        [::std::mem::offset_of!(_jl_method_instance_t, cache_with_orig) - 40usize];
+    ["Offset of field: _jl_method_instance_t::flags"]
+        [::std::mem::offset_of!(_jl_method_instance_t, flags) - 41usize];
+};
+#[repr(C)]
+pub struct _jl_code_instance_t {
+    pub def: *mut jl_value_t,
+    pub owner: *mut jl_value_t,
+    pub next: u64,
+    pub min_world: std_atomic<usize>,
+    pub max_world: std_atomic<usize>,
+    pub rettype: *mut jl_value_t,
+    pub exctype: *mut jl_value_t,
+    pub rettype_const: *mut jl_value_t,
+    pub inferred: u64,
+    pub debuginfo: u64,
+    pub edges: u64,
+    pub analysis_results: *mut jl_value_t,
+    pub ipo_purity_bits: std_atomic<u32>,
+    pub time_infer_total: u16,
+    pub time_infer_cache_saved: u16,
+    pub time_infer_self: u16,
+    pub time_compile: std_atomic<u16>,
+    pub specsigflags: std_atomic<u8>,
+    pub precompile: std_atomic<u8>,
+    pub invoke: u64,
+    pub specptr: _jl_code_instance_t__jl_generic_specptr_t,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union _jl_code_instance_t__jl_generic_specptr_t {
+    pub fptr: u64,
+    pub fptr1: u64,
+    pub fptr3: u64,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _jl_code_instance_t__jl_generic_specptr_t"]
+        [::std::mem::size_of::<_jl_code_instance_t__jl_generic_specptr_t>() - 8usize];
+    ["Alignment of _jl_code_instance_t__jl_generic_specptr_t"]
+        [::std::mem::align_of::<_jl_code_instance_t__jl_generic_specptr_t>() - 8usize];
+    ["Offset of field: _jl_code_instance_t__jl_generic_specptr_t::fptr"]
+        [::std::mem::offset_of!(_jl_code_instance_t__jl_generic_specptr_t, fptr) - 0usize];
+    ["Offset of field: _jl_code_instance_t__jl_generic_specptr_t::fptr1"]
+        [::std::mem::offset_of!(_jl_code_instance_t__jl_generic_specptr_t, fptr1) - 0usize];
+    ["Offset of field: _jl_code_instance_t__jl_generic_specptr_t::fptr3"]
+        [::std::mem::offset_of!(_jl_code_instance_t__jl_generic_specptr_t, fptr3) - 0usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _jl_code_instance_t"][::std::mem::size_of::<_jl_code_instance_t>() - 128usize];
+    ["Alignment of _jl_code_instance_t"][::std::mem::align_of::<_jl_code_instance_t>() - 8usize];
+    ["Offset of field: _jl_code_instance_t::def"]
+        [::std::mem::offset_of!(_jl_code_instance_t, def) - 0usize];
+    ["Offset of field: _jl_code_instance_t::owner"]
+        [::std::mem::offset_of!(_jl_code_instance_t, owner) - 8usize];
+    ["Offset of field: _jl_code_instance_t::next"]
+        [::std::mem::offset_of!(_jl_code_instance_t, next) - 16usize];
+    ["Offset of field: _jl_code_instance_t::min_world"]
+        [::std::mem::offset_of!(_jl_code_instance_t, min_world) - 24usize];
+    ["Offset of field: _jl_code_instance_t::max_world"]
+        [::std::mem::offset_of!(_jl_code_instance_t, max_world) - 32usize];
+    ["Offset of field: _jl_code_instance_t::rettype"]
+        [::std::mem::offset_of!(_jl_code_instance_t, rettype) - 40usize];
+    ["Offset of field: _jl_code_instance_t::exctype"]
+        [::std::mem::offset_of!(_jl_code_instance_t, exctype) - 48usize];
+    ["Offset of field: _jl_code_instance_t::rettype_const"]
+        [::std::mem::offset_of!(_jl_code_instance_t, rettype_const) - 56usize];
+    ["Offset of field: _jl_code_instance_t::inferred"]
+        [::std::mem::offset_of!(_jl_code_instance_t, inferred) - 64usize];
+    ["Offset of field: _jl_code_instance_t::debuginfo"]
+        [::std::mem::offset_of!(_jl_code_instance_t, debuginfo) - 72usize];
+    ["Offset of field: _jl_code_instance_t::edges"]
+        [::std::mem::offset_of!(_jl_code_instance_t, edges) - 80usize];
+    ["Offset of field: _jl_code_instance_t::analysis_results"]
+        [::std::mem::offset_of!(_jl_code_instance_t, analysis_results) - 88usize];
+    ["Offset of field: _jl_code_instance_t::ipo_purity_bits"]
+        [::std::mem::offset_of!(_jl_code_instance_t, ipo_purity_bits) - 96usize];
+    ["Offset of field: _jl_code_instance_t::time_infer_total"]
+        [::std::mem::offset_of!(_jl_code_instance_t, time_infer_total) - 100usize];
+    ["Offset of field: _jl_code_instance_t::time_infer_cache_saved"]
+        [::std::mem::offset_of!(_jl_code_instance_t, time_infer_cache_saved) - 102usize];
+    ["Offset of field: _jl_code_instance_t::time_infer_self"]
+        [::std::mem::offset_of!(_jl_code_instance_t, time_infer_self) - 104usize];
+    ["Offset of field: _jl_code_instance_t::time_compile"]
+        [::std::mem::offset_of!(_jl_code_instance_t, time_compile) - 106usize];
+    ["Offset of field: _jl_code_instance_t::specsigflags"]
+        [::std::mem::offset_of!(_jl_code_instance_t, specsigflags) - 108usize];
+    ["Offset of field: _jl_code_instance_t::precompile"]
+        [::std::mem::offset_of!(_jl_code_instance_t, precompile) - 109usize];
+    ["Offset of field: _jl_code_instance_t::invoke"]
+        [::std::mem::offset_of!(_jl_code_instance_t, invoke) - 112usize];
+    ["Offset of field: _jl_code_instance_t::specptr"]
+        [::std::mem::offset_of!(_jl_code_instance_t, specptr) - 120usize];
+};
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct jl_typename_t {
@@ -2574,6 +3326,76 @@ const _: () = {
         [::std::mem::size_of::<std_atomic<i16>>() - 2usize];
     ["Align of template specialization: std_atomic_open0_int16_t_close0"]
         [::std::mem::align_of::<std_atomic<i16>>() - 2usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_size_t_close0"]
+        [::std::mem::size_of::<std_atomic<usize>>() - 8usize];
+    ["Align of template specialization: std_atomic_open0_size_t_close0"]
+        [::std::mem::align_of::<std_atomic<usize>>() - 8usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_size_t_close0"]
+        [::std::mem::size_of::<std_atomic<usize>>() - 8usize];
+    ["Align of template specialization: std_atomic_open0_size_t_close0"]
+        [::std::mem::align_of::<std_atomic<usize>>() - 8usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_uint8_t_close0"]
+        [::std::mem::size_of::<std_atomic<u8>>() - 1usize];
+    ["Align of template specialization: std_atomic_open0_uint8_t_close0"]
+        [::std::mem::align_of::<std_atomic<u8>>() - 1usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_uint8_t_close0"]
+        [::std::mem::size_of::<std_atomic<u8>>() - 1usize];
+    ["Align of template specialization: std_atomic_open0_uint8_t_close0"]
+        [::std::mem::align_of::<std_atomic<u8>>() - 1usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_size_t_close0"]
+        [::std::mem::size_of::<std_atomic<usize>>() - 8usize];
+    ["Align of template specialization: std_atomic_open0_size_t_close0"]
+        [::std::mem::align_of::<std_atomic<usize>>() - 8usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_size_t_close0"]
+        [::std::mem::size_of::<std_atomic<usize>>() - 8usize];
+    ["Align of template specialization: std_atomic_open0_size_t_close0"]
+        [::std::mem::align_of::<std_atomic<usize>>() - 8usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_uint32_t_close0"]
+        [::std::mem::size_of::<std_atomic<u32>>() - 4usize];
+    ["Align of template specialization: std_atomic_open0_uint32_t_close0"]
+        [::std::mem::align_of::<std_atomic<u32>>() - 4usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_uint16_t_close0"]
+        [::std::mem::size_of::<std_atomic<u16>>() - 2usize];
+    ["Align of template specialization: std_atomic_open0_uint16_t_close0"]
+        [::std::mem::align_of::<std_atomic<u16>>() - 2usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_uint8_t_close0"]
+        [::std::mem::size_of::<std_atomic<u8>>() - 1usize];
+    ["Align of template specialization: std_atomic_open0_uint8_t_close0"]
+        [::std::mem::align_of::<std_atomic<u8>>() - 1usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: std_atomic_open0_uint8_t_close0"]
+        [::std::mem::size_of::<std_atomic<u8>>() - 1usize];
+    ["Align of template specialization: std_atomic_open0_uint8_t_close0"]
+        [::std::mem::align_of::<std_atomic<u8>>() - 1usize];
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
