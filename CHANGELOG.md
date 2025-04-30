@@ -1,3 +1,12 @@
+0.31.0 (2025-04-17)
+===
+
+## What's Changed
+* Fixing the binding to apply the changes from Julia's PR #57625 by @udesou in https://github.com/mmtk/mmtk-julia/pull/233
+* Update mmtk-core to v0.31.0
+
+**Full Changelog**: https://github.com/mmtk/mmtk-julia/compare/v0.30.5...v0.31.0
+
 0.30.0 (2024-12-20)
 ===
 
