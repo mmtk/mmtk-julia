@@ -1,0 +1,86 @@
+name: Release and Update Dependencies
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get latest tag
+        id: get-latest-tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 || echo "v0.1.0")
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+
+      - name: Increment version
+        id: bump-version
+        run: |
+          IFS='.' read -ra parts <<< "${{ env.latest_tag }}"
+          new_patch=$(( ${parts[2]} + 1 ))
+          new_version="v${parts[0]}.${parts[1]}.$new_patch"
+          echo "new_version=$new_version" >> $GITHUB_ENV
+
+      - name: Create new GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.new_version }}
+          generate_release_notes: true
+
+  update-yggdrasil:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get latest commit hash
+        id: get-hash
+        run: echo "commit_hash=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+      - name: Open PR to Yggdrasil
+        id: create-yggdrasil-pr
+        run: |
+          gh auth login --with-token <<< "${{ secrets.GH_TOKEN }}"
+          gh repo clone JuliaPackaging/Yggdrasil
+          cd Yggdrasil
+          branch_name="update-mmtk-julia-${{ env.commit_hash }}"
+          git checkout -b "$branch_name"
+          sed -i "10s/hash = \".*\"/hash = \"${{ env.commit_hash }}\"/" M/mmtk_julia/build_tarballs.jl
+          git commit -am "Update MMTK Julia hash"
+          git push origin "$branch_name"
+          pr_url=$(gh pr create --title "Update MMTK Julia hash" --body "Auto-generated PR to update MMTK Julia hash." --base master --head "$branch_name")
+          echo "pr_url=$pr_url" >> $GITHUB_ENV
+          echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
+
+  update-julia:
+    needs: update-yggdrasil
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get latest commit hash
+        id: get-hash
+        run: echo "commit_hash=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+      - name: Get Yggdrasil PR URL
+        run: echo "yggdrasil_pr=${{ needs.update-yggdrasil.outputs.pr_url }}" >> $GITHUB_ENV
+
+      - name: Open PR to JuliaLang/julia
+        run: |
+          gh auth login --with-token <<< "${{ secrets.GH_TOKEN }}"
+          gh repo clone JuliaLang/julia
+          cd julia
+          branch_name="update-mmtk-julia-${{ env.commit_hash }}"
+          git checkout -b "$branch_name"
+          sed -i "s/MMTK_JULIA_SHA1 = \".*\"/MMTK_JULIA_SHA1 = \"${{ env.commit_hash }}\"/" deps/mmtk_julia.version
+          sed -i "s/MMTK_JULIA_TAR_URL = \".*\"/MMTK_JULIA_TAR_URL = \"v${{ env.new_version }}.tar.gz\"/" deps/mmtk_julia.version
+          git commit -am "Update MMTK Julia references"
+          git push origin "$branch_name"
+          gh pr create --title "Update MMTK Julia references" --body "TODO: update the MMTK_JULIA_JLL_VER after the [BinaryBuilder PR](${{ env.yggdrasil_pr }}) gets merged." --base master --head "$branch_name"
