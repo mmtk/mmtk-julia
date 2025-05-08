@@ -148,15 +148,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "built"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4ad8f11f288f48ca24471bbd51ac257aaeaaa07adae295591266b792902ae64"
-dependencies = [
- "git2",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -378,9 +369,9 @@ dependencies = [
 
 [[package]]
 name = "git2"
-version = "0.20.2"
+version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2deb07a133b1520dc1a5690e9bd08950108873d7ed5de38dcc74d3b5ebffa110"
+checksum = "5220b8ba44c68a9a7f7a7659e864dd73692e417ef0211bea133c7b74e031eeb9"
 dependencies = [
  "bitflags",
  "libc",
@@ -613,6 +604,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 [[package]]
 name = "mmtk"
 version = "0.31.0"
+source = "git+https://github.com/qinsoon/mmtk-core.git?rev=0763fb7ec8909b0ebb4008caeff47b332a468879#0763fb7ec8909b0ebb4008caeff47b332a468879"
 dependencies = [
  "atomic 0.6.0",
  "atomic-traits",
@@ -668,6 +660,7 @@ dependencies = [
 [[package]]
 name = "mmtk-macros"
 version = "0.31.0"
+source = "git+https://github.com/qinsoon/mmtk-core.git?rev=0763fb7ec8909b0ebb4008caeff47b332a468879#0763fb7ec8909b0ebb4008caeff47b332a468879"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",

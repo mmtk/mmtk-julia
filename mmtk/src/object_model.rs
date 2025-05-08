@@ -115,7 +115,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
     fn get_current_size(object: ObjectReference) -> usize {
         if is_object_in_los(&object) {
             unsafe { get_lo_object_size(object) }
-        } else if is_object_in_immixspace(&object) {
+        } else if is_object_in_immixspace(&object) || is_object_in_nonmoving(&object) {
             unsafe { get_so_object_size(object) }
         } else {
             // This is hacky but it should work.
@@ -184,6 +184,13 @@ pub fn is_object_in_immixspace(object: &ObjectReference) -> bool {
 pub fn is_addr_in_immixspace(addr: Address) -> bool {
     // FIXME: get the range from MMTk. Or at least assert at boot time to make sure those constants are correct.
     addr.as_usize() >= 0x200_0000_0000 && addr.as_usize() < 0x400_0000_0000
+}
+
+#[inline(always)]
+pub fn is_object_in_nonmoving(object: &ObjectReference) -> bool {
+    // FIXME: get the range from MMTk. Or at least assert at boot time to make sure those constants are correct.
+    (*object).to_raw_address().as_usize() >= 0x800_0000_0000
+        && (*object).to_raw_address().as_usize() < 0xa00_0000_0000
 }
 
 /// This function uses mutable static variables and requires unsafe annotation
