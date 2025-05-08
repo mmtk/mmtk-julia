@@ -27,7 +27,7 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "051bc7470feef915c445305301e6113f86d3957b" }
+mmtk = { git = "https://github.com/udesou/mmtk-core.git", rev = "7039d5d6ff8a671dc31f700314778b2bfdb34224" }
 # Uncomment the following to build locally
 # mmtk = { path = "../repos/mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
@@ -57,3 +57,6 @@ non_moving = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
 
 # This feature enables stress copying for Immix for debug use.
 immix_stress_copying = ["mmtk/immix_stress_copying"]
+
+# Use this feature to print fragmentation/pinning stats
+dump_memory_stats = ["mmtk/dump_memory_stats"]

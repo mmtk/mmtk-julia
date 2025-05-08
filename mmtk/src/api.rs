@@ -620,3 +620,17 @@ pub extern "C" fn get_mmtk_version() -> *const c_char {
         .as_c_str()
         .as_ptr() as _
 }
+
+#[cfg(feature = "dump_memory_stats")]
+#[no_mangle]
+pub extern "C" fn print_fragmentation() {
+    let map = memory_manager::live_bytes_in_last_gc(&SINGLETON);
+    for (space, stats) in map {
+        println!(
+            "Fragmentation in space {:?}: {} live bytes, {} total bytes, {:.2} %",
+            space, stats.live_bytes, stats.used_bytes, (stats.live_bytes as f64 / stats.used_bytes as f64) * 100.0
+        );
+    }
+
+    SINGLETON.get_plan().dump_memory_stats();
+}
