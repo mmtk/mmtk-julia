@@ -258,11 +258,11 @@ pub type jl_value_t = _jl_value_t;
 #[repr(C)]
 #[repr(align(8))]
 pub struct MMTkMutatorContext {
-    pub _bindgen_opaque_blob: [u64; 87usize],
+    pub _bindgen_opaque_blob: [u64; 98usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of MMTkMutatorContext"][::std::mem::size_of::<MMTkMutatorContext>() - 696usize];
+    ["Size of MMTkMutatorContext"][::std::mem::size_of::<MMTkMutatorContext>() - 784usize];
     ["Alignment of MMTkMutatorContext"][::std::mem::align_of::<MMTkMutatorContext>() - 8usize];
 };
 #[repr(C)]
@@ -272,12 +272,12 @@ pub struct jl_gc_tls_states_t {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of jl_gc_tls_states_t"][::std::mem::size_of::<jl_gc_tls_states_t>() - 704usize];
+    ["Size of jl_gc_tls_states_t"][::std::mem::size_of::<jl_gc_tls_states_t>() - 792usize];
     ["Alignment of jl_gc_tls_states_t"][::std::mem::align_of::<jl_gc_tls_states_t>() - 8usize];
     ["Offset of field: jl_gc_tls_states_t::mmtk_mutator"]
         [::std::mem::offset_of!(jl_gc_tls_states_t, mmtk_mutator) - 0usize];
     ["Offset of field: jl_gc_tls_states_t::malloc_sz_since_last_poll"]
-        [::std::mem::offset_of!(jl_gc_tls_states_t, malloc_sz_since_last_poll) - 696usize];
+        [::std::mem::offset_of!(jl_gc_tls_states_t, malloc_sz_since_last_poll) - 784usize];
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -541,7 +541,7 @@ pub struct _jl_tls_states_t {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _jl_tls_states_t"][::std::mem::size_of::<_jl_tls_states_t>() - 2560usize];
+    ["Size of _jl_tls_states_t"][::std::mem::size_of::<_jl_tls_states_t>() - 2648usize];
     ["Alignment of _jl_tls_states_t"][::std::mem::align_of::<_jl_tls_states_t>() - 8usize];
     ["Offset of field: _jl_tls_states_t::tid"]
         [::std::mem::offset_of!(_jl_tls_states_t, tid) - 0usize];
@@ -566,53 +566,53 @@ const _: () = {
     ["Offset of field: _jl_tls_states_t::gc_tls"]
         [::std::mem::offset_of!(_jl_tls_states_t, gc_tls) - 40usize];
     ["Offset of field: _jl_tls_states_t::gc_tls_common"]
-        [::std::mem::offset_of!(_jl_tls_states_t, gc_tls_common) - 744usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, gc_tls_common) - 832usize];
     ["Offset of field: _jl_tls_states_t::lazily_freed_mtarraylist_buffers"]
-        [::std::mem::offset_of!(_jl_tls_states_t, lazily_freed_mtarraylist_buffers) - 2024usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, lazily_freed_mtarraylist_buffers) - 2112usize];
     ["Offset of field: _jl_tls_states_t::defer_signal"]
-        [::std::mem::offset_of!(_jl_tls_states_t, defer_signal) - 2088usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, defer_signal) - 2176usize];
     ["Offset of field: _jl_tls_states_t::current_task"]
-        [::std::mem::offset_of!(_jl_tls_states_t, current_task) - 2096usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, current_task) - 2184usize];
     ["Offset of field: _jl_tls_states_t::next_task"]
-        [::std::mem::offset_of!(_jl_tls_states_t, next_task) - 2104usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, next_task) - 2192usize];
     ["Offset of field: _jl_tls_states_t::previous_task"]
-        [::std::mem::offset_of!(_jl_tls_states_t, previous_task) - 2112usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, previous_task) - 2200usize];
     ["Offset of field: _jl_tls_states_t::root_task"]
-        [::std::mem::offset_of!(_jl_tls_states_t, root_task) - 2120usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, root_task) - 2208usize];
     ["Offset of field: _jl_tls_states_t::timing_stack"]
-        [::std::mem::offset_of!(_jl_tls_states_t, timing_stack) - 2128usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, timing_stack) - 2216usize];
     ["Offset of field: _jl_tls_states_t::stackbase"]
-        [::std::mem::offset_of!(_jl_tls_states_t, stackbase) - 2136usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, stackbase) - 2224usize];
     ["Offset of field: _jl_tls_states_t::stacksize"]
-        [::std::mem::offset_of!(_jl_tls_states_t, stacksize) - 2144usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, stacksize) - 2232usize];
     ["Offset of field: _jl_tls_states_t::sig_exception"]
-        [::std::mem::offset_of!(_jl_tls_states_t, sig_exception) - 2152usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, sig_exception) - 2240usize];
     ["Offset of field: _jl_tls_states_t::bt_data"]
-        [::std::mem::offset_of!(_jl_tls_states_t, bt_data) - 2160usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, bt_data) - 2248usize];
     ["Offset of field: _jl_tls_states_t::bt_size"]
-        [::std::mem::offset_of!(_jl_tls_states_t, bt_size) - 2168usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, bt_size) - 2256usize];
     ["Offset of field: _jl_tls_states_t::profiling_bt_buffer"]
-        [::std::mem::offset_of!(_jl_tls_states_t, profiling_bt_buffer) - 2176usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, profiling_bt_buffer) - 2264usize];
     ["Offset of field: _jl_tls_states_t::signal_request"]
-        [::std::mem::offset_of!(_jl_tls_states_t, signal_request) - 2184usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, signal_request) - 2272usize];
     ["Offset of field: _jl_tls_states_t::io_wait"]
-        [::std::mem::offset_of!(_jl_tls_states_t, io_wait) - 2188usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, io_wait) - 2276usize];
     ["Offset of field: _jl_tls_states_t::signal_stack"]
-        [::std::mem::offset_of!(_jl_tls_states_t, signal_stack) - 2192usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, signal_stack) - 2280usize];
     ["Offset of field: _jl_tls_states_t::signal_stack_size"]
-        [::std::mem::offset_of!(_jl_tls_states_t, signal_stack_size) - 2200usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, signal_stack_size) - 2288usize];
     ["Offset of field: _jl_tls_states_t::system_id"]
-        [::std::mem::offset_of!(_jl_tls_states_t, system_id) - 2208usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, system_id) - 2296usize];
     ["Offset of field: _jl_tls_states_t::suspend_count"]
-        [::std::mem::offset_of!(_jl_tls_states_t, suspend_count) - 2216usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, suspend_count) - 2304usize];
     ["Offset of field: _jl_tls_states_t::finalizers"]
-        [::std::mem::offset_of!(_jl_tls_states_t, finalizers) - 2224usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, finalizers) - 2312usize];
     ["Offset of field: _jl_tls_states_t::previous_exception"]
-        [::std::mem::offset_of!(_jl_tls_states_t, previous_exception) - 2480usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, previous_exception) - 2568usize];
     ["Offset of field: _jl_tls_states_t::locks"]
-        [::std::mem::offset_of!(_jl_tls_states_t, locks) - 2488usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, locks) - 2576usize];
     ["Offset of field: _jl_tls_states_t::engine_nqueued"]
-        [::std::mem::offset_of!(_jl_tls_states_t, engine_nqueued) - 2552usize];
+        [::std::mem::offset_of!(_jl_tls_states_t, engine_nqueued) - 2640usize];
 };
 pub type jl_function_t = jl_value_t;
 pub type jl_timing_block_t = _jl_timing_block_t;
