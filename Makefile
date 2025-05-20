@@ -33,15 +33,19 @@ ifeq ($(MMTK_MOVING), 0)
 CARGO_FEATURES := $(CARGO_FEATURES),non_moving
 endif
 
-ifeq ($(MMTK_MOVING_STRESS), 1)
-CARGO_FEATURES := $(CARGO_FEATURES),immix_stress_copying
+ifeq ($(MMTK_ALWAYS_MOVING), 1)
+CARGO_FEATURES := $(CARGO_FEATURES),immix_always_moving
+endif
+
+ifeq ($(MMTK_MAX_MOVING), 1)
+CARGO_FEATURES := $(CARGO_FEATURES),immix_max_moving
 endif
 
 # Build the mmtk-julia project
 # Note that we might need to clone julia if it doesn't exist  
 # since we need to run bindgen as part of building mmtk-julia
 release:
-	@echo "Building the Rust project in $(MMTK_JULIA_DIR)mmtk";
+	@echo "Building the Rust project in $(MMTK_JULIA_DIR)mmtk with MMTK_PLAN=$(MMTK_PLAN), MMTK_MOVING=$(MMTK_MOVING) and MMTK_MOVING_STRESS=$(MMTK_MOVING_STRESS)";
 	@cd $(MMTK_JULIA_DIR)mmtk && $(PROJECT_DIRS) cargo build --features $(CARGO_FEATURES) --release
 
 debug:

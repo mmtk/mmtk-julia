@@ -1,4 +1,5 @@
 use crate::api::mmtk_object_is_managed_by_mmtk;
+use crate::jl_symbol_name;
 use crate::julia_types::*;
 use crate::slots::JuliaVMSlot;
 use crate::slots::OffsetSlot;
@@ -573,6 +574,46 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: SlotVisitor<JuliaVMSlot>>(
             Address::from_mut_ptr(closure),
             process_slot::<EV> as _,
         );
+    }
+}
+
+#[inline(always)]
+pub unsafe fn get_julia_object_type(obj: Address) -> String {
+    // get Julia object type
+    let vt = mmtk_jl_typeof(obj);
+
+    // We don't scan buffers, as they will be scanned as a part of its parent object.
+    // But when a jl_binding_t buffer is inserted into remset, they have be to scanned.
+    // The gc bits (tag), which is set in the write barrier, tells us if the buffer is in the remset.
+    if vt as usize == JULIA_BUFF_TAG {
+        return "buff".to_string();
+    }
+
+    if vt == jl_symbol_type {
+        return "symbol".to_string();
+    }
+
+    if vt == jl_simplevector_type {
+        return "simplevector".to_string();
+    } else if (*vt).name == jl_array_typename {
+        return "array".to_string();
+    } else if vt == jl_module_type {
+        return "module".to_string();
+    } else if vt == jl_task_type {
+        return "task".to_string();
+    } else if vt == jl_string_type {
+        return "string".to_string();
+    } else {
+        if vt == jl_weakref_type {
+            return "weakref".to_string();
+        }
+        // Get detailed type name
+        let cstr = jl_symbol_name((*(*vt).name).name);
+        // jl_symbol_name(jl_sym_t*)
+        return std::ffi::CStr::from_ptr(cstr)
+            .to_string_lossy()
+            .into_owned();
+        // return "datatype".to_string();
     }
 }
 

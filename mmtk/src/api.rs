@@ -51,6 +51,10 @@ pub extern "C" fn mmtk_gc_init(
             builder.options.plan.set(plan);
         }
 
+        if cfg!(feature = "immix_max_moving") {
+            builder.options.immix_defrag_headroom_percent.set(50);
+        }
+
         // Set heap size
         let success =
             // By default min and max heap size are 0, and we use the Stock GC heuristics
@@ -621,16 +625,19 @@ pub extern "C" fn get_mmtk_version() -> *const c_char {
         .as_ptr() as _
 }
 
-#[cfg(feature = "dump_memory_stats")]
+// #[cfg(feature = "dump_memory_stats")]
 #[no_mangle]
 pub extern "C" fn print_fragmentation() {
     let map = memory_manager::live_bytes_in_last_gc(&SINGLETON);
     for (space, stats) in map {
         println!(
-            "Fragmentation in space {:?}: {} live bytes, {} total bytes, {:.2} %",
-            space, stats.live_bytes, stats.used_bytes, (stats.live_bytes as f64 / stats.used_bytes as f64) * 100.0
+            "Utilization in space {:?}: {} live bytes, {} total bytes, {:.2} %",
+            space,
+            stats.live_bytes,
+            stats.used_bytes,
+            (stats.live_bytes as f64 / stats.used_bytes as f64) * 100.0
         );
     }
 
-    SINGLETON.get_plan().dump_memory_stats();
+    // SINGLETON.get_plan().dump_memory_stats();
 }

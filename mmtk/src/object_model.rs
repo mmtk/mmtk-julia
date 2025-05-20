@@ -2,7 +2,7 @@ use crate::api::mmtk_get_obj_size;
 use crate::jl_gc_genericmemory_how;
 use crate::jl_gc_update_inlined_array;
 use crate::julia_scanning::{
-    jl_genericmemory_typename, jl_small_typeof, mmtk_jl_typeof, mmtk_jl_typetagof, jl_method_type
+    jl_genericmemory_typename, jl_method_type, jl_small_typeof, mmtk_jl_typeof, mmtk_jl_typetagof,
 };
 use crate::julia_types::*;
 use crate::{JuliaVM, JULIA_BUFF_TAG, JULIA_HEADER_SIZE};

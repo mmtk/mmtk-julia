@@ -27,9 +27,9 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI
-mmtk = { git = "https://github.com/udesou/mmtk-core.git", rev = "8cd37af2fbce4849c4de65edf11a754a66dbaa9a" }
+mmtk = { git = "https://github.com/udesou/mmtk-core.git", rev = "05f95c419adcbdfdbd753dd86d72f0e28fd16ae8" }
 # Uncomment the following to build locally
-# mmtk = { path = "../repos/mmtk-core" }
+# mmtk = { path = "../../mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
 enum-map = ">=2.1"
 atomic = "0.4.6"
@@ -41,7 +41,7 @@ memoffset = "*"
 
 [features]
 # We must build with default features
-default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/object_pinning", "mmtk/is_mmtk_object", "mmtk/vo_bit_access"]
+default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/object_pinning", "mmtk/is_mmtk_object", "mmtk/vo_bit_access"]#, "dump_memory_stats"]
 
 # Default features
 julia_copy_stack = []
@@ -55,8 +55,11 @@ marksweep = []
 # This feature disables moving
 non_moving = ["mmtk/immix_non_moving", "mmtk/immix_smaller_block"]
 
-# This feature enables stress copying for Immix for debug use.
-immix_stress_copying = ["mmtk/immix_stress_copying"]
+# This feature makes every GC a defrag GC for Immix
+immix_always_moving = ["mmtk/immix_stress_defrag"]
+
+# This feature enables max copying for Immix
+immix_max_moving = ["mmtk/immix_stress_defrag", "mmtk/immix_defrag_every_block"]
 
 # Use this feature to print fragmentation/pinning stats
 dump_memory_stats = ["mmtk/dump_memory_stats"]
