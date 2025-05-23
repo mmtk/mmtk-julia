@@ -12,12 +12,12 @@ use mmtk::vm::VMBinding;
 use mmtk::MMTKBuilder;
 use mmtk::MMTK;
 
+use crate::julia_types::jl_sym_t;
+
 use std::collections::HashMap;
 use std::sync::atomic::AtomicIsize;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
-
-use crate::julia_types::jl_sym_t;
 
 pub mod active_plan;
 pub mod api;

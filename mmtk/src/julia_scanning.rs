@@ -237,6 +237,14 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         if PRINT_OBJ_TYPE {
             println!("scan_julia_obj {}: genericmemory\n", obj);
         }
+
+        /*
+        how - allocation style
+        0 = data is inlined
+        1 = owns the gc-managed data, exclusively (will free it)
+        2 = malloc-allocated pointer (does not own it)
+        3 = has a pointer to the String object that owns the data pointer (m must be isbits)
+        */
         let m = obj.to_ptr::<jl_genericmemory_t>();
         let how = jl_gc_genericmemory_how(obj);
 
@@ -268,6 +276,10 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         }
 
         if how == 1 {
+            // make sure we update the owner in case it moves?
+            let owner_addr = mmtk_jl_genericmemory_data_owner_field_address(m);
+            process_slot(closure, owner_addr);
+
             let ptr_addr = Address::from_ptr((*m).ptr);
             // m.ptr might be an internal pointer
             // find the beginning of the object and trace it since the object may have moved
