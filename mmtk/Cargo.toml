@@ -27,7 +27,7 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI
-mmtk = { git = "https://github.com/udesou/mmtk-core.git", rev = "704b3f7f9bc48f9c98d37c64b23ab7157963e44e" }
+mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "4315d998f514735f4fcfd3d14ef4ada50e9e0e0d" }
 # Uncomment the following to build locally
 # mmtk = { path = "../../mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
@@ -41,7 +41,7 @@ memoffset = "*"
 
 [features]
 # We must build with default features
-default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/object_pinning", "mmtk/is_mmtk_object", "mmtk/vo_bit_access"]#, "dump_memory_stats"]
+default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/object_pinning", "mmtk/is_mmtk_object", "mmtk/vo_bit_access", "address_based_hashing"]#, "dump_memory_stats"]
 
 # Default features
 julia_copy_stack = []
@@ -63,3 +63,5 @@ immix_max_moving = ["mmtk/immix_stress_defrag", "mmtk/immix_defrag_every_block"]
 
 # Use this feature to print fragmentation/pinning stats
 dump_memory_stats = ["mmtk/dump_memory_stats"]
+
+address_based_hashing = []
