@@ -105,7 +105,11 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             debug_assert!(test_hash_state(to_obj, UNHASHED));
             to_obj
         } else if test_hash_state(from, HASHED) {
-            info!("Moving a hashed object {}", from);
+            info!("Moving a hashed object {} with size = {}. New size = {}", from, cur_bytes, new_bytes);
+            // if cur_bytes == new_bytes you end up copying the whole src
+            // but before you say that dst += STORED_HASH_BYTES so you don't have space
+            // in dst to copy src
+            debug_assert_ne!(cur_bytes, new_bytes);
             debug_assert_eq!(header_offset, 8);
 
             // Store hash
