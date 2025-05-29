@@ -64,27 +64,33 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
     ) -> ObjectReference {
         trace!("Attempting to copy object {}", from);
 
-        debug_assert!(is_object_in_immixspace(&from), "We attempted to copy an object {} that is not in immix space", from);
+        #[cfg(debug_assertions)]
+        unsafe {
+            assert!(is_object_in_immixspace(&from), "We attempted to copy an object {} that is not in immix space", from);
+            let obj_address = from.to_raw_address();
+            let mut vtag = mmtk_jl_typetagof(obj_address);
+            let mut vtag_usize = vtag.as_usize();
+            assert!(vtag_usize != JULIA_BUFF_TAG, "We attempted to copy a buffer object {} that is not supported", from);
+        }
 
         let cur_bytes = Self::get_current_size(from);
-        let new_bytes = get_copy_size_for_potentially_hashed_object(from, cur_bytes);
+        let new_bytes = if cfg!(feature = "address_based_hashing") && test_hash_state(from, HASHED) {
+            unsafe { get_so_object_size(from, STORED_HASH_BYTES) }
+        } else {
+            cur_bytes
+        };
         let from_addr = from.to_raw_address();
         let from_start = Self::ref_to_object_start(from);
         let header_offset = from_addr - from_start;
 
-        let mut dst = if header_offset == 8 || test_hash_state(from, HASHED_AND_MOVED) {
-            if test_hash_state(from, HASHED_AND_MOVED) {
-                debug_assert_eq!(cur_bytes, new_bytes);
-            }
-            // regular object
-            // Note: The `from` reference is not used by any allocator currently in MMTk core.
+        let mut dst = if test_hash_state(from, UNHASHED) {
+            // 8 bytes offset, for 8 bytes header
             copy_context.alloc_copy(from, new_bytes, 16, 8, semantics)
-        } else if header_offset == 16 {
-            // buffer should not be copied
-            unimplemented!();
         } else {
-            unimplemented!()
+            // 0 bytes offset, for 16 bytes header
+            copy_context.alloc_copy(from, new_bytes, 16, 0, semantics)
         };
+
         // `alloc_copy` should never return zero.
         debug_assert!(!dst.is_zero());
 
@@ -100,7 +106,6 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             to_obj
         } else if test_hash_state(from, HASHED) {
             info!("Moving a hashed object {}", from);
-            debug_assert_eq!(cur_bytes + STORED_HASH_BYTES, new_bytes);
             debug_assert_eq!(header_offset, 8);
 
             // Store hash
@@ -181,10 +186,9 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         if is_object_in_los(&object) {
             unsafe { get_lo_object_size(object) }
         } else if is_object_in_immixspace(&object) {
-            let size = unsafe { get_so_object_size(object) };
-            get_size_for_potentially_hashed_object(object, size)
+            unsafe { get_so_object_size(object, get_hash_size(object)) }
         } else if is_object_in_nonmoving(&object) {
-            unsafe { get_so_object_size(object) }
+            unsafe { get_so_object_size(object, 0) }
         } else {
             // This is hacky but it should work.
             // This covers the cases for immortal space and VM space.
@@ -197,8 +201,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         }
     }
 
-    fn get_size_when_copied(object: ObjectReference) -> usize {
-        get_copy_size_for_potentially_hashed_object(object, Self::get_current_size(object))
+    fn get_size_when_copied(_object: ObjectReference) -> usize {
+        unimplemented!()
     }
 
     fn get_align_when_copied(_object: ObjectReference) -> usize {
@@ -268,14 +272,25 @@ pub fn is_object_in_nonmoving(object: &ObjectReference) -> bool {
 /// This function uses mutable static variables and requires unsafe annotation
 
 #[inline(always)]
-pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
+pub unsafe fn get_so_object_size(object: ObjectReference, hash_size: usize) -> usize {
     let obj_address = object.to_raw_address();
     let mut vtag = mmtk_jl_typetagof(obj_address);
     let mut vtag_usize = vtag.as_usize();
 
     if vtag_usize == JULIA_BUFF_TAG {
+        debug_assert_eq!(hash_size, 0, "We should not have a hash size for buffer objects. Found size {} for {}", hash_size, object);
         return mmtk_get_obj_size(object);
     }
+
+    let with_header_size = |dtsz: usize| -> usize {
+        let total_sz = dtsz + JULIA_HEADER_SIZE + hash_size;
+        debug_assert!(
+            total_sz <= 2032,
+            "size {} greater than minimum!",
+            total_sz
+        );
+        total_sz
+    };
 
     if vtag_usize == ((jl_small_typeof_tags_jl_datatype_tag as usize) << 4)
         || vtag_usize == ((jl_small_typeof_tags_jl_unionall_tag as usize) << 4)
@@ -291,55 +306,23 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
         if vtag_usize == ((jl_small_typeof_tags_jl_simplevector_tag as usize) << 4) {
             let length = (*obj_address.to_ptr::<jl_svec_t>()).length;
             let dtsz = length * std::mem::size_of::<Address>() + std::mem::size_of::<jl_svec_t>();
-
-            debug_assert!(
-                dtsz + JULIA_HEADER_SIZE <= 2032,
-                "size {} greater than minimum!",
-                dtsz + JULIA_HEADER_SIZE
-            );
-
-            return llt_align(dtsz + JULIA_HEADER_SIZE, 16);
+            return llt_align(with_header_size(dtsz), 16);
         } else if vtag_usize == ((jl_small_typeof_tags_jl_module_tag as usize) << 4) {
             let dtsz = std::mem::size_of::<jl_module_t>();
-            debug_assert!(
-                dtsz + JULIA_HEADER_SIZE <= 2032,
-                "size {} greater than minimum!",
-                dtsz + JULIA_HEADER_SIZE
-            );
-
-            return llt_align(dtsz + JULIA_HEADER_SIZE, 16);
+            return llt_align(with_header_size(dtsz), 16);
         } else if vtag_usize == ((jl_small_typeof_tags_jl_task_tag as usize) << 4) {
             let dtsz = std::mem::size_of::<jl_task_t>();
-            debug_assert!(
-                dtsz + JULIA_HEADER_SIZE <= 2032,
-                "size {} greater than minimum!",
-                dtsz + JULIA_HEADER_SIZE
-            );
-
-            return llt_align(dtsz + JULIA_HEADER_SIZE, 16);
+            return llt_align(with_header_size(dtsz), 16);
         } else if vtag_usize == ((jl_small_typeof_tags_jl_string_tag as usize) << 4) {
             let length = object.to_raw_address().load::<usize>();
             let dtsz = length + std::mem::size_of::<usize>() + 1;
-
-            debug_assert!(
-                dtsz + JULIA_HEADER_SIZE <= 2032,
-                "size {} greater than minimum!",
-                dtsz + JULIA_HEADER_SIZE
-            );
-
             // NB: Strings are aligned to 8 and not to 16
-            return llt_align(dtsz + JULIA_HEADER_SIZE, 8);
+            return llt_align(with_header_size(dtsz), 8);
         } else {
             let vt = jl_small_typeof[vtag_usize / std::mem::size_of::<Address>()];
             let layout = (*vt).layout;
             let dtsz = (*layout).size as usize;
-            debug_assert!(
-                dtsz + JULIA_HEADER_SIZE <= 2032,
-                "size {} greater than minimum!",
-                dtsz + JULIA_HEADER_SIZE
-            );
-
-            return llt_align(dtsz + JULIA_HEADER_SIZE, 16);
+            return llt_align(with_header_size(dtsz), 16);
         }
     } else {
         let vt = vtag.to_ptr::<jl_datatype_t>();
@@ -372,10 +355,10 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
             }
 
             let dtsz = llt_align(std::mem::size_of::<jl_genericmemory_t>(), 16);
-            llt_align(sz + dtsz + JULIA_HEADER_SIZE, 16)
+            llt_align(with_header_size(sz + dtsz), 16)
         } else {
             let dtsz = std::mem::size_of::<jl_genericmemory_t>() + std::mem::size_of::<Address>();
-            llt_align(dtsz + JULIA_HEADER_SIZE, 16)
+            llt_align(with_header_size(dtsz), 16)
         };
 
         debug_assert!(res <= 2032, "size {} greater than minimum!", res);
@@ -384,23 +367,17 @@ pub unsafe fn get_so_object_size(object: ObjectReference) -> usize {
     } else if vt == jl_method_type {
         let dtsz = std::mem::size_of::<jl_method_t>();
         debug_assert!(
-            dtsz + JULIA_HEADER_SIZE <= 2032,
+            with_header_size(dtsz) <= 2032,
             "size {} greater than minimum!",
-            dtsz + JULIA_HEADER_SIZE
+            with_header_size(dtsz)
         );
 
-        return llt_align(dtsz + JULIA_HEADER_SIZE, 16);
+        return llt_align(with_header_size(dtsz), 16);
     }
 
     let layout = (*vt).layout;
     let dtsz = (*layout).size as usize;
-    debug_assert!(
-        dtsz + JULIA_HEADER_SIZE <= 2032,
-        "size {} greater than minimum!",
-        dtsz + JULIA_HEADER_SIZE
-    );
-
-    llt_align(dtsz + JULIA_HEADER_SIZE, 16)
+    llt_align(with_header_size(dtsz), 16)
 }
 
 #[inline(always)]
@@ -458,22 +435,12 @@ pub fn get_stored_hash(object: ObjectReference) -> usize {
     unsafe { (object.to_raw_address() - 8 - STORED_HASH_BYTES).load::<usize>() }
 }
 
-pub fn get_size_for_potentially_hashed_object(object: ObjectReference, size: usize) -> usize {
-    if cfg!(feature = "address_based_hashing") {
-        if test_hash_state(object, HASHED_AND_MOVED) {
-            return size + STORED_HASH_BYTES;
-        }
+pub fn get_hash_size(object: ObjectReference) -> usize {
+    if cfg!(feature = "address_based_hashing") && test_hash_state(object, HASHED_AND_MOVED) {
+        STORED_HASH_BYTES
+    } else {
+        0
     }
-    size
-}
-
-pub fn get_copy_size_for_potentially_hashed_object(object: ObjectReference, size: usize) -> usize {
-    if cfg!(feature = "address_based_hashing") {
-        if test_hash_state(object, HASHED) {
-            return size + STORED_HASH_BYTES;
-        }
-    }
-    size
 }
 
 pub fn get_object_start_for_potentially_hashed_object(object: ObjectReference) -> Address {

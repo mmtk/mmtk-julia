@@ -224,7 +224,7 @@ pub fn dump_immix_block_stats() {
                         unsafe {
                             crate::julia_scanning::get_julia_object_type(object.to_raw_address())
                         },
-                        unsafe { crate::object_model::get_so_object_size(object) },
+                        unsafe { crate::object_model::get_so_object_size(object, crate::object_model::get_hash_size(object)) },
                         mmtk::memory_manager::is_pinned(object),
                     )
                     .expect("Unable to write to log file");
@@ -237,7 +237,7 @@ pub fn dump_immix_block_stats() {
                         unsafe {
                             crate::julia_scanning::get_julia_object_type(object.to_raw_address())
                         },
-                        unsafe { crate::object_model::get_so_object_size(object) },
+                        unsafe { crate::object_model::get_so_object_size(object, 0) },
                         object.is_reachable(),
                     )
                     .expect("Unable to write to log file");
