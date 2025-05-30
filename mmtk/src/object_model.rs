@@ -109,7 +109,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             // if cur_bytes == new_bytes you end up copying the whole src
             // but before you say that dst += STORED_HASH_BYTES so you don't have space
             // in dst to copy src
-            debug_assert_ne!(cur_bytes, new_bytes);
+            debug_assert_eq!(cur_bytes + STORED_HASH_BYTES, new_bytes);
             debug_assert_eq!(header_offset, 8);
 
             // Store hash
@@ -403,9 +403,15 @@ pub unsafe fn get_object_start_ref(object: ObjectReference) -> Address {
     }
 }
 
+// DONT USE THIS FUNCTION ANYWHERE OTHER THAN OBJECT SIZE QUERY, AS IT DOES NOT ALIGN UP AT ALL.
+// This function is only used to align up the object size when we query object size.
+// However, it seems that we don't need to align up. I am still keeping this function,
+// in case that we figure out in the future that we actually need this align up.
+// If we are certain that this align up is unnecessary, we can just remove this function.
 #[inline(always)]
-pub unsafe fn llt_align(size: usize, align: usize) -> usize {
-    ((size) + (align) - 1) & !((align) - 1)
+unsafe fn llt_align(size: usize, align: usize) -> usize {
+    // ((size) + (align) - 1) & !((align) - 1)
+    size
 }
 
 #[inline(always)]
