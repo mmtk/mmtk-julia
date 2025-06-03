@@ -519,6 +519,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "json"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -604,7 +610,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 [[package]]
 name = "mmtk"
 version = "0.31.0"
-source = "git+https://github.com/mmtk/mmtk-core.git?rev=4315d998f514735f4fcfd3d14ef4ada50e9e0e0d#4315d998f514735f4fcfd3d14ef4ada50e9e0e0d"
+source = "git+https://github.com/mmtk/mmtk-core.git?rev=ceea8cf9e4aca52220c674b8a95b4bc5ae0adcae#ceea8cf9e4aca52220c674b8a95b4bc5ae0adcae"
 dependencies = [
  "atomic 0.6.0",
  "atomic-traits",
@@ -649,6 +655,7 @@ dependencies = [
  "cc",
  "chrono",
  "enum-map",
+ "json",
  "lazy_static",
  "libc",
  "log",
@@ -660,7 +667,7 @@ dependencies = [
 [[package]]
 name = "mmtk-macros"
 version = "0.31.0"
-source = "git+https://github.com/mmtk/mmtk-core.git?rev=4315d998f514735f4fcfd3d14ef4ada50e9e0e0d#4315d998f514735f4fcfd3d14ef4ada50e9e0e0d"
+source = "git+https://github.com/mmtk/mmtk-core.git?rev=ceea8cf9e4aca52220c674b8a95b4bc5ae0adcae#ceea8cf9e4aca52220c674b8a95b4bc5ae0adcae"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",

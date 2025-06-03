@@ -27,7 +27,7 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "4315d998f514735f4fcfd3d14ef4ada50e9e0e0d" }
+mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "ceea8cf9e4aca52220c674b8a95b4bc5ae0adcae" }
 # Uncomment the following to build locally
 # mmtk = { path = "../../mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
@@ -36,6 +36,7 @@ atomic = "0.4.6"
 chrono = "*"
 thread-id = "*"
 memoffset = "*"
+json = "0.12.4"
 
 # ykstackmaps = { git = "https://github.com/udesou/ykstackmaps.git", branch = "udesou-master", version = "*" }
 
@@ -65,3 +66,4 @@ immix_max_moving = ["mmtk/immix_stress_defrag", "mmtk/immix_defrag_every_block"]
 dump_memory_stats = ["mmtk/dump_memory_stats"]
 
 address_based_hashing = []
+heap_dump = []

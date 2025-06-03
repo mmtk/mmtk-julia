@@ -17,6 +17,10 @@ use crate::{BLOCK_FOR_GC, STW_COND, WORLD_HAS_STOPPED};
 pub static GC_START: AtomicU64 = AtomicU64::new(0);
 static CURRENT_GC_MAY_MOVE: AtomicBool = AtomicBool::new(true);
 
+// The current GC count. Used to track the number of GCs that have occurred, and what GC it is right now.
+// This count is bumped after a GC.
+static GC_COUNT: AtomicU64 = AtomicU64::new(0);
+
 use std::collections::HashSet;
 use std::sync::RwLock;
 use std::thread::ThreadId;
@@ -54,6 +58,8 @@ impl Collection<JuliaVM> for VMCollection {
         }
 
         trace!("Stopped the world!");
+        #[cfg(feature = "heap_dump")]
+        dump_heap(GC_COUNT.load(Ordering::SeqCst), 0);
 
         // Store if the current GC may move objects -- we will use it when the current GC finishes.
         // We cache the value here just in case MMTk may clear it before we use the value.
@@ -93,7 +99,10 @@ impl Collection<JuliaVM> for VMCollection {
             )
         }
 
+        #[cfg(feature = "heap_dump")]
+        dump_heap(GC_COUNT.load(Ordering::SeqCst), 1);
         // dump_immix_block_stats();
+        GC_COUNT.fetch_add(1, Ordering::SeqCst);
 
         AtomicBool::store(&BLOCK_FOR_GC, false, Ordering::SeqCst);
         AtomicBool::store(&WORLD_HAS_STOPPED, false, Ordering::SeqCst);
@@ -244,7 +253,96 @@ pub fn dump_immix_block_stats() {
                 }
             },
         );
+        print_fragmentation();
+    }
+}
+
+#[cfg(feature = "heap_dump")]
+pub fn dump_heap(gc_count: u64, phase: u64) { // phase: 0 for pre-gc, 1 for post-gc
+    println!("Dumping heap for GC {} phase {}", gc_count, phase);
+    use mmtk::util::heap::inspection::*;
+    use mmtk::vm::ObjectModel;
+    use mmtk::util::constants::LOG_BYTES_IN_PAGE;
+    use json::JsonValue;
+    use std::fs::File;
+    use std::io::Write;
+
+    fn space_into_json(space: &dyn SpaceInspector) -> JsonValue {
+        let mut json = JsonValue::new_object();
+        json["name"] = JsonValue::String(space.space_name().to_string());
+        json["policy"] = JsonValue::String(space.policy_name().to_string());
+        json["used_bytes"] = JsonValue::Number((space.used_pages() << LOG_BYTES_IN_PAGE).into());
+        json
     }
 
-    print_fragmentation();
+    fn region_into_json(space: &dyn SpaceInspector, region: &dyn RegionInspector) -> JsonValue{
+        // println!("Dumping region: {} {}", region.region_type(), region.start());
+        let mut json = JsonValue::new_object();
+        json["type"] = JsonValue::String(region.region_type().to_string());
+        json["start"] = JsonValue::String(format!("{}", region.start()));
+        json["size"] = JsonValue::Number(region.size().into());
+
+        let sub_regions = space.list_sub_regions(region);
+        if sub_regions.is_empty() {
+            let objects = region.list_objects();
+            json["objects"] = objects.into_iter().map(|object| {
+                let mut obj_json = JsonValue::new_object();
+                obj_json["address"] = JsonValue::String(format!("{}", object));
+                obj_json["type"] = JsonValue::String(unsafe {
+                    crate::julia_scanning::get_julia_object_type(object.to_raw_address())
+                });
+                obj_json["size"] = JsonValue::Number(
+                    unsafe { crate::object_model::VMObjectModel::get_current_size(object) }.into(),
+                );
+                obj_json
+            }).collect::<Vec<_>>().into();
+        } else {
+            json["regions"] = sub_regions.into_iter().map(|sub_region| {
+                region_into_json(space, &*sub_region)
+            }).collect::<Vec<_>>().into();
+        }
+
+        json
+    }
+
+    // Dump high-levvel space information
+    {
+        let mut file = File::create(format!(
+            "spaces_gc_{}_phase_{}.json",
+            gc_count,
+            phase
+        )).unwrap();
+        let mut json = JsonValue::new_array();
+        SINGLETON.inspect_spaces().iter().for_each(|space| json.push(space_into_json(*space)).unwrap());
+        file.write_all(json::stringify_pretty(json, 2).as_bytes()).unwrap();
+    }
+
+    // Dump Immix heap -- be careful we only dump one chunk at a time to avoid using too much Rust memory and get OOM
+    {
+        let mut file = File::create(format!(
+            "immix_heap_gc_{}_phase_{}.json",
+            gc_count,
+            phase
+        )).unwrap();
+
+        file.write_all(b"[\n").unwrap();
+
+        let immix_space = SINGLETON.inspect_spaces().into_iter()
+            .find(|s| s.space_name() == "immix")
+            .expect("Immix space not found");
+        let chunks = immix_space.list_top_regions();
+        let n_chunks = chunks.len();
+        let mut i = 0;
+        chunks.into_iter().for_each(|chunk: Box<dyn RegionInspector>| {
+            let json = region_into_json(immix_space, &*chunk);
+            file.write_all(json::stringify_pretty(json, 2).as_bytes()).unwrap();
+            if i != n_chunks - 1 {
+                file.write_all(b",\n").unwrap();
+            }
+            i += 1;
+        });
+        assert!(i == n_chunks);
+
+        file.write_all(b"]\n").unwrap();
+    }
 }
