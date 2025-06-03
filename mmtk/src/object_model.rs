@@ -83,12 +83,13 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         let from_start = Self::ref_to_object_start(from);
         let header_offset = from_addr - from_start;
 
+        let aligned_new_bytes = mmtk::util::conversions::raw_align_up(new_bytes, JuliaVM::MIN_ALIGNMENT);
         let mut dst = if test_hash_state(from, UNHASHED) {
             // 8 bytes offset, for 8 bytes header
-            copy_context.alloc_copy(from, new_bytes, 16, 8, semantics)
+            copy_context.alloc_copy(from, aligned_new_bytes, 16, 8, semantics)
         } else {
             // 0 bytes offset, for 16 bytes header
-            copy_context.alloc_copy(from, new_bytes, 16, 0, semantics)
+            copy_context.alloc_copy(from, aligned_new_bytes, 16, 0, semantics)
         };
 
         // `alloc_copy` should never return zero.
