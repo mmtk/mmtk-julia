@@ -294,6 +294,9 @@ pub fn dump_heap(gc_count: u64, phase: u64) { // phase: 0 for pre-gc, 1 for post
                 obj_json["size"] = JsonValue::Number(
                     unsafe { crate::object_model::VMObjectModel::get_current_size(object) }.into(),
                 );
+                obj_json["pinned"] = JsonValue::Boolean(
+                    mmtk::memory_manager::is_pinned(object),
+                );
                 obj_json
             }).collect::<Vec<_>>().into();
         } else {
