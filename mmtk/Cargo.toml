@@ -42,7 +42,7 @@ json = "0.12.4"
 
 [features]
 # We must build with default features
-default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/object_pinning", "mmtk/is_mmtk_object", "mmtk/vo_bit_access", "address_based_hashing"]#, "dump_memory_stats"]
+default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/object_pinning", "mmtk/is_mmtk_object", "mmtk/vo_bit_access", "address_based_hashing", "heap_dump"]#, "dump_memory_stats"]
 
 # Default features
 julia_copy_stack = []
@@ -66,4 +66,7 @@ immix_max_moving = ["mmtk/immix_stress_defrag", "mmtk/immix_defrag_every_block"]
 dump_memory_stats = ["mmtk/dump_memory_stats"]
 
 address_based_hashing = []
+
 heap_dump = []
+dump_block_stats = []
+print_fragmentation = []
