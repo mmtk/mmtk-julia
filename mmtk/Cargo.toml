@@ -42,7 +42,7 @@ json = "0.12.4"
 
 [features]
 # We must build with default features
-default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/object_pinning", "mmtk/is_mmtk_object", "mmtk/vo_bit_access", "address_based_hashing", "heap_dump"]#, "dump_memory_stats"]
+default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/object_pinning", "mmtk/is_mmtk_object", "mmtk/vo_bit_access", "address_based_hashing"]#, "heap_dump"]#, "dump_memory_stats"]
 
 # Default features
 julia_copy_stack = []
