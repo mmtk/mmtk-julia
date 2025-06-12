@@ -66,7 +66,7 @@ pub extern "C" fn mmtk_gc_init(
                     .options
                     .gc_trigger
                     .set(mmtk::util::options::GCTriggerSelector::Delegated)
-            } else if min_heap_size != 0 {
+            } else if min_heap_size != 0 && min_heap_size != max_heap_size{
                 info!(
                     "Setting mmtk heap size to a variable size with min-max of {}-{} (in bytes)",
                     min_heap_size, max_heap_size
