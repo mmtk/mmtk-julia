@@ -132,6 +132,10 @@ extern "C" {
         total_end: *mut Address,
     );
     pub static jl_true: *mut crate::julia_types::jl_value_t;
+    // Original C signature: JL_DLLEXPORT void jl_log_pinning_event(void *pinned_object, const char *filename, int lineno)
+    pub fn jl_log_pinning_event(pinned_object: Address, filename: *const i8, lineno: i32);
+    // Original C signature: JL_DLLEXPORT void jl_gc_log(void)
+    pub fn jl_gc_log();
 }
 
 #[macro_export]

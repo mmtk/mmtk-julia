@@ -42,6 +42,7 @@ extern void* mmtk_alloc_large(MMTk_Mutator mutator, size_t size,
 extern void mmtk_post_alloc(MMTk_Mutator mutator, void* refer,
     size_t bytes, int allocator);
 
+extern bool mmtk_is_reachable_object(void* ref);
 extern bool mmtk_is_live_object(void* ref);
 extern bool mmtk_is_mapped_object(void* ref);
 extern bool mmtk_is_mapped_address(void* addr);
