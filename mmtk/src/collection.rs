@@ -4,6 +4,7 @@ use crate::{
     jl_hrtime, jl_throw_out_of_memory_error,
 };
 use crate::{JuliaVM, USER_TRIGGERED_GC};
+use crate::jl_gc_log;
 use log::{debug, trace};
 use mmtk::util::alloc::AllocationError;
 use mmtk::util::heap::GCTriggerPolicy;
@@ -84,6 +85,9 @@ impl Collection<JuliaVM> for VMCollection {
     }
 
     fn resume_mutators(_tls: VMWorkerThread) {
+        unsafe {
+            jl_gc_log();
+        }
         // unpin conservative roots
         crate::conservative::unpin_conservative_roots();
 

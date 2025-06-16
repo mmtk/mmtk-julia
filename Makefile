@@ -1,5 +1,7 @@
 # By default do a release build with moving immix
 MMTK_MOVING ?= 1
+MMTK_ALWAYS_MOVING ?= 1
+MMTK_MAX_MOVING ?= 1
 MMTK_PLAN ?= Immix
 CURR_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
