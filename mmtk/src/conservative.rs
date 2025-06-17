@@ -1,4 +1,5 @@
 use crate::julia_types::*;
+use crate::jl_log_pinning_event;
 use mmtk::memory_manager;
 use mmtk::util::constants::BYTES_IN_ADDRESS;
 use mmtk::util::{Address, ObjectReference};
@@ -13,7 +14,13 @@ pub fn pin_conservative_roots() {
 
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
     let n_roots = roots.len();
-    roots.retain(|obj| mmtk::memory_manager::pin_object(*obj));
+    roots.retain(|obj| {
+        unsafe {
+            let obj = (*obj).to_raw_address();
+            jl_log_pinning_event(obj, std::ptr::null_mut(), 0);
+        }
+        mmtk::memory_manager::pin_object(*obj)
+    });
     let n_pinned = roots.len();
     log::debug!("Conservative roots: {}, pinned: {}", n_roots, n_pinned);
 }
