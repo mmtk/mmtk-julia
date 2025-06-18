@@ -42,6 +42,7 @@ extern void* mmtk_alloc_large(MMTk_Mutator mutator, size_t size,
 extern void mmtk_post_alloc(MMTk_Mutator mutator, void* refer,
     size_t bytes, int allocator);
 
+extern bool mmtk_is_reachable_object(void* ref);
 extern bool mmtk_is_live_object(void* ref);
 extern bool mmtk_is_mapped_object(void* ref);
 extern bool mmtk_is_mapped_address(void* addr);
@@ -49,6 +50,7 @@ extern int mmtk_object_is_managed_by_mmtk(void* addr);
 extern void mmtk_runtime_panic(void);
 extern void mmtk_unreachable(void);
 extern unsigned char mmtk_pin_object(void* obj);
+extern unsigned char mmtk_unpin_object(void* obj);
 extern bool mmtk_is_object_pinned(void* obj);
 extern unsigned char mmtk_pin_pointer(void* ptr);
 extern bool mmtk_is_pointer_pinned(void* ptr);

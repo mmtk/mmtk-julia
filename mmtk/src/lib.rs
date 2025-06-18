@@ -131,6 +131,8 @@ extern "C" {
         total_start: *mut Address,
         total_end: *mut Address,
     );
+    pub fn jl_log_pinning_event(pinned_object: Address, filename: *const i8, lineno: i32);
+    pub fn jl_gc_log();
     pub static jl_true: *mut crate::julia_types::jl_value_t;
 }
 

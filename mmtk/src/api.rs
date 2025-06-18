@@ -251,6 +251,11 @@ pub extern "C" fn mmtk_total_bytes() -> usize {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_is_reachable_object(object: ObjectReference) -> bool {
+    object.is_reachable()
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_is_live_object(object: ObjectReference) -> bool {
     object.is_live()
 }
