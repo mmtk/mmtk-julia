@@ -62,6 +62,27 @@ pub unsafe fn mmtk_jl_to_typeof(t: Address) -> *const jl_datatype_t {
     t.to_ptr::<jl_datatype_t>()
 }
 
+// The type jl_genericmemoryref_t potentially has two pointers (ptr_or_offset, and mem).
+// But Julia only identifies it with one single pointer (mem). We need to make sure ptr_or_offset is also traced.
+// This function only traces ptr_or_offset, and still leaves mem to the generic trace for data types.
+fn trace_ptr_or_offset_in_genericmemoryref<SV: SlotVisitor<JuliaVMSlot>>(closure: &mut SV, r: *mut jl_genericmemoryref_t) {
+    unsafe {
+        if mmtk_object_is_managed_by_mmtk((*r).ptr_or_offset as usize) {
+            let ptr_or_ref_slot = Address::from_ptr(::std::ptr::addr_of!((*r).ptr_or_offset));
+            let mem_addr_as_usize = (*r).mem as usize;
+            let ptr_or_offset_as_usize = (*r).ptr_or_offset as usize;
+            if ptr_or_offset_as_usize > mem_addr_as_usize {
+                let offset = ptr_or_offset_as_usize - mem_addr_as_usize;
+
+                // Only update the offset pointer if the offset is valid (> 0)
+                if offset > 0 {
+                    process_offset_slot(closure, ptr_or_ref_slot, offset);
+                }
+            }
+        }
+    }
+}
+
 const PRINT_OBJ_TYPE: bool = false;
 
 // This function is a rewrite of `gc_mark_outrefs()` in `gc.c`
@@ -214,24 +235,8 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
     }
     let vt = vtag.to_ptr::<jl_datatype_t>();
     if (*vt).name == jl_array_typename {
-        let a = obj.to_ptr::<jl_array_t>();
-        let memref = (*a).ref_;
-
-        let ptr_or_offset = memref.ptr_or_offset;
-        // if the object moves its pointer inside the array object (void* ptr_or_offset) needs to be updated as well
-        if mmtk_object_is_managed_by_mmtk(ptr_or_offset as usize) {
-            let ptr_or_ref_slot = Address::from_ptr(::std::ptr::addr_of!((*a).ref_.ptr_or_offset));
-            let mem_addr_as_usize = memref.mem as usize;
-            let ptr_or_offset_as_usize = ptr_or_offset as usize;
-            if ptr_or_offset_as_usize > mem_addr_as_usize {
-                let offset = ptr_or_offset_as_usize - mem_addr_as_usize;
-
-                // Only update the offset pointer if the offset is valid (> 0)
-                if offset > 0 {
-                    process_offset_slot(closure, ptr_or_ref_slot, offset);
-                }
-            }
-        }
+        let a = obj.to_mut_ptr::<jl_array_t>();
+        trace_ptr_or_offset_in_genericmemoryref(closure, &mut (*a).ref_);
     }
     if (*vt).name == jl_genericmemory_typename {
         if PRINT_OBJ_TYPE {
@@ -361,6 +366,11 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         }
 
         return;
+    }
+
+    if (*vt).name == jl_genericmemoryref_typename {
+        let gmr = obj.to_mut_ptr::<jl_genericmemoryref_t>();
+        trace_ptr_or_offset_in_genericmemoryref(closure, gmr);
     }
 
     if PRINT_OBJ_TYPE {
