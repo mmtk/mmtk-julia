@@ -18,15 +18,17 @@ pub struct VMObjectModel {}
 /// 1 bit per object
 pub(crate) const LOGGING_SIDE_METADATA_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
-use mmtk::util::metadata::side_metadata::SideMetadataSpec;
-use mmtk::util::metadata::side_metadata::SideMetadataOffset;
 use mmtk::util::constants::LOG_MIN_OBJECT_SIZE;
+use mmtk::util::metadata::side_metadata::SideMetadataOffset;
+use mmtk::util::metadata::side_metadata::SideMetadataSpec;
 pub(crate) const HASH_BITS_SPEC: SideMetadataSpec = SideMetadataSpec {
     name: "julia_hash_bits",
     is_global: true,
-    offset: SideMetadataOffset::layout_after(LOGGING_SIDE_METADATA_SPEC.as_spec().extract_side_spec()),
+    offset: SideMetadataOffset::layout_after(
+        LOGGING_SIDE_METADATA_SPEC.as_spec().extract_side_spec(),
+    ),
     log_num_of_bits: 1,
-    log_bytes_in_region: LOG_MIN_OBJECT_SIZE as usize
+    log_bytes_in_region: LOG_MIN_OBJECT_SIZE as usize,
 };
 
 pub(crate) const MARKING_METADATA_SPEC: VMLocalMarkBitSpec =
@@ -66,15 +68,24 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
 
         #[cfg(debug_assertions)]
         unsafe {
-            assert!(is_object_in_immixspace(&from), "We attempted to copy an object {} that is not in immix space", from);
+            assert!(
+                is_object_in_immixspace(&from),
+                "We attempted to copy an object {} that is not in immix space",
+                from
+            );
             let obj_address = from.to_raw_address();
             let mut vtag = mmtk_jl_typetagof(obj_address);
             let mut vtag_usize = vtag.as_usize();
-            assert!(vtag_usize != JULIA_BUFF_TAG, "We attempted to copy a buffer object {} that is not supported", from);
+            assert!(
+                vtag_usize != JULIA_BUFF_TAG,
+                "We attempted to copy a buffer object {} that is not supported",
+                from
+            );
         }
 
         let cur_bytes = Self::get_current_size(from);
-        let new_bytes = if cfg!(feature = "address_based_hashing") && test_hash_state(from, HASHED) {
+        let new_bytes = if cfg!(feature = "address_based_hashing") && test_hash_state(from, HASHED)
+        {
             unsafe { get_so_object_size(from, STORED_HASH_BYTES) }
         } else {
             cur_bytes
@@ -83,7 +94,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         let from_start = Self::ref_to_object_start(from);
         let header_offset = from_addr - from_start;
 
-        let aligned_new_bytes = mmtk::util::conversions::raw_align_up(new_bytes, JuliaVM::MIN_ALIGNMENT);
+        let aligned_new_bytes =
+            mmtk::util::conversions::raw_align_up(new_bytes, JuliaVM::MIN_ALIGNMENT);
         let mut dst = if test_hash_state(from, UNHASHED) {
             // 8 bytes offset, for 8 bytes header
             copy_context.alloc_copy(from, aligned_new_bytes, 16, 8, semantics)
@@ -101,12 +113,16 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             unsafe {
                 std::ptr::copy_nonoverlapping::<u8>(src.to_ptr(), dst.to_mut_ptr(), cur_bytes);
             }
-            let to_obj = unsafe { ObjectReference::from_raw_address_unchecked(dst + header_offset) };
+            let to_obj =
+                unsafe { ObjectReference::from_raw_address_unchecked(dst + header_offset) };
             copy_context.post_copy(to_obj, new_bytes, semantics);
             debug_assert!(test_hash_state(to_obj, UNHASHED));
             to_obj
         } else if test_hash_state(from, HASHED) {
-            info!("Moving a hashed object {} with size = {}. New size = {}", from, cur_bytes, new_bytes);
+            info!(
+                "Moving a hashed object {} with size = {}. New size = {}",
+                from, cur_bytes, new_bytes
+            );
             // if cur_bytes == new_bytes you end up copying the whole src
             // but before you say that dst += STORED_HASH_BYTES so you don't have space
             // in dst to copy src
@@ -115,7 +131,9 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
 
             // Store hash
             let hash = from.to_raw_address().as_usize();
-            unsafe { dst.store::<usize>(hash); }
+            unsafe {
+                dst.store::<usize>(hash);
+            }
             info!("Store hash {:x} into {}", hash, dst);
             dst += STORED_HASH_BYTES;
 
@@ -124,7 +142,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             unsafe {
                 std::ptr::copy_nonoverlapping::<u8>(src.to_ptr(), dst.to_mut_ptr(), cur_bytes);
             }
-            let to_obj = unsafe { ObjectReference::from_raw_address_unchecked(dst + header_offset) };
+            let to_obj =
+                unsafe { ObjectReference::from_raw_address_unchecked(dst + header_offset) };
             copy_context.post_copy(to_obj, new_bytes, semantics);
 
             info!("old object {}, new objectt {}", from, to_obj);
@@ -138,12 +157,18 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             debug_assert_eq!(from.to_raw_address(), from_start + 16usize);
             debug_assert_eq!(header_offset, 16);
             let hash = unsafe { Address::from_usize(get_stored_hash(from)) };
-            debug_assert!(is_addr_in_immixspace(hash), "The stored hash address {} of object {} is not in immix space", hash, from);
+            debug_assert!(
+                is_addr_in_immixspace(hash),
+                "The stored hash address {} of object {} is not in immix space",
+                hash,
+                from
+            );
             let src = from_start;
             unsafe {
                 std::ptr::copy_nonoverlapping::<u8>(src.to_ptr(), dst.to_mut_ptr(), cur_bytes);
             }
-            let to_obj = unsafe { ObjectReference::from_raw_address_unchecked(dst + header_offset) };
+            let to_obj =
+                unsafe { ObjectReference::from_raw_address_unchecked(dst + header_offset) };
             copy_context.post_copy(to_obj, new_bytes, semantics);
             // set_hash_state(from, UNHASHED);
             set_hash_state(to_obj, HASHED_AND_MOVED);
@@ -177,8 +202,6 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
                 Ordering::SeqCst,
             );
         }
-
-        
 
         to_obj
     }
@@ -283,17 +306,17 @@ pub unsafe fn get_so_object_size(object: ObjectReference, hash_size: usize) -> u
     let mut vtag_usize = vtag.as_usize();
 
     if vtag_usize == JULIA_BUFF_TAG {
-        debug_assert_eq!(hash_size, 0, "We should not have a hash size for buffer objects. Found size {} for {}", hash_size, object);
+        debug_assert_eq!(
+            hash_size, 0,
+            "We should not have a hash size for buffer objects. Found size {} for {}",
+            hash_size, object
+        );
         return mmtk_get_obj_size(object);
     }
 
     let with_header_size = |dtsz: usize| -> usize {
         let total_sz = dtsz + JULIA_HEADER_SIZE + hash_size;
-        debug_assert!(
-            total_sz <= 2032,
-            "size {} greater than minimum!",
-            total_sz
-        );
+        debug_assert!(total_sz <= 2032, "size {} greater than minimum!", total_sz);
         total_sz
     };
 
@@ -410,7 +433,7 @@ pub unsafe fn get_object_start_ref(object: ObjectReference) -> Address {
 // in case that we figure out in the future that we actually need this align up.
 // If we are certain that this align up is unnecessary, we can just remove this function.
 #[inline(always)]
-unsafe fn llt_align(size: usize, align: usize) -> usize {
+unsafe fn llt_align(size: usize, _align: usize) -> usize {
     // ((size) + (align) - 1) & !((align) - 1)
     size
 }
@@ -428,8 +451,8 @@ const HASHED: u8 = 0b01;
 const HASHED_AND_MOVED: u8 = 0b10;
 const STORED_HASH_BYTES: usize = std::mem::size_of::<usize>();
 
-use std::sync::atomic::Ordering;
 use mmtk::memory_manager;
+use std::sync::atomic::Ordering;
 
 pub fn test_hash_state(object: ObjectReference, state: u8) -> bool {
     let hash_bits = HASH_BITS_SPEC.load_atomic::<u8>(object.to_raw_address(), Ordering::SeqCst);
@@ -511,6 +534,9 @@ pub fn mmtk_get_ptr_hash(ptr: Address) -> usize {
             ptr.as_usize()
         }
     } else {
-        panic!("Invalid pointer: {}, we cannot find the base object for it", ptr)
+        panic!(
+            "Invalid pointer: {}, we cannot find the base object for it",
+            ptr
+        )
     }
 }
