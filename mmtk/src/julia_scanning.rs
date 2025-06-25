@@ -64,6 +64,44 @@ pub unsafe fn mmtk_jl_to_typeof(t: Address) -> *const jl_datatype_t {
 
 const PRINT_OBJ_TYPE: bool = false;
 
+trait ValidOffset: Copy {
+    fn to_isize(self) -> isize;
+}
+impl ValidOffset for u8 {
+    #[inline]
+    fn to_isize(self) -> isize {
+        self as isize
+    }
+}
+impl ValidOffset for u16 {
+    #[inline]
+    fn to_isize(self) -> isize {
+        self as isize
+    }
+}
+impl ValidOffset for u32 {
+    #[inline]
+    fn to_isize(self) -> isize {
+        self as isize
+    }
+}
+unsafe fn scan_julia_obj_n<T>(
+    obj: Address,
+    begin: Address,
+    end: Address,
+    closure: &mut impl SlotVisitor<JuliaVMSlot>,
+) where
+    T: ValidOffset,
+{
+    let mut ptr = begin;
+    while ptr < end {
+        let offset = ptr.load::<T>();
+        let slot = obj.shift::<Address>(offset.to_isize());
+        process_slot(closure, slot);
+        ptr = ptr.shift::<T>(1);
+    }
+}
+
 // This function is a rewrite of `gc_mark_outrefs()` in `gc.c`
 // INFO: *_custom() functions are acessors to bitfields that do not use bindgen generated code.
 #[inline(always)]
@@ -182,15 +220,9 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             debug_assert!((*layout).fielddesc_type_custom() == 0);
             debug_assert!((*layout).nfields > 0);
             let npointers = (*layout).npointers;
-            let mut obj8_begin = mmtk_jl_dt_layout_ptrs(layout);
+            let obj8_begin = mmtk_jl_dt_layout_ptrs(layout);
             let obj8_end = obj8_begin.shift::<u8>(npointers as isize);
-
-            while obj8_begin < obj8_end {
-                let obj8_begin_loaded = obj8_begin.load::<u8>();
-                let slot = obj.shift::<Address>(obj8_begin_loaded as isize);
-                process_slot(closure, slot);
-                obj8_begin = obj8_begin.shift::<u8>(1);
-            }
+            scan_julia_obj_n::<u8>(obj, obj8_begin, obj8_end, closure);
         } else if vtag_usize == ((jl_small_typeof_tags_jl_string_tag as usize) << 4)
             && PRINT_OBJ_TYPE
         {
@@ -378,39 +410,25 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             (*layout).nfields > 0 && (*layout).fielddesc_type_custom() != 3,
             "opaque types should have been handled specially"
         );
-        if (*layout).fielddesc_type_custom() == 0 {
-            let mut obj8_begin = mmtk_jl_dt_layout_ptrs(layout);
-            let obj8_end = obj8_begin.shift::<u8>(npointers as isize);
-
-            while obj8_begin < obj8_end {
-                let obj8_begin_loaded = obj8_begin.load::<u8>();
-                let slot = obj.shift::<Address>(obj8_begin_loaded as isize);
-                process_slot(closure, slot);
-                obj8_begin = obj8_begin.shift::<u8>(1);
+        let obj_begin = mmtk_jl_dt_layout_ptrs(layout);
+        let obj_end;
+        match (*layout).fielddesc_type_custom() {
+            0 => {
+                obj_end = obj_begin.shift::<u8>(npointers as isize);
+                scan_julia_obj_n::<u8>(obj, obj_begin, obj_end, closure);
             }
-        } else if (*layout).fielddesc_type_custom() == 1 {
-            let mut obj16_begin = mmtk_jl_dt_layout_ptrs(layout);
-            let obj16_end = obj16_begin.shift::<u16>(npointers as isize);
-
-            while obj16_begin < obj16_end {
-                let obj16_begin_loaded = obj16_begin.load::<u16>();
-                let slot = obj.shift::<Address>(obj16_begin_loaded as isize);
-                process_slot(closure, slot);
-                obj16_begin = obj16_begin.shift::<u16>(1);
+            1 => {
+                obj_end = obj_begin.shift::<u16>(npointers as isize);
+                scan_julia_obj_n::<u16>(obj, obj_begin, obj_end, closure);
             }
-        } else if (*layout).fielddesc_type_custom() == 2 {
-            let mut obj32_begin = mmtk_jl_dt_layout_ptrs(layout);
-            let obj32_end = obj32_begin.shift::<u32>(npointers as isize);
-
-            while obj32_begin < obj32_end {
-                let obj32_begin_loaded = obj32_begin.load::<u32>();
-                let slot = obj.shift::<Address>(obj32_begin_loaded as isize);
-                process_slot(closure, slot);
-                obj32_begin = obj32_begin.shift::<u32>(1);
+            2 => {
+                obj_end = obj_begin.shift::<u32>(npointers as isize);
+                scan_julia_obj_n::<u32>(obj, obj_begin, obj_end, closure);
             }
-        } else {
-            debug_assert!((*layout).fielddesc_type_custom() == 3);
-            unimplemented!();
+            _ => {
+                debug_assert!((*layout).fielddesc_type_custom() == 3);
+                unimplemented!();
+            }
         }
     }
 }
