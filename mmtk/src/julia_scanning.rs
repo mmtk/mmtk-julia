@@ -358,19 +358,12 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
                     objary_begin = objary_begin.shift::<Address>(elsize as isize);
                 }
             } else if (*layout).fielddesc_type_custom() == 0 {
-                let obj8_begin = mmtk_jl_dt_layout_ptrs(layout);
+                let mut obj8_begin = mmtk_jl_dt_layout_ptrs(layout);
                 let obj8_end = obj8_begin.shift::<u8>(npointers as isize);
-                let mut elem_begin = obj8_begin;
-                let elem_end = obj8_end;
 
                 while objary_begin < objary_end {
-                    while elem_begin < elem_end {
-                        let elem_begin_loaded = elem_begin.load::<u8>();
-                        let slot = objary_begin.shift::<Address>(elem_begin_loaded as isize);
-                        process_slot(closure, slot);
-                        elem_begin = elem_begin.shift::<u8>(1);
-                    }
-                    elem_begin = obj8_begin;
+                    scan_julia_obj_n::<u8>(objary_begin, obj8_begin, obj8_end, closure);
+                    obj8_begin = mmtk_jl_dt_layout_ptrs(layout);
                     objary_begin = objary_begin.shift::<Address>(elsize as isize);
                 }
             } else if (*layout).fielddesc_type_custom() == 1 {
@@ -378,12 +371,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
                 let obj16_end = obj16_begin.shift::<u16>(npointers as isize);
 
                 while objary_begin < objary_end {
-                    while obj16_begin < obj16_end {
-                        let elem_begin_loaded = obj16_begin.load::<u16>();
-                        let slot = objary_begin.shift::<Address>(elem_begin_loaded as isize);
-                        process_slot(closure, slot);
-                        obj16_begin = obj16_begin.shift::<u16>(1);
-                    }
+                    scan_julia_obj_n::<u16>(objary_begin, obj16_begin, obj16_end, closure);
                     obj16_begin = mmtk_jl_dt_layout_ptrs(layout);
                     objary_begin = objary_begin.shift::<Address>(elsize as isize);
                 }
