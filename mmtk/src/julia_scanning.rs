@@ -83,6 +83,28 @@ fn trace_ptr_or_offset_in_genericmemoryref<SV: SlotVisitor<JuliaVMSlot>>(closure
     }
 }
 
+fn is_refvalue_of_generimemoryref(dt: *const jl_datatype_t) -> bool {
+    unsafe {
+        let name = std::ffi::CString::new("RefValue").unwrap();
+        if (*(*dt).name).name != crate::jl_symbol(name.as_ptr() as *const i8) {
+            return false;
+        }
+
+        if mmtk_jl_svec_len(Address::from_mut_ptr((*dt).parameters)) != 1 {
+            return false;
+        }
+
+        let t = mmtk_jl_svecref((*dt).parameters, 0);
+        if !mmtk_jl_is_datatype(t) {
+            return false;
+        }
+
+        let t_dt = t as *mut jl_datatype_t;
+        let name = std::ffi::CString::new("GenericMemoryRef").unwrap();
+        (*(*t_dt).name).name == crate::jl_symbol(name.as_ptr() as *const i8)
+    }
+}
+
 const PRINT_OBJ_TYPE: bool = false;
 
 // This function is a rewrite of `gc_mark_outrefs()` in `gc.c`
@@ -368,17 +390,21 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         return;
     }
 
-    if (*vt).name == jl_genericmemoryref_typename {
-        let gmr = obj.to_mut_ptr::<jl_genericmemoryref_t>();
-        trace_ptr_or_offset_in_genericmemoryref(closure, gmr);
-    }
-
     if PRINT_OBJ_TYPE {
         println!("scan_julia_obj {}: datatype\n", obj);
     }
 
     if vt == jl_weakref_type {
         return;
+    }
+
+    if (*vt).name == jl_genericmemoryref_typename {
+        let gmr = obj.to_mut_ptr::<jl_genericmemoryref_t>();
+        trace_ptr_or_offset_in_genericmemoryref(closure, gmr);
+    }
+    if is_refvalue_of_generimemoryref(vt) {
+        let gmr = obj.to_mut_ptr::<jl_genericmemoryref_t>();
+        trace_ptr_or_offset_in_genericmemoryref(closure, gmr);
     }
 
     let layout = (*vt).layout;
@@ -807,4 +833,10 @@ pub unsafe fn mmtk_jl_bt_entry_jlvalue(
     let entry = unsafe { (*bt_entry.add(2 + i)).__bindgen_anon_1.jlvalue };
     debug_assert!(!entry.is_null());
     unsafe { ObjectReference::from_raw_address_unchecked(Address::from_mut_ptr(entry)) }
+}
+
+pub unsafe fn mmtk_jl_is_datatype(vt: *const jl_datatype_t) -> bool {
+    let type_tag = mmtk_jl_typetagof(Address::from_ptr(vt));
+
+    type_tag.as_usize() == ((jl_small_typeof_tags_jl_datatype_tag as usize) << 4)
 }

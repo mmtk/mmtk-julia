@@ -106,7 +106,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             debug_assert!(test_hash_state(to_obj, UNHASHED));
             to_obj
         } else if test_hash_state(from, HASHED) {
-            info!("Moving a hashed object {} with size = {}. New size = {}", from, cur_bytes, new_bytes);
+            debug!("Moving a hashed object {} with size = {}. New size = {}", from, cur_bytes, new_bytes);
             // if cur_bytes == new_bytes you end up copying the whole src
             // but before you say that dst += STORED_HASH_BYTES so you don't have space
             // in dst to copy src
@@ -116,7 +116,7 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             // Store hash
             let hash = from.to_raw_address().as_usize();
             unsafe { dst.store::<usize>(hash); }
-            info!("Store hash {:x} into {}", hash, dst);
+            debug!("Store hash {:x} into {}", hash, dst);
             dst += STORED_HASH_BYTES;
 
             // Copy the object
@@ -127,13 +127,13 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             let to_obj = unsafe { ObjectReference::from_raw_address_unchecked(dst + header_offset) };
             copy_context.post_copy(to_obj, new_bytes, semantics);
 
-            info!("old object {}, new objectt {}", from, to_obj);
+            debug!("old object {}, new objectt {}", from, to_obj);
 
             // set_hash_state(from, UNHASHED);
             set_hash_state(to_obj, HASHED_AND_MOVED);
             to_obj
         } else if test_hash_state(from, HASHED_AND_MOVED) {
-            info!("Moving a hashed+moved object {}", from);
+            debug!("Moving a hashed+moved object {}", from);
             debug_assert_eq!(cur_bytes, new_bytes);
             debug_assert_eq!(from.to_raw_address(), from_start + 16usize);
             debug_assert_eq!(header_offset, 16);

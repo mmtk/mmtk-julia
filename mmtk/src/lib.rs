@@ -134,6 +134,7 @@ extern "C" {
     pub fn jl_log_pinning_event(pinned_object: Address, filename: *const i8, lineno: i32);
     pub fn jl_gc_log();
     pub static jl_true: *mut crate::julia_types::jl_value_t;
+    pub fn jl_symbol(name: *const i8) -> *mut crate::julia_types::jl_sym_t;
 }
 
 #[macro_export]
