@@ -323,8 +323,8 @@ pub fn assert_generic_datatype(obj: Address) {
         {
             #[cfg(feature = "record_moved_objects")]
             let old_type = {
-                let unknown = "unknown".to_string();
-                { let map = COPIED_OBJECTS.lock().unwrap(); map.get(&obj.as_usize()).unwrap_or(&unknown).to_string() }
+                let not_moved = "not moved".to_string();
+                { let map = COPIED_OBJECTS.lock().unwrap(); map.get(&obj.as_usize()).unwrap_or(&not_moved).to_string() }
             };
             #[cfg(not(feature = "record_moved_objects"))]
             let old_type = "not recorded (need record_moved_objects)".to_string();
