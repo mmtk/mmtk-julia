@@ -83,10 +83,12 @@ fn trace_ptr_or_offset_in_genericmemoryref<SV: SlotVisitor<JuliaVMSlot>>(closure
     }
 }
 
+const REFVALUE_NAME: &std::ffi::CStr = c"RefValue";
+const GENERICMEMORYREF_NAME: &std::ffi::CStr = c"GenericMemoryRef";
+
 fn is_refvalue_of_generimemoryref(dt: *const jl_datatype_t) -> bool {
     unsafe {
-        let name = std::ffi::CString::new("RefValue").unwrap();
-        if (*(*dt).name).name != crate::jl_symbol(name.as_ptr() as *const i8) {
+        if (*(*dt).name).name != crate::jl_symbol(REFVALUE_NAME.as_ptr() as *const i8) {
             return false;
         }
 
@@ -100,8 +102,7 @@ fn is_refvalue_of_generimemoryref(dt: *const jl_datatype_t) -> bool {
         }
 
         let t_dt = t as *mut jl_datatype_t;
-        let name = std::ffi::CString::new("GenericMemoryRef").unwrap();
-        (*(*t_dt).name).name == crate::jl_symbol(name.as_ptr() as *const i8)
+        (*(*t_dt).name).name == crate::jl_symbol(GENERICMEMORYREF_NAME.as_ptr() as *const i8)
     }
 }
 
