@@ -12,7 +12,7 @@ fi
 build_type=$1
 # plan to use
 plan=$2
-# moving vs non-moving
+# max-moving vs non-moving
 is_moving=$3
 
 # helloworld.jl
@@ -27,10 +27,14 @@ fi
 plan_feature=${plan,,}
 moving_feature=${is_moving,,}
 
-if [ "$is_moving" == "moving" ]; then
+if [ "$moving_feature" == "max_moving" ]; then
     MOVING=1
+    ALWAYS_MOVING=1
+    MAX_MOVING=1
 else
     MOVING=0
+    ALWAYS_MOVING=0
+    MAX_MOVING=0
 fi
 
 cd $JULIA_PATH
@@ -39,6 +43,6 @@ make cleanall
 # This will build the binding in MMTK_JULIA_DIR (defined in common.sh), and link it
 # when building Julia, instead of using the set version defined in Julia itself 
 cp $BINDING_PATH/.github/scripts/Make.user $JULIA_PATH/
-MMTK_MOVING=$MOVING MMTK_PLAN=$plan MMTK_BUILD=$build_type make
+MMTK_MOVING=$MOVING MMTK_ALWAYS_MOVING=$ALWAYS_MOVING MMTK_MAX_MOVING=$MAX_MOVING MMTK_PLAN=$plan MMTK_BUILD=$build_type make
 # Run hello world
 $JULIA_PATH/julia $HELLO_WORLD_JL
