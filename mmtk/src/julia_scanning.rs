@@ -230,19 +230,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         }
         return;
     } else {
-        let vt = vtag.to_ptr::<jl_datatype_t>();
-        let type_tag = mmtk_jl_typetagof(vtag);
-
-        if type_tag.as_usize() != ((jl_small_typeof_tags_jl_datatype_tag as usize) << 4)
-            || (*vt).smalltag() != 0
-        {
-            panic!(
-                "GC error (probable corruption) - !jl_is_datatype(vt) = {}; vt->smalltag = {}, vt = {:?}",
-                vt as usize != ((jl_small_typeof_tags_jl_datatype_tag as usize) << 4),
-                (*(vtag.to_ptr::<jl_datatype_t>())).smalltag() != 0,
-                vt
-            );
-        }
+        crate::object_model::assert_generic_datatype(obj);
     }
     let vt = vtag.to_ptr::<jl_datatype_t>();
     if (*vt).name == jl_array_typename {
