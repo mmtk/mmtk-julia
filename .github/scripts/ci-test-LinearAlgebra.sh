@@ -17,5 +17,9 @@ total_mem_restricted=$((total_mem- mem_threshold))
 num_workers=2
 export JULIA_TEST_MAXRSS_MB=$((total_mem_restricted/ num_workers))
 
+# max-moving vs non-moving
+is_moving=$2
+moving_feature=${is_moving,,}
+
 echo "-> Run single threaded"
-ci_run_jl_test "LinearAlgebra" 2
+ci_run_jl_test "LinearAlgebra" 2 $moving_feature

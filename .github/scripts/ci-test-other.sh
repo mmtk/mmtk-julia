@@ -13,6 +13,10 @@ CHOOSE_TESTS_JL_CONTENT=`cat $CHOOSE_TESTS_JL_PATH`
 
 REGEX_PATTERN='.*const TESTNAMES = \[([^\[]*)^\].*'
 
+# max-moving vs non-moving
+is_moving=$2
+moving_feature=${is_moving,,}
+
 if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
     RAW_TEST_NAMES=${BASH_REMATCH[1]}
 
@@ -40,7 +44,7 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
             fi
 
             echo "-> Run"
-            ci_run_jl_test $test
+            ci_run_jl_test $test 1 $moving_feature
         fi
     done
 else

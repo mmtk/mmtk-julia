@@ -17,6 +17,18 @@ export JULIA_TEST_MAXRSS_MB=$total_mem
 ci_run_jl_test() {
     test=$1
     threads=$2
+    moving_feature=$3
+
+
+    if [ "$moving_feature" == "max_moving" ]; then
+        MOVING=1
+        ALWAYS_MOVING=1
+        MAX_MOVING=1
+    else
+        MOVING=0
+        ALWAYS_MOVING=0
+        MAX_MOVING=0
+    fi
 
     # if no argument is given, use 2 as default
     if [ -z "$threads" ]; then
@@ -30,5 +42,5 @@ ci_run_jl_test() {
     # $JULIA_PATH/julia $JULIA_TEST_ARGS $JULIA_PATH/test/runtests.jl --exit-on-error $test
 
     # Run with their build script
-    make test-$test
+    MMTK_MOVING=$MOVING MMTK_ALWAYS_MOVING=$ALWAYS_MOVING MMTK_MAX_MOVING=$MAX_MOVING make test-$test
 }
