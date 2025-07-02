@@ -31,6 +31,13 @@ pub(crate) const HASH_BITS_SPEC: SideMetadataSpec = SideMetadataSpec {
     log_bytes_in_region: LOG_MIN_OBJECT_SIZE as usize,
 };
 
+#[cfg(feature = "record_moved_objects")]
+use std::{sync::Mutex, collections::HashMap};
+#[cfg(feature = "record_moved_objects")]
+lazy_static! {
+    static ref COPIED_OBJECTS: Mutex<HashMap<usize, String>> = Mutex::new(HashMap::new());
+}
+
 pub(crate) const MARKING_METADATA_SPEC: VMLocalMarkBitSpec =
     VMLocalMarkBitSpec::side_after(LOS_METADATA_SPEC.as_spec());
 
@@ -187,6 +194,12 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             }
         }
 
+        #[cfg(feature = "record_moved_objects")]
+        {
+            let mut map = COPIED_OBJECTS.lock().unwrap();
+            map.insert(from.to_raw_address().as_usize(), unsafe { crate::julia_scanning::get_julia_object_type(from.to_raw_address()) });
+        }
+
         // zero from_obj (for debugging purposes)
         #[cfg(debug_assertions)]
         {
@@ -297,6 +310,35 @@ pub fn is_object_in_nonmoving(object: &ObjectReference) -> bool {
         && (*object).to_raw_address().as_usize() < 0xa00_0000_0000
 }
 
+// If an object has its type tag bits set as 'smalltag', but those bits are not recognizable,
+// very possibly the object is corrupted. This function asserts this case.
+pub fn assert_generic_datatype(obj: Address) {
+    unsafe {
+        let vtag = mmtk_jl_typetagof(obj);
+        let vt = vtag.to_ptr::<jl_datatype_t>();
+        let type_tag = mmtk_jl_typetagof(vtag);
+
+        if type_tag.as_usize() != ((jl_small_typeof_tags_jl_datatype_tag as usize) << 4)
+            || (*vt).smalltag() != 0
+        {
+            #[cfg(feature = "record_moved_objects")]
+            let old_type = {
+                let not_moved = "not moved".to_string();
+                { let map = COPIED_OBJECTS.lock().unwrap(); map.get(&obj.as_usize()).unwrap_or(&not_moved).to_string() }
+            };
+            #[cfg(not(feature = "record_moved_objects"))]
+            let old_type = "not recorded (need record_moved_objects)".to_string();
+            panic!(
+                "GC error (probable corruption) - !jl_is_datatype(vt) = {}; vt->smalltag = {}, vt = {:?}, it was = {}",
+                vt as usize != ((jl_small_typeof_tags_jl_datatype_tag as usize) << 4),
+                (*(vtag.to_ptr::<jl_datatype_t>())).smalltag() != 0,
+                vt,
+                old_type
+            );
+        }
+    }
+}
+
 /// This function uses mutable static variables and requires unsafe annotation
 
 #[inline(always)]
@@ -353,19 +395,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference, hash_size: usize) -> u
             return llt_align(with_header_size(dtsz), 16);
         }
     } else {
-        let vt = vtag.to_ptr::<jl_datatype_t>();
-        let type_tag = mmtk_jl_typetagof(vtag);
-
-        if type_tag.as_usize() != ((jl_small_typeof_tags_jl_datatype_tag as usize) << 4)
-            || (*vt).smalltag() != 0
-        {
-            panic!(
-                "GC error (probable corruption) - !jl_is_datatype(vt) = {}; vt->smalltag = {}, vt = {:?}",
-                type_tag.as_usize() != ((jl_small_typeof_tags_jl_datatype_tag as usize) << 4),
-                (*(vtag.to_ptr::<jl_datatype_t>())).smalltag() != 0,
-                vt
-            );
-        }
+        assert_generic_datatype(obj_address);
     }
 
     let obj_type = mmtk_jl_typeof(obj_address);
