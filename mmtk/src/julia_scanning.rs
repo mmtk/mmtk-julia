@@ -66,27 +66,27 @@ pub unsafe fn mmtk_jl_to_typeof(t: Address) -> *const jl_datatype_t {
 // But Julia only identifies it with one single pointer (mem). We need to make sure ptr_or_offset is also traced.
 // This function only traces ptr_or_offset, and still leaves mem to the generic trace for data types.
 fn trace_ptr_or_offset_in_genericmemoryref<SV: SlotVisitor<JuliaVMSlot>>(closure: &mut SV, r: *mut jl_genericmemoryref_t) {
-    unsafe {
-        if mmtk_object_is_managed_by_mmtk((*r).ptr_or_offset as usize) {
-            let ptr_or_ref_slot = Address::from_ptr(::std::ptr::addr_of!((*r).ptr_or_offset));
-            let mem_addr_as_usize = (*r).mem as usize;
-            let ptr_or_offset_as_usize = (*r).ptr_or_offset as usize;
-            if ptr_or_offset_as_usize > mem_addr_as_usize {
-                let offset = ptr_or_offset_as_usize - mem_addr_as_usize;
+    if mmtk_object_is_managed_by_mmtk(unsafe { *r }.ptr_or_offset as usize) {
+        let ptr_or_ref_slot = unsafe { Address::from_ptr(::std::ptr::addr_of!((*r).ptr_or_offset)) };
+        assert_eq!(unsafe { *r }.ptr_or_offset, unsafe { ptr_or_ref_slot.load::<*mut std::ffi::c_void>() });
+        trace_internal_pointer(ptr_or_ref_slot, closure);
+    }    
+}
 
-                // Only update the offset pointer if the offset is valid (> 0)
-                if offset > 0 {
-                    process_offset_slot(closure, ptr_or_ref_slot, offset);
-                }
-            }
-        }
+fn trace_internal_pointer(slot: Address, closure: &mut impl SlotVisitor<JuliaVMSlot>) {
+    let internal_pointer = unsafe { slot.load::<Address>() };
+    // find the beginning of the object and trace it since the object may have moved
+    if let Some(object) =
+        memory_manager::find_object_from_internal_pointer(internal_pointer, usize::MAX) {
+            let offset = internal_pointer - object.to_raw_address();
+            process_offset_slot(closure, slot, offset);
     }
 }
 
 const REFVALUE_NAME: &std::ffi::CStr = c"RefValue";
 const GENERICMEMORYREF_NAME: &std::ffi::CStr = c"GenericMemoryRef";
 
-fn is_refvalue_of_generimemoryref(dt: *const jl_datatype_t) -> bool {
+fn is_refvalue_of(dt: *const jl_datatype_t, name: &std::ffi::CStr) -> bool {
     unsafe {
         if (*(*dt).name).name != crate::jl_symbol(REFVALUE_NAME.as_ptr() as *const i8) {
             return false;
@@ -102,8 +102,12 @@ fn is_refvalue_of_generimemoryref(dt: *const jl_datatype_t) -> bool {
         }
 
         let t_dt = t as *mut jl_datatype_t;
-        (*(*t_dt).name).name == crate::jl_symbol(GENERICMEMORYREF_NAME.as_ptr() as *const i8)
+        (*(*t_dt).name).name == crate::jl_symbol(name.as_ptr() as *const i8)
     }
+}
+
+fn is_refvalue_of_generimemoryref(dt: *const jl_datatype_t) -> bool {
+    is_refvalue_of(dt, GENERICMEMORYREF_NAME)
 }
 
 const PRINT_OBJ_TYPE: bool = false;
