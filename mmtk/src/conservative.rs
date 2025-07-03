@@ -1,5 +1,5 @@
-use crate::julia_types::*;
 use crate::jl_log_pinning_event;
+use crate::julia_types::*;
 use mmtk::memory_manager;
 use mmtk::util::constants::BYTES_IN_ADDRESS;
 use mmtk::util::{Address, ObjectReference};

@@ -70,3 +70,7 @@ address_based_hashing = []
 heap_dump = []
 dump_block_stats = []
 print_fragmentation = []
+
+# Debug option to record the type of moved objects.
+# When we encounter a dangling pointer, we can know its old type.
+record_moved_objects = []

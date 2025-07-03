@@ -583,6 +583,14 @@ macro_rules! handle_potential_internal_pointer {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_get_base_pointer(addr: Address) -> Address {
+    if let Some(obj) = memory_manager::find_object_from_internal_pointer(addr, usize::MAX) {
+        return obj.to_raw_address();
+    }
+    Address::ZERO
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_pin_pointer(addr: Address) -> bool {
     crate::early_return_for_non_moving_build!(false);
 
@@ -612,7 +620,7 @@ pub extern "C" fn mmtk_is_pointer_pinned(addr: Address) -> bool {
 
     if crate::object_model::is_addr_in_immixspace(addr) {
         handle_potential_internal_pointer!(memory_manager::is_pinned, addr)
-    } else if !mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
+    } else if mmtk_object_is_managed_by_mmtk(addr.as_usize()) {
         debug!(
             "Object is not in Immix space. MMTk will not move the object. We assume it is pinned."
         );

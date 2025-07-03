@@ -52,6 +52,7 @@ extern void mmtk_unreachable(void);
 extern unsigned char mmtk_pin_object(void* obj);
 extern unsigned char mmtk_unpin_object(void* obj);
 extern bool mmtk_is_object_pinned(void* obj);
+extern void* mmtk_get_base_pointer(void* ptr);
 extern unsigned char mmtk_pin_pointer(void* ptr);
 extern bool mmtk_is_pointer_pinned(void* ptr);
 extern const char* get_mmtk_version(void);
