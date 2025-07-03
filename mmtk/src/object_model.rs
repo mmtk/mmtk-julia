@@ -54,8 +54,9 @@ pub(crate) const LOS_METADATA_SPEC: VMLocalLOSMarkNurserySpec =
 
 impl ObjectModel<JuliaVM> for VMObjectModel {
     const GLOBAL_LOG_BIT_SPEC: VMGlobalLogBitSpec = LOGGING_SIDE_METADATA_SPEC;
+    // See https://github.com/mmtk/mmtk-core/issues/1331
     const LOCAL_FORWARDING_POINTER_SPEC: VMLocalForwardingPointerSpec =
-        VMLocalForwardingPointerSpec::in_header(-64);
+        VMLocalForwardingPointerSpec::in_header(0);
 
     const LOCAL_PINNING_BIT_SPEC: VMLocalPinningBitSpec = LOCAL_PINNING_METADATA_BITS_SPEC;
     const LOCAL_FORWARDING_BITS_SPEC: VMLocalForwardingBitsSpec =
@@ -65,6 +66,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
     const LOCAL_LOS_MARK_NURSERY_SPEC: VMLocalLOSMarkNurserySpec = LOS_METADATA_SPEC;
     const UNIFIED_OBJECT_REFERENCE_ADDRESS: bool = false;
     const OBJECT_REF_OFFSET_LOWER_BOUND: isize = 0;
+
+    const NEED_VO_BITS_DURING_TRACING: bool = true;
 
     fn copy(
         from: ObjectReference,
@@ -196,12 +199,15 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         }
 
         // zero from_obj (for debugging purposes)
+        // We cannot zero from_obj. We use find_object_from_internal_pointer during trace.
+        // So we will need to access from_obj after it is being moved to calculate its size.
+        // We cannot zero from_obj. See https://github.com/mmtk/mmtk-core/issues/1331
         #[cfg(debug_assertions)]
         {
             use atomic::Ordering;
-            unsafe {
-                libc::memset(from_start.to_mut_ptr(), 0, cur_bytes);
-            }
+            // unsafe {
+            //     libc::memset(from_start.to_mut_ptr(), 0, cur_bytes);
+            // }
 
             Self::LOCAL_FORWARDING_BITS_SPEC.store_atomic::<JuliaVM, u8>(
                 from,
