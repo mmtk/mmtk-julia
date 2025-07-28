@@ -1081,10 +1081,11 @@ const _: () = {
         [::std::mem::offset_of!(_jl_genericmemory_t, ptr) - 8usize];
 };
 pub type jl_genericmemory_t = _jl_genericmemory_t;
+pub type jl_hidden_ptr_ptr_or_offset_t = *mut ::std::os::raw::c_void;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct jl_genericmemoryref_t {
-    pub ptr_or_offset: *mut ::std::os::raw::c_void,
+    pub ptr_or_offset: jl_hidden_ptr_ptr_or_offset_t,
     pub mem: *mut jl_genericmemory_t,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
@@ -1871,6 +1872,7 @@ pub struct jl_typename_t {
     pub names: *mut jl_svec_t,
     pub atomicfields: *const u32,
     pub constfields: *const u32,
+    pub hiddenptrfields: *const u32,
     pub wrapper: *mut jl_value_t,
     pub Typeofwrapper: u64,
     pub cache: u64,
@@ -1886,7 +1888,7 @@ pub struct jl_typename_t {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of jl_typename_t"][::std::mem::size_of::<jl_typename_t>() - 104usize];
+    ["Size of jl_typename_t"][::std::mem::size_of::<jl_typename_t>() - 112usize];
     ["Alignment of jl_typename_t"][::std::mem::align_of::<jl_typename_t>() - 8usize];
     ["Offset of field: jl_typename_t::name"][::std::mem::offset_of!(jl_typename_t, name) - 0usize];
     ["Offset of field: jl_typename_t::module"]
@@ -1897,24 +1899,26 @@ const _: () = {
         [::std::mem::offset_of!(jl_typename_t, atomicfields) - 24usize];
     ["Offset of field: jl_typename_t::constfields"]
         [::std::mem::offset_of!(jl_typename_t, constfields) - 32usize];
+    ["Offset of field: jl_typename_t::hiddenptrfields"]
+        [::std::mem::offset_of!(jl_typename_t, hiddenptrfields) - 40usize];
     ["Offset of field: jl_typename_t::wrapper"]
-        [::std::mem::offset_of!(jl_typename_t, wrapper) - 40usize];
+        [::std::mem::offset_of!(jl_typename_t, wrapper) - 48usize];
     ["Offset of field: jl_typename_t::Typeofwrapper"]
-        [::std::mem::offset_of!(jl_typename_t, Typeofwrapper) - 48usize];
+        [::std::mem::offset_of!(jl_typename_t, Typeofwrapper) - 56usize];
     ["Offset of field: jl_typename_t::cache"]
-        [::std::mem::offset_of!(jl_typename_t, cache) - 56usize];
+        [::std::mem::offset_of!(jl_typename_t, cache) - 64usize];
     ["Offset of field: jl_typename_t::linearcache"]
-        [::std::mem::offset_of!(jl_typename_t, linearcache) - 64usize];
-    ["Offset of field: jl_typename_t::mt"][::std::mem::offset_of!(jl_typename_t, mt) - 72usize];
+        [::std::mem::offset_of!(jl_typename_t, linearcache) - 72usize];
+    ["Offset of field: jl_typename_t::mt"][::std::mem::offset_of!(jl_typename_t, mt) - 80usize];
     ["Offset of field: jl_typename_t::partial"]
-        [::std::mem::offset_of!(jl_typename_t, partial) - 80usize];
-    ["Offset of field: jl_typename_t::hash"][::std::mem::offset_of!(jl_typename_t, hash) - 88usize];
+        [::std::mem::offset_of!(jl_typename_t, partial) - 88usize];
+    ["Offset of field: jl_typename_t::hash"][::std::mem::offset_of!(jl_typename_t, hash) - 96usize];
     ["Offset of field: jl_typename_t::n_uninitialized"]
-        [::std::mem::offset_of!(jl_typename_t, n_uninitialized) - 96usize];
+        [::std::mem::offset_of!(jl_typename_t, n_uninitialized) - 104usize];
     ["Offset of field: jl_typename_t::max_methods"]
-        [::std::mem::offset_of!(jl_typename_t, max_methods) - 101usize];
+        [::std::mem::offset_of!(jl_typename_t, max_methods) - 109usize];
     ["Offset of field: jl_typename_t::constprop_heustic"]
-        [::std::mem::offset_of!(jl_typename_t, constprop_heustic) - 102usize];
+        [::std::mem::offset_of!(jl_typename_t, constprop_heustic) - 110usize];
 };
 impl jl_typename_t {
     #[inline]
@@ -2082,7 +2086,9 @@ pub struct jl_datatype_layout_t {
     pub size: u32,
     pub nfields: u32,
     pub npointers: u32,
+    pub nhidden_pointers: u32,
     pub first_ptr: i32,
+    pub first_hidden_ptr: i32,
     pub alignment: u16,
     pub flags: jl_datatype_layout_t__bindgen_ty_1,
 }
@@ -2337,7 +2343,7 @@ impl jl_datatype_layout_t__bindgen_ty_1 {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of jl_datatype_layout_t"][::std::mem::size_of::<jl_datatype_layout_t>() - 20usize];
+    ["Size of jl_datatype_layout_t"][::std::mem::size_of::<jl_datatype_layout_t>() - 28usize];
     ["Alignment of jl_datatype_layout_t"][::std::mem::align_of::<jl_datatype_layout_t>() - 4usize];
     ["Offset of field: jl_datatype_layout_t::size"]
         [::std::mem::offset_of!(jl_datatype_layout_t, size) - 0usize];
@@ -2345,12 +2351,16 @@ const _: () = {
         [::std::mem::offset_of!(jl_datatype_layout_t, nfields) - 4usize];
     ["Offset of field: jl_datatype_layout_t::npointers"]
         [::std::mem::offset_of!(jl_datatype_layout_t, npointers) - 8usize];
+    ["Offset of field: jl_datatype_layout_t::nhidden_pointers"]
+        [::std::mem::offset_of!(jl_datatype_layout_t, nhidden_pointers) - 12usize];
     ["Offset of field: jl_datatype_layout_t::first_ptr"]
-        [::std::mem::offset_of!(jl_datatype_layout_t, first_ptr) - 12usize];
+        [::std::mem::offset_of!(jl_datatype_layout_t, first_ptr) - 16usize];
+    ["Offset of field: jl_datatype_layout_t::first_hidden_ptr"]
+        [::std::mem::offset_of!(jl_datatype_layout_t, first_hidden_ptr) - 20usize];
     ["Offset of field: jl_datatype_layout_t::alignment"]
-        [::std::mem::offset_of!(jl_datatype_layout_t, alignment) - 16usize];
+        [::std::mem::offset_of!(jl_datatype_layout_t, alignment) - 24usize];
     ["Offset of field: jl_datatype_layout_t::flags"]
-        [::std::mem::offset_of!(jl_datatype_layout_t, flags) - 18usize];
+        [::std::mem::offset_of!(jl_datatype_layout_t, flags) - 26usize];
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -3013,6 +3023,12 @@ const _: () = {
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct pinned_ref<T> {
+    pub _phantom_0: ::std::marker::PhantomData<::std::cell::UnsafeCell<T>>,
+    pub ptr: *mut T,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct _jl_handler_t {
     pub eh_ctx: sigjmp_buf,
     pub gcstack: *mut jl_gcframe_t,
@@ -3056,7 +3072,7 @@ pub struct _jl_bt_element_t {
 #[derive(Copy, Clone)]
 pub union _jl_bt_element_t__bindgen_ty_1 {
     pub uintptr: usize,
-    pub jlvalue: *mut jl_value_t,
+    pub jlvalue: pinned_ref<jl_value_t>,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -3424,4 +3440,11 @@ const _: () = {
         [::std::mem::size_of::<std_atomic<isize>>() - 8usize];
     ["Align of template specialization: std_atomic_open0_intptr_t_close0"]
         [::std::mem::align_of::<std_atomic<isize>>() - 8usize];
+};
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: pinned_ref_open0_jl_value_t_close0"]
+        [::std::mem::size_of::<pinned_ref<jl_value_t>>() - 8usize];
+    ["Align of template specialization: pinned_ref_open0_jl_value_t_close0"]
+        [::std::mem::align_of::<pinned_ref<jl_value_t>>() - 8usize];
 };
