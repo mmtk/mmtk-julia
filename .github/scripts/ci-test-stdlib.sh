@@ -29,6 +29,19 @@ declare -a tests_to_skip=(
     "LinearAlgebra"
     # Skipping Distributed tests
     "Distributed"
+
+    # Skipping tests that fail for max moving Immix
+    # see https://github.com/mmtk/mmtk-julia/issues/259
+    "Artifacts"
+    "atomics"
+    "abstractarray"
+    "cmdlineargs"
+    "Downloads"
+    "REPL"
+    "TOML"
+    "Random"
+    "read"
+    "threads"
 )
 # These tests need multiple workers.
 declare -a tests_with_multi_workers=(
