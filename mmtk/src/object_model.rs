@@ -32,7 +32,7 @@ pub(crate) const HASH_BITS_SPEC: SideMetadataSpec = SideMetadataSpec {
 };
 
 #[cfg(feature = "record_moved_objects")]
-use std::{sync::Mutex, collections::HashMap};
+use std::{collections::HashMap, sync::Mutex};
 #[cfg(feature = "record_moved_objects")]
 lazy_static! {
     static ref COPIED_OBJECTS: Mutex<HashMap<usize, String>> = Mutex::new(HashMap::new());
@@ -197,7 +197,9 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         #[cfg(feature = "record_moved_objects")]
         {
             let mut map = COPIED_OBJECTS.lock().unwrap();
-            map.insert(from.to_raw_address().as_usize(), unsafe { crate::julia_scanning::get_julia_object_type(from.to_raw_address()) });
+            map.insert(from.to_raw_address().as_usize(), unsafe {
+                crate::julia_scanning::get_julia_object_type(from.to_raw_address())
+            });
         }
 
         // zero from_obj (for debugging purposes)
@@ -324,7 +326,10 @@ pub fn assert_generic_datatype(obj: Address) {
             #[cfg(feature = "record_moved_objects")]
             let old_type = {
                 let not_moved = "not moved".to_string();
-                { let map = COPIED_OBJECTS.lock().unwrap(); map.get(&obj.as_usize()).unwrap_or(&not_moved).to_string() }
+                {
+                    let map = COPIED_OBJECTS.lock().unwrap();
+                    map.get(&obj.as_usize()).unwrap_or(&not_moved).to_string()
+                }
             };
             #[cfg(not(feature = "record_moved_objects"))]
             let old_type = "not recorded (need record_moved_objects)".to_string();
