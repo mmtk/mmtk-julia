@@ -41,6 +41,13 @@ ci_run_jl_test() {
     # Directly run runtests.jl: There could be some issues with some test suites. We better just use their build script.
     # $JULIA_PATH/julia $JULIA_TEST_ARGS $JULIA_PATH/test/runtests.jl --exit-on-error $test
 
-    # Run with their build script
-    MMTK_MOVING=$MOVING MMTK_ALWAYS_MOVING=$ALWAYS_MOVING MMTK_MAX_MOVING=$MAX_MOVING make test-$test
+    # if we run with a single thread, we could use Julia's own heap resizing to potentially avoid OOMs
+    if [ "$threads" == "1" ]; then
+        # Run with their build script
+        MMTK_MIN_HSIZE_G=0 MMTK_MAX_HSIZE_G=0 MMTK_MOVING=$MOVING MMTK_ALWAYS_MOVING=$ALWAYS_MOVING MMTK_MAX_MOVING=$MAX_MOVING make test-$test
+    else
+        # Run with their build script
+        MMTK_MOVING=$MOVING MMTK_ALWAYS_MOVING=$ALWAYS_MOVING MMTK_MAX_MOVING=$MAX_MOVING make test-$test
+    fi
+
 }
