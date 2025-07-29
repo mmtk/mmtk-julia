@@ -17,6 +17,18 @@ REGEX_PATTERN='.*const TESTNAMES = \[([^\[]*)^\].*'
 is_moving=$2
 moving_feature=${is_moving,,}
 
+declare -a tests_to_skip=(
+    # see https://github.com/mmtk/mmtk-julia/issues/259
+    "atomics"
+    "abstractarray"
+    "Artifacts"
+    "cmdlineargs"
+    "Downloads"
+    "read"
+    "threads"
+    "LibCURL"
+)
+
 if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
     RAW_TEST_NAMES=${BASH_REMATCH[1]}
 
@@ -34,6 +46,11 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
             # Ignore stdlib tests for now -- we run stdlib tests separately
             if [[ $test =~ "stdlib" ]]; then
                 echo "-> Skip stdlib"
+                continue
+            fi
+
+            if [[ "${tests_to_skip[@]}" =~ "$test" ]]; then
+                echo "-> Skip"
                 continue
             fi
 
