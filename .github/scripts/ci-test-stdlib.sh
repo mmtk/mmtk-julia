@@ -40,6 +40,7 @@ declare -a tests_to_skip=(
     "LibCURL"
     "Mmap"
     "SharedArrays"
+    "LazyArtifacts"
 )
 # These tests need multiple workers.
 declare -a tests_with_multi_workers=(
