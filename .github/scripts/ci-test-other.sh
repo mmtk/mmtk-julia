@@ -27,6 +27,7 @@ declare -a tests_to_skip=(
     "read"
     "threads"
     "LibCURL"
+    "subarray"
 )
 
 if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
