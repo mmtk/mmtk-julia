@@ -38,7 +38,7 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
     for i in "${test_names[@]}"
     do
         # echo "Token: '$i'"
-        test=`sed 's/\"\(.*\)\"/\1/' <<< $i`
+        test=$(sed 's/\"\(.*\)\"/\1/' <<< "$i" | xargs)
         if [[ ! -z "$test" ]]; then
             echo $test
 

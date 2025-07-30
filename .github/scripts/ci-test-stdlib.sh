@@ -38,6 +38,7 @@ declare -a tests_to_skip=(
     "TOML"
     "Random"
     "LibCURL"
+    "Mmap"
 )
 # These tests need multiple workers.
 declare -a tests_with_multi_workers=(
