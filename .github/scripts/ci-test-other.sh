@@ -31,6 +31,7 @@ declare -a tests_to_skip=(
     "rounding"
     "loading"
     "compileall"
+    "misc"
 )
 
 if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
