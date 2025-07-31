@@ -9,7 +9,7 @@ lazy_static! {
     pub static ref CONSERVATIVE_ROOTS: Mutex<HashSet<ObjectReference>> = Mutex::new(HashSet::new());
 }
 pub fn pin_conservative_roots() {
-    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_non_moving_build!();
     crate::early_return_for_current_gc!();
 
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
@@ -25,7 +25,7 @@ pub fn pin_conservative_roots() {
     log::debug!("Conservative roots: {}, pinned: {}", n_roots, n_pinned);
 }
 pub fn unpin_conservative_roots() {
-    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_non_moving_build!();
     crate::early_return_for_current_gc!();
 
     let mut roots = CONSERVATIVE_ROOTS.lock().unwrap();
@@ -43,8 +43,8 @@ pub fn unpin_conservative_roots() {
         n_live
     );
 }
-pub fn mmtk_conservative_scan_task_stack(ta: *const jl_task_t) {
-    crate::early_return_for_non_moving_build!(());
+pub unsafe fn mmtk_conservative_scan_task_stack(ta: *const jl_task_t) {
+    crate::early_return_for_non_moving_build!();
     crate::early_return_for_current_gc!();
 
     log::debug!("mmtk_conservative_scan_native_stack begin ta = {:?}", ta);
@@ -83,18 +83,18 @@ pub fn mmtk_conservative_scan_task_stack(ta: *const jl_task_t) {
         log::warn!("Skip stack for {:?}", ta);
     }
 }
-pub fn mmtk_conservative_scan_task_registers(ta: *const jl_task_t) {
-    crate::early_return_for_non_moving_build!(());
+pub unsafe fn mmtk_conservative_scan_task_registers(ta: *const jl_task_t) {
+    crate::early_return_for_non_moving_build!();
     crate::early_return_for_current_gc!();
 
     let (lo, hi) = get_range(&unsafe { &*ta }.ctx);
     conservative_scan_range(lo, hi);
 }
 pub fn mmtk_conservative_scan_ptls_registers(ptls: &mut _jl_tls_states_t) {
-    crate::early_return_for_non_moving_build!(());
+    crate::early_return_for_non_moving_build!();
     crate::early_return_for_current_gc!();
 
-    let (lo, hi) = get_range(&((*ptls).gc_tls.ctx_at_the_time_gc_started));
+    let (lo, hi) = get_range(&(ptls).gc_tls.ctx_at_the_time_gc_started);
     conservative_scan_range(lo, hi);
 }
 // TODO: This scans the entire context type, which is slower.
