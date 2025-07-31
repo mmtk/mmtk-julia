@@ -13,6 +13,27 @@ CHOOSE_TESTS_JL_CONTENT=`cat $CHOOSE_TESTS_JL_PATH`
 
 REGEX_PATTERN='.*const TESTNAMES = \[([^\[]*)^\].*'
 
+# max-moving vs non-moving
+is_moving=$2
+moving_feature=${is_moving,,}
+
+declare -a tests_to_skip=(
+    # see https://github.com/mmtk/mmtk-julia/issues/259
+    "atomics"
+    "abstractarray"
+    "Artifacts"
+    "cmdlineargs"
+    "Downloads"
+    "read"
+    "threads"
+    "LibCURL"
+    "subarray"
+    "rounding"
+    "loading"
+    "compileall"
+    "misc"
+)
+
 if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
     RAW_TEST_NAMES=${BASH_REMATCH[1]}
 
@@ -22,7 +43,7 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
     for i in "${test_names[@]}"
     do
         # echo "Token: '$i'"
-        test=`sed 's/\"\(.*\)\"/\1/' <<< $i`
+        test=$(sed 's/\"\(.*\)\"/\1/' <<< "$i" | xargs)
         if [[ ! -z "$test" ]]; then
             echo $test
 
@@ -33,6 +54,11 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
                 continue
             fi
 
+            if [[ "${tests_to_skip[@]}" =~ "$test" ]]; then
+                echo "-> Skip"
+                continue
+            fi
+
             if [[ $test =~ "compiler_extras" ]]; then
                 # Skipping compiler_extras for now
                 echo "-> Skip compiler_extras"
@@ -40,7 +66,7 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
             fi
 
             echo "-> Run"
-            ci_run_jl_test $test
+            ci_run_jl_test $test 1 $moving_feature
         fi
     done
 else

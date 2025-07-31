@@ -32,7 +32,7 @@ pub(crate) const HASH_BITS_SPEC: SideMetadataSpec = SideMetadataSpec {
 };
 
 #[cfg(feature = "record_moved_objects")]
-use std::{sync::Mutex, collections::HashMap};
+use std::{collections::HashMap, sync::Mutex};
 #[cfg(feature = "record_moved_objects")]
 lazy_static! {
     static ref COPIED_OBJECTS: Mutex<HashMap<usize, String>> = Mutex::new(HashMap::new());
@@ -84,8 +84,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
                 from
             );
             let obj_address = from.to_raw_address();
-            let mut vtag = mmtk_jl_typetagof(obj_address);
-            let mut vtag_usize = vtag.as_usize();
+            let vtag = mmtk_jl_typetagof(obj_address);
+            let vtag_usize = vtag.as_usize();
             assert!(
                 vtag_usize != JULIA_BUFF_TAG,
                 "We attempted to copy a buffer object {} that is not supported",
@@ -195,7 +195,9 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         #[cfg(feature = "record_moved_objects")]
         {
             let mut map = COPIED_OBJECTS.lock().unwrap();
-            map.insert(from.to_raw_address().as_usize(), unsafe { crate::julia_scanning::get_julia_object_type(from.to_raw_address()) });
+            map.insert(from.to_raw_address().as_usize(), unsafe {
+                crate::julia_scanning::get_julia_object_type(from.to_raw_address())
+            });
         }
 
         // zero from_obj (for debugging purposes)
@@ -325,7 +327,10 @@ pub fn assert_generic_datatype(obj: Address) {
             #[cfg(feature = "record_moved_objects")]
             let old_type = {
                 let not_moved = "not moved".to_string();
-                { let map = COPIED_OBJECTS.lock().unwrap(); map.get(&obj.as_usize()).unwrap_or(&not_moved).to_string() }
+                {
+                    let map = COPIED_OBJECTS.lock().unwrap();
+                    map.get(&obj.as_usize()).unwrap_or(&not_moved).to_string()
+                }
             };
             #[cfg(not(feature = "record_moved_objects"))]
             let old_type = "not recorded (need record_moved_objects)".to_string();
@@ -341,7 +346,6 @@ pub fn assert_generic_datatype(obj: Address) {
 }
 
 /// This function uses mutable static variables and requires unsafe annotation
-
 #[inline(always)]
 pub unsafe fn get_so_object_size(object: ObjectReference, hash_size: usize) -> usize {
     let obj_address = object.to_raw_address();
@@ -443,7 +447,7 @@ pub unsafe fn get_so_object_size(object: ObjectReference, hash_size: usize) -> u
 pub unsafe fn get_lo_object_size(object: ObjectReference) -> usize {
     let obj_address = object.to_raw_address();
     let julia_big_object = (obj_address - std::mem::size_of::<_bigval_t>()).to_ptr::<_bigval_t>();
-    return (*julia_big_object).sz;
+    (*julia_big_object).sz
 }
 
 #[inline(always)]
@@ -510,10 +514,8 @@ pub fn get_hash_size(object: ObjectReference) -> usize {
 
 pub fn get_object_start_for_potentially_hashed_object(object: ObjectReference) -> Address {
     let obj_start = unsafe { get_object_start_ref(object) };
-    if cfg!(feature = "address_based_hashing") {
-        if test_hash_state(object, HASHED_AND_MOVED) {
-            return obj_start - STORED_HASH_BYTES;
-        }
+    if cfg!(feature = "address_based_hashing") && test_hash_state(object, HASHED_AND_MOVED) {
+        return obj_start - STORED_HASH_BYTES;
     }
     obj_start
 }

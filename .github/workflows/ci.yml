@@ -7,6 +7,7 @@ on:
       - v1.8.2\+RAI
       - v1.9.2\+RAI
       - dev
+      - mmtk-support-moving-upstream
 
 concurrency:
   # Cancels pending runs when a PR gets updated.
@@ -17,8 +18,8 @@ jobs:
   julia-version:
     runs-on: ubuntu-latest
     env:
-      JULIA_REPO_DEFAULT: JuliaLang/julia
-      JULIA_REF_DEFAULT: master
+      JULIA_REPO_DEFAULT: mmtk/julia
+      JULIA_REF_DEFAULT: mmtk-support-moving-upstream
     outputs:
       julia_repo: ${{ steps.print.outputs.julia_repo }}
       julia_ref: ${{ steps.print.outputs.julia_ref }}
@@ -40,7 +41,7 @@ jobs:
       fail-fast: false
       matrix:
         gc_plan: [Immix]
-        moving: [Non_Moving, Moving]
+        moving: [Non_Moving, Max_Moving]
     uses: ./.github/workflows/binding-tests.yml
     with:
       gc_plan: ${{ matrix.gc_plan }}

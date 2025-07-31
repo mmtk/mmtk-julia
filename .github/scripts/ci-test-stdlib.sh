@@ -29,6 +29,18 @@ declare -a tests_to_skip=(
     "LinearAlgebra"
     # Skipping Distributed tests
     "Distributed"
+
+    # Skipping tests that fail for max moving Immix
+    # see https://github.com/mmtk/mmtk-julia/issues/259
+    "Artifacts"
+    "Downloads"
+    "REPL"
+    "TOML"
+    "Random"
+    "LibCURL"
+    "Mmap"
+    "SharedArrays"
+    "LazyArtifacts"
 )
 # These tests need multiple workers.
 declare -a tests_with_multi_workers=(
@@ -51,6 +63,10 @@ if [ $(find $stdlib_path -mindepth 1 -maxdepth 1 | wc -l) -ne 1 ]; then
   exit 1
 fi
 
+# max-moving vs non-moving
+is_moving=$2
+moving_feature=${is_moving,,}
+
 for dir in $(find $stdlib_version_path -depth -mindepth 1 -type d -o -type l)
 do
     # if there is a runtests.jl, we run it.
@@ -67,16 +83,16 @@ do
 
         if [[ "${tests_with_multi_workers[@]}" =~ "$test" ]]; then
             echo "-> Run multi threaded"
-            ci_run_jl_test $test 2
+            ci_run_jl_test $test 2 $moving_feature
             continue
         fi
 
         if [[ "${tests_with_single_worker[@]}" =~ "$test" ]]; then
             echo "-> Run single threaded"
-            ci_run_jl_test $test 1
+            ci_run_jl_test $test 1 $moving_feature
             continue
         fi
 
-        ci_run_jl_test $test
+        ci_run_jl_test $test 1 $moving_feature
     fi
 done

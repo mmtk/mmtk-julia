@@ -296,7 +296,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
                     memory_manager::find_object_from_internal_pointer(ptr_addr, usize::MAX)
                         .unwrap();
                 let offset = Address::from_ptr((*m).ptr) - object.to_raw_address();
-                let ptr_address = Address::from_ptr((::std::ptr::addr_of!((*m).ptr)));
+                let ptr_address = Address::from_ptr(::std::ptr::addr_of!((*m).ptr));
                 process_offset_slot(closure, ptr_address, offset);
             }
 
@@ -326,7 +326,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
                     Address::from_ptr((*m).ptr),
                     offset
                 );
-                let ptr_address = Address::from_ptr((::std::ptr::addr_of!((*m).ptr)));
+                let ptr_address = Address::from_ptr(::std::ptr::addr_of!((*m).ptr));
                 process_offset_slot(closure, ptr_address, offset);
                 return;
             }
@@ -463,15 +463,15 @@ unsafe fn mmtk_jl_genericmemory_data_owner_field_address(m: *const jl_genericmem
 //     mmtk_jl_genericmemory_data_owner_field_address(m).load::<*const mmtk_jl_value_t>()
 // }
 
-pub unsafe fn mmtk_scan_gcpreserve_stack<'a, EV: SlotVisitor<JuliaVMSlot>>(
+pub unsafe fn mmtk_scan_gcpreserve_stack<EV: SlotVisitor<JuliaVMSlot>>(
     ta: *const jl_task_t,
-    closure: &'a mut EV,
+    closure: &mut EV,
 ) {
     // process transitively pinning stack
     let mut s = (*ta).gcpreserve_stack;
-    let (offset, lb, ub) = (0 as isize, 0 as u64, u64::MAX);
+    let (offset, lb, ub) = (0_isize, 0_u64, u64::MAX);
 
-    if s != std::ptr::null_mut() {
+    if !s.is_null() {
         let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
         let mut nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
         debug_assert!(nroots.as_usize() <= u32::MAX as usize);
@@ -642,15 +642,15 @@ pub unsafe fn get_julia_object_type(obj: Address) -> String {
     }
 
     if vt == jl_simplevector_type {
-        return "simplevector".to_string();
+        "simplevector".to_string()
     } else if (*vt).name == jl_array_typename {
-        return "array".to_string();
+        "array".to_string()
     } else if vt == jl_module_type {
-        return "module".to_string();
+        "module".to_string()
     } else if vt == jl_task_type {
-        return "task".to_string();
+        "task".to_string()
     } else if vt == jl_string_type {
-        return "string".to_string();
+        "string".to_string()
     } else {
         if vt == jl_weakref_type {
             return "weakref".to_string();

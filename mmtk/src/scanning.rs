@@ -87,8 +87,10 @@ impl Scanning<JuliaVM> for VMScanning {
                 // We cannot use `task->start` to skip conservative scanning, as before a task is started, the runtime may evaluate the code and we need to make sure the runtime objects are properly scanned.
                 // However, without this check, we may timeout in a test that spawns a lot of tasks.
                 // if unsafe { (*task).start == crate::jl_true } {
-                crate::conservative::mmtk_conservative_scan_task_stack(task);
-                crate::conservative::mmtk_conservative_scan_task_registers(task);
+                unsafe {
+                    crate::conservative::mmtk_conservative_scan_task_stack(task);
+                    crate::conservative::mmtk_conservative_scan_task_registers(task);
+                }
                 // }
 
                 if task_is_root {

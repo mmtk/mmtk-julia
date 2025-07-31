@@ -61,7 +61,7 @@ release:
 	@cd $(MMTK_JULIA_DIR)mmtk && $(PROJECT_DIRS) cargo build --features $(CARGO_FEATURES) --release
 
 debug:
-	@echo "Building the Rust project in $(MMTK_JULIA_DIR) using a debug build";
+	@echo "Building the Rust project in $(MMTK_JULIA_DIR)mmtk using a debug build with MMTK_VARS: $(MMTK_VARS)";
 	@cd $(MMTK_JULIA_DIR)mmtk && $(PROJECT_DIRS) cargo build --features $(CARGO_FEATURES) 
 
 # Build the Julia project (which will build the binding as part of their deps build)
