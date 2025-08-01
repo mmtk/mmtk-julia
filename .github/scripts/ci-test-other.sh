@@ -18,7 +18,7 @@ is_moving=$2
 moving_feature=${is_moving,,}
 
 declare -a tests_to_skip=(
-    # see https://github.com/mmtk/mmtk-julia/issues/259
+    # see https://github.com/mmtk/mmtk-julia/issues/259 
     "atomics"
     "abstractarray"
     "Artifacts"
