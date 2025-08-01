@@ -1872,7 +1872,6 @@ pub struct jl_typename_t {
     pub names: *mut jl_svec_t,
     pub atomicfields: *const u32,
     pub constfields: *const u32,
-    pub hiddenptrfields: *const u32,
     pub wrapper: *mut jl_value_t,
     pub Typeofwrapper: u64,
     pub cache: u64,
@@ -1885,6 +1884,7 @@ pub struct jl_typename_t {
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 1usize]>,
     pub max_methods: u8,
     pub constprop_heustic: u8,
+    pub hiddenptrfields: *const u32,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -1899,26 +1899,26 @@ const _: () = {
         [::std::mem::offset_of!(jl_typename_t, atomicfields) - 24usize];
     ["Offset of field: jl_typename_t::constfields"]
         [::std::mem::offset_of!(jl_typename_t, constfields) - 32usize];
-    ["Offset of field: jl_typename_t::hiddenptrfields"]
-        [::std::mem::offset_of!(jl_typename_t, hiddenptrfields) - 40usize];
     ["Offset of field: jl_typename_t::wrapper"]
-        [::std::mem::offset_of!(jl_typename_t, wrapper) - 48usize];
+        [::std::mem::offset_of!(jl_typename_t, wrapper) - 40usize];
     ["Offset of field: jl_typename_t::Typeofwrapper"]
-        [::std::mem::offset_of!(jl_typename_t, Typeofwrapper) - 56usize];
+        [::std::mem::offset_of!(jl_typename_t, Typeofwrapper) - 48usize];
     ["Offset of field: jl_typename_t::cache"]
-        [::std::mem::offset_of!(jl_typename_t, cache) - 64usize];
+        [::std::mem::offset_of!(jl_typename_t, cache) - 56usize];
     ["Offset of field: jl_typename_t::linearcache"]
-        [::std::mem::offset_of!(jl_typename_t, linearcache) - 72usize];
-    ["Offset of field: jl_typename_t::mt"][::std::mem::offset_of!(jl_typename_t, mt) - 80usize];
+        [::std::mem::offset_of!(jl_typename_t, linearcache) - 64usize];
+    ["Offset of field: jl_typename_t::mt"][::std::mem::offset_of!(jl_typename_t, mt) - 72usize];
     ["Offset of field: jl_typename_t::partial"]
-        [::std::mem::offset_of!(jl_typename_t, partial) - 88usize];
-    ["Offset of field: jl_typename_t::hash"][::std::mem::offset_of!(jl_typename_t, hash) - 96usize];
+        [::std::mem::offset_of!(jl_typename_t, partial) - 80usize];
+    ["Offset of field: jl_typename_t::hash"][::std::mem::offset_of!(jl_typename_t, hash) - 88usize];
     ["Offset of field: jl_typename_t::n_uninitialized"]
-        [::std::mem::offset_of!(jl_typename_t, n_uninitialized) - 104usize];
+        [::std::mem::offset_of!(jl_typename_t, n_uninitialized) - 96usize];
     ["Offset of field: jl_typename_t::max_methods"]
-        [::std::mem::offset_of!(jl_typename_t, max_methods) - 109usize];
+        [::std::mem::offset_of!(jl_typename_t, max_methods) - 101usize];
     ["Offset of field: jl_typename_t::constprop_heustic"]
-        [::std::mem::offset_of!(jl_typename_t, constprop_heustic) - 110usize];
+        [::std::mem::offset_of!(jl_typename_t, constprop_heustic) - 102usize];
+    ["Offset of field: jl_typename_t::hiddenptrfields"]
+        [::std::mem::offset_of!(jl_typename_t, hiddenptrfields) - 104usize];
 };
 impl jl_typename_t {
     #[inline]
