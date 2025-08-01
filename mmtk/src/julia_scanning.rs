@@ -789,6 +789,6 @@ pub unsafe fn mmtk_jl_bt_entry_jlvalue(
     i: usize,
 ) -> ObjectReference {
     let entry = unsafe { (*bt_entry.add(2 + i)).__bindgen_anon_1.jlvalue };
-    debug_assert!(!entry.is_null());
-    unsafe { ObjectReference::from_raw_address_unchecked(Address::from_mut_ptr(entry)) }
+    debug_assert!(!entry.ptr.is_null());
+    unsafe { ObjectReference::from_raw_address_unchecked(Address::from_mut_ptr(entry.ptr)) }
 }
