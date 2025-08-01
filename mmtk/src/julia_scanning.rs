@@ -796,7 +796,7 @@ pub unsafe fn mmtk_jl_dt_layout_ptrs(l: *const jl_datatype_layout_t) -> Address 
 #[inline(always)]
 pub unsafe fn mmtk_jl_dt_layout_hidden_ptrs(l: *const jl_datatype_layout_t) -> Address {
     let ptrs = mmtk_jl_dt_layout_ptrs(l);
-    let direct_ptrs_size = if (*l).npointers <= 0 {
+    let direct_ptrs_size = if (*l).npointers == 0 {
         0
     } else {
         ((*l).npointers as usize) << ((*l).fielddesc_type_custom())
