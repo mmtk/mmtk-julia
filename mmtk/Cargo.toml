@@ -3,7 +3,7 @@ name = "mmtk-julia"
 version = "0.30.3"
 authors = ["Eduardo Souza <ledusou@gmail.com>", "Yi Lin <qinsoon@gmail.com>"]
 build = "build.rs"
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
