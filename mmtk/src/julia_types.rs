@@ -1081,10 +1081,11 @@ const _: () = {
         [::std::mem::offset_of!(_jl_genericmemory_t, ptr) - 8usize];
 };
 pub type jl_genericmemory_t = _jl_genericmemory_t;
+pub type jl_hidden_ptr_ptr_or_offset_t = *mut ::std::os::raw::c_void;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct jl_genericmemoryref_t {
-    pub ptr_or_offset: *mut ::std::os::raw::c_void,
+    pub ptr_or_offset: jl_hidden_ptr_ptr_or_offset_t,
     pub mem: *mut jl_genericmemory_t,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
@@ -1891,10 +1892,11 @@ pub struct jl_typename_t {
     pub cache_entry_count: std_atomic<u8>,
     pub max_methods: u8,
     pub constprop_heustic: u8,
+    pub hiddenptrfields: *const u32,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of jl_typename_t"][::std::mem::size_of::<jl_typename_t>() - 112usize];
+    ["Size of jl_typename_t"][::std::mem::size_of::<jl_typename_t>() - 120usize];
     ["Alignment of jl_typename_t"][::std::mem::align_of::<jl_typename_t>() - 8usize];
     ["Offset of field: jl_typename_t::name"][::std::mem::offset_of!(jl_typename_t, name) - 0usize];
     ["Offset of field: jl_typename_t::module"]
@@ -1928,6 +1930,8 @@ const _: () = {
         [::std::mem::offset_of!(jl_typename_t, max_methods) - 106usize];
     ["Offset of field: jl_typename_t::constprop_heustic"]
         [::std::mem::offset_of!(jl_typename_t, constprop_heustic) - 107usize];
+    ["Offset of field: jl_typename_t::hiddenptrfields"]
+        [::std::mem::offset_of!(jl_typename_t, hiddenptrfields) - 112usize];
 };
 impl jl_typename_t {
     #[inline]
@@ -2095,14 +2099,17 @@ pub struct jl_datatype_layout_t {
     pub size: u32,
     pub nfields: u32,
     pub npointers: u32,
+    pub nhidden_pointers: u32,
     pub first_ptr: i32,
+    pub first_hidden_ptr: i32,
     pub alignment: u16,
     pub flags: jl_datatype_layout_t__bindgen_ty_1,
 }
 #[repr(C)]
+#[repr(align(2))]
 #[derive(Debug, Copy, Clone)]
 pub struct jl_datatype_layout_t__bindgen_ty_1 {
-    pub _bitfield_align_1: [u16; 0],
+    pub _bitfield_align_1: [u8; 0],
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 2usize]>,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
@@ -2246,14 +2253,80 @@ impl jl_datatype_layout_t__bindgen_ty_1 {
         }
     }
     #[inline]
-    pub fn isbitsegal(&self) -> u16 {
+    pub fn arrayelem_isatomic(&self) -> u16 {
         unsafe { ::std::mem::transmute(self._bitfield_1.get(5usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_arrayelem_isatomic(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(5usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn arrayelem_isatomic_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                5usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_arrayelem_isatomic_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                5usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn arrayelem_islocked(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(6usize, 1u8) as u16) }
+    }
+    #[inline]
+    pub fn set_arrayelem_islocked(&mut self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            self._bitfield_1.set(6usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn arrayelem_islocked_raw(this: *const Self) -> u16 {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                6usize,
+                1u8,
+            ) as u16)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_arrayelem_islocked_raw(this: *mut Self, val: u16) {
+        unsafe {
+            let val: u16 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                6usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn isbitsegal(&self) -> u16 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(7usize, 1u8) as u16) }
     }
     #[inline]
     pub fn set_isbitsegal(&mut self, val: u16) {
         unsafe {
             let val: u16 = ::std::mem::transmute(val);
-            self._bitfield_1.set(5usize, 1u8, val as u64)
+            self._bitfield_1.set(7usize, 1u8, val as u64)
         }
     }
     #[inline]
@@ -2261,7 +2334,7 @@ impl jl_datatype_layout_t__bindgen_ty_1 {
         unsafe {
             ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
                 ::std::ptr::addr_of!((*this)._bitfield_1),
-                5usize,
+                7usize,
                 1u8,
             ) as u16)
         }
@@ -2272,7 +2345,7 @@ impl jl_datatype_layout_t__bindgen_ty_1 {
             let val: u16 = ::std::mem::transmute(val);
             <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
                 ::std::ptr::addr_of_mut!((*this)._bitfield_1),
-                5usize,
+                7usize,
                 1u8,
                 val as u64,
             )
@@ -2280,13 +2353,13 @@ impl jl_datatype_layout_t__bindgen_ty_1 {
     }
     #[inline]
     pub fn padding(&self) -> u16 {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(6usize, 10u8) as u16) }
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(8usize, 8u8) as u16) }
     }
     #[inline]
     pub fn set_padding(&mut self, val: u16) {
         unsafe {
             let val: u16 = ::std::mem::transmute(val);
-            self._bitfield_1.set(6usize, 10u8, val as u64)
+            self._bitfield_1.set(8usize, 8u8, val as u64)
         }
     }
     #[inline]
@@ -2294,8 +2367,8 @@ impl jl_datatype_layout_t__bindgen_ty_1 {
         unsafe {
             ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 2usize]>>::raw_get(
                 ::std::ptr::addr_of!((*this)._bitfield_1),
-                6usize,
-                10u8,
+                8usize,
+                8u8,
             ) as u16)
         }
     }
@@ -2305,8 +2378,8 @@ impl jl_datatype_layout_t__bindgen_ty_1 {
             let val: u16 = ::std::mem::transmute(val);
             <__BindgenBitfieldUnit<[u8; 2usize]>>::raw_set(
                 ::std::ptr::addr_of_mut!((*this)._bitfield_1),
-                6usize,
-                10u8,
+                8usize,
+                8u8,
                 val as u64,
             )
         }
@@ -2317,6 +2390,8 @@ impl jl_datatype_layout_t__bindgen_ty_1 {
         fielddesc_type: u16,
         arrayelem_isboxed: u16,
         arrayelem_isunion: u16,
+        arrayelem_isatomic: u16,
+        arrayelem_islocked: u16,
         isbitsegal: u16,
         padding: u16,
     ) -> __BindgenBitfieldUnit<[u8; 2usize]> {
@@ -2338,10 +2413,18 @@ impl jl_datatype_layout_t__bindgen_ty_1 {
             arrayelem_isunion as u64
         });
         __bindgen_bitfield_unit.set(5usize, 1u8, {
+            let arrayelem_isatomic: u16 = unsafe { ::std::mem::transmute(arrayelem_isatomic) };
+            arrayelem_isatomic as u64
+        });
+        __bindgen_bitfield_unit.set(6usize, 1u8, {
+            let arrayelem_islocked: u16 = unsafe { ::std::mem::transmute(arrayelem_islocked) };
+            arrayelem_islocked as u64
+        });
+        __bindgen_bitfield_unit.set(7usize, 1u8, {
             let isbitsegal: u16 = unsafe { ::std::mem::transmute(isbitsegal) };
             isbitsegal as u64
         });
-        __bindgen_bitfield_unit.set(6usize, 10u8, {
+        __bindgen_bitfield_unit.set(8usize, 8u8, {
             let padding: u16 = unsafe { ::std::mem::transmute(padding) };
             padding as u64
         });
@@ -2350,7 +2433,7 @@ impl jl_datatype_layout_t__bindgen_ty_1 {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of jl_datatype_layout_t"][::std::mem::size_of::<jl_datatype_layout_t>() - 20usize];
+    ["Size of jl_datatype_layout_t"][::std::mem::size_of::<jl_datatype_layout_t>() - 28usize];
     ["Alignment of jl_datatype_layout_t"][::std::mem::align_of::<jl_datatype_layout_t>() - 4usize];
     ["Offset of field: jl_datatype_layout_t::size"]
         [::std::mem::offset_of!(jl_datatype_layout_t, size) - 0usize];
@@ -2358,12 +2441,16 @@ const _: () = {
         [::std::mem::offset_of!(jl_datatype_layout_t, nfields) - 4usize];
     ["Offset of field: jl_datatype_layout_t::npointers"]
         [::std::mem::offset_of!(jl_datatype_layout_t, npointers) - 8usize];
+    ["Offset of field: jl_datatype_layout_t::nhidden_pointers"]
+        [::std::mem::offset_of!(jl_datatype_layout_t, nhidden_pointers) - 12usize];
     ["Offset of field: jl_datatype_layout_t::first_ptr"]
-        [::std::mem::offset_of!(jl_datatype_layout_t, first_ptr) - 12usize];
+        [::std::mem::offset_of!(jl_datatype_layout_t, first_ptr) - 16usize];
+    ["Offset of field: jl_datatype_layout_t::first_hidden_ptr"]
+        [::std::mem::offset_of!(jl_datatype_layout_t, first_hidden_ptr) - 20usize];
     ["Offset of field: jl_datatype_layout_t::alignment"]
-        [::std::mem::offset_of!(jl_datatype_layout_t, alignment) - 16usize];
+        [::std::mem::offset_of!(jl_datatype_layout_t, alignment) - 24usize];
     ["Offset of field: jl_datatype_layout_t::flags"]
-        [::std::mem::offset_of!(jl_datatype_layout_t, flags) - 18usize];
+        [::std::mem::offset_of!(jl_datatype_layout_t, flags) - 26usize];
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

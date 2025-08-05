@@ -18,19 +18,15 @@ is_moving=$2
 moving_feature=${is_moving,,}
 
 declare -a tests_to_skip=(
-    # see https://github.com/mmtk/mmtk-julia/issues/259 
-    "atomics"
+    # see https://github.com/mmtk/mmtk-julia/issues/259
     "abstractarray"
-    "Artifacts"
     "cmdlineargs"
     "Downloads"
     "read"
     "threads"
     "LibCURL"
-    "subarray"
     "rounding"
     "loading"
-    "compileall"
     "misc"
 )
 

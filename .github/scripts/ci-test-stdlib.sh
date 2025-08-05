@@ -32,14 +32,11 @@ declare -a tests_to_skip=(
 
     # Skipping tests that fail for max moving Immix
     # see https://github.com/mmtk/mmtk-julia/issues/259
-    "Artifacts"
     "Downloads"
     "REPL"
     "TOML"
     "Random"
     "LibCURL"
-    "Mmap"
-    "SharedArrays"
     "LazyArtifacts"
 )
 # These tests need multiple workers.

@@ -62,6 +62,17 @@ pub unsafe fn mmtk_jl_to_typeof(t: Address) -> *const jl_datatype_t {
     t.to_ptr::<jl_datatype_t>()
 }
 
+fn trace_internal_pointer(slot: Address, closure: &mut impl SlotVisitor<JuliaVMSlot>) {
+    let internal_pointer = unsafe { slot.load::<Address>() };
+    // find the beginning of the object and trace it since the object may have moved
+    if let Some(object) =
+        memory_manager::find_object_from_internal_pointer(internal_pointer, usize::MAX)
+    {
+        let offset = internal_pointer - object.to_raw_address();
+        process_offset_slot(closure, slot, offset);
+    }
+}
+
 const PRINT_OBJ_TYPE: bool = false;
 
 trait ValidOffset: Copy {
@@ -98,6 +109,27 @@ unsafe fn scan_julia_obj_n<T>(
         let offset = ptr.load::<T>();
         let slot = obj.shift::<Address>(offset.to_isize());
         process_slot(closure, slot);
+        ptr = ptr.shift::<T>(1);
+    }
+}
+
+unsafe fn scan_julia_hidden_ptr_n<T>(
+    obj: Address,
+    begin: Address,
+    end: Address,
+    closure: &mut impl SlotVisitor<JuliaVMSlot>,
+) where
+    T: ValidOffset,
+{
+    let mut ptr = begin;
+    while ptr < end {
+        let offset = ptr.load::<T>();
+        let slot = obj.shift::<Address>(offset.to_isize());
+        let hidden_ptr = slot.load::<Address>();
+        // hidden pointers are internal pointers, or just integers. We must check if it is a real pointer, then trace it.
+        if mmtk_object_is_managed_by_mmtk(hidden_ptr.as_usize()) {
+            trace_internal_pointer(slot, closure);
+        }
         ptr = ptr.shift::<T>(1);
     }
 }
@@ -233,26 +265,6 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         crate::object_model::assert_generic_datatype(obj);
     }
     let vt = vtag.to_ptr::<jl_datatype_t>();
-    if (*vt).name == jl_array_typename {
-        let a = obj.to_ptr::<jl_array_t>();
-        let memref = (*a).ref_;
-
-        let ptr_or_offset = memref.ptr_or_offset;
-        // if the object moves its pointer inside the array object (void* ptr_or_offset) needs to be updated as well
-        if mmtk_object_is_managed_by_mmtk(ptr_or_offset as usize) {
-            let ptr_or_ref_slot = Address::from_ptr(::std::ptr::addr_of!((*a).ref_.ptr_or_offset));
-            let mem_addr_as_usize = memref.mem as usize;
-            let ptr_or_offset_as_usize = ptr_or_offset as usize;
-            if ptr_or_offset_as_usize > mem_addr_as_usize {
-                let offset = ptr_or_offset_as_usize - mem_addr_as_usize;
-
-                // Only update the offset pointer if the offset is valid (> 0)
-                if offset > 0 {
-                    process_offset_slot(closure, ptr_or_ref_slot, offset);
-                }
-            }
-        }
-    }
     if (*vt).name == jl_genericmemory_typename {
         if PRINT_OBJ_TYPE {
             println!("scan_julia_obj {}: genericmemory\n", obj);
@@ -403,7 +415,37 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             }
             _ => {
                 debug_assert!((*layout).fielddesc_type_custom() == 3);
-                unimplemented!();
+                panic!(
+                    "Unexpected field desc type custom: {}",
+                    (*layout).fielddesc_type_custom()
+                );
+            }
+        }
+    }
+
+    let nhidden_pointers = (*layout).nhidden_pointers;
+    if nhidden_pointers != 0 {
+        let obj_begin = mmtk_jl_dt_layout_hidden_ptrs(layout);
+        let obj_end;
+        match (*layout).fielddesc_type_custom() {
+            0 => {
+                obj_end = obj_begin.shift::<u8>(nhidden_pointers as isize);
+                scan_julia_hidden_ptr_n::<u8>(obj, obj_begin, obj_end, closure);
+            }
+            1 => {
+                obj_end = obj_begin.shift::<u16>(nhidden_pointers as isize);
+                scan_julia_hidden_ptr_n::<u16>(obj, obj_begin, obj_end, closure);
+            }
+            2 => {
+                obj_end = obj_begin.shift::<u32>(nhidden_pointers as isize);
+                scan_julia_hidden_ptr_n::<u32>(obj, obj_begin, obj_end, closure);
+            }
+            _ => {
+                debug_assert!((*layout).fielddesc_type_custom() == 3);
+                panic!(
+                    "Unexpected field desc type custom: {}",
+                    (*layout).fielddesc_type_custom()
+                );
             }
         }
     }
@@ -741,14 +783,25 @@ pub unsafe fn mmtk_jl_svecref(vt: *mut jl_svec_t, i: usize) -> *const jl_datatyp
 }
 
 #[inline(always)]
+pub unsafe fn mmtk_jl_dt_layout_fields(l: *const jl_datatype_layout_t) -> Address {
+    Address::from_ptr(l) + std::mem::size_of::<jl_datatype_layout_t>()
+}
+
+#[inline(always)]
 pub unsafe fn mmtk_jl_dt_layout_ptrs(l: *const jl_datatype_layout_t) -> Address {
     mmtk_jl_dt_layout_fields(l)
         + (mmtk_jl_fielddesc_size((*l).fielddesc_type_custom()) * (*l).nfields) as usize
 }
 
 #[inline(always)]
-pub unsafe fn mmtk_jl_dt_layout_fields(l: *const jl_datatype_layout_t) -> Address {
-    Address::from_ptr(l) + std::mem::size_of::<jl_datatype_layout_t>()
+pub unsafe fn mmtk_jl_dt_layout_hidden_ptrs(l: *const jl_datatype_layout_t) -> Address {
+    let ptrs = mmtk_jl_dt_layout_ptrs(l);
+    let direct_ptrs_size = if (*l).npointers == 0 {
+        0
+    } else {
+        ((*l).npointers as usize) << ((*l).fielddesc_type_custom())
+    };
+    ptrs + direct_ptrs_size
 }
 
 #[inline(always)]
@@ -791,4 +844,10 @@ pub unsafe fn mmtk_jl_bt_entry_jlvalue(
     let entry = unsafe { (*bt_entry.add(2 + i)).__bindgen_anon_1.jlvalue };
     debug_assert!(!entry.ptr.is_null());
     unsafe { ObjectReference::from_raw_address_unchecked(Address::from_mut_ptr(entry.ptr)) }
+}
+
+pub unsafe fn mmtk_jl_is_datatype(vt: *const jl_datatype_t) -> bool {
+    let type_tag = mmtk_jl_typetagof(Address::from_ptr(vt));
+
+    type_tag.as_usize() == ((jl_small_typeof_tags_jl_datatype_tag as usize) << 4)
 }
