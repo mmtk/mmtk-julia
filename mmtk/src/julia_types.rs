@@ -3520,3 +3520,10 @@ const _: () = {
     ["Align of template specialization: pinned_ref_open0_jl_value_t_close0"]
         [::std::mem::align_of::<pinned_ref<jl_value_t>>() - 8usize];
 };
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of template specialization: pinned_ref_open0_jl_value_t_close0"]
+        [::std::mem::size_of::<pinned_ref<jl_value_t>>() - 8usize];
+    ["Align of template specialization: pinned_ref_open0_jl_value_t_close0"]
+        [::std::mem::align_of::<pinned_ref<jl_value_t>>() - 8usize];
+};
