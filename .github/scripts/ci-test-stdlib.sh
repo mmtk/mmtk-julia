@@ -34,11 +34,21 @@ declare -a tests_to_skip=(
     # see https://github.com/mmtk/mmtk-julia/issues/259
     "Downloads"
     "REPL"
-    "TOML"
     "Random"
     "LibCURL"
     "LazyArtifacts"
 )
+
+declare -a max_moving_tests_to_skip=(
+    # Skipping tests that fail for max moving Immix
+    # see https://github.com/mmtk/mmtk-julia/issues/259
+    "Downloads"
+    "REPL"
+    "Random"
+    "LibCURL"
+    "LazyArtifacts"
+)
+
 # These tests need multiple workers.
 declare -a tests_with_multi_workers=(
     "Pkg"
@@ -76,6 +86,14 @@ do
         if [[ "${tests_to_skip[@]}" =~ "$test" ]]; then
             echo "-> Skip"
             continue
+        fi
+
+        # Skip tests with max moving build
+        if [[ "${max_moving_tests_to_skip[@]}" =~ "$test" ]]; then
+            if [ "$moving_feature" == "max_moving" ]; then
+                    echo "-> Skip"
+                    continue
+            fi
         fi
 
         if [[ "${tests_with_multi_workers[@]}" =~ "$test" ]]; then
