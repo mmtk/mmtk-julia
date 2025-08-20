@@ -80,7 +80,7 @@ pub unsafe fn mmtk_conservative_scan_task_stack(ta: *const jl_task_t) {
         log::debug!("Skip guard page: {}, {}", active_start, guard_page_start);
         conservative_scan_range(guard_page_start, active_start + size);
     } else {
-        log::warn!("Skip stack for {:?}", ta);
+        // log::warn!("Skip stack for {:?}", ta);
     }
 }
 pub unsafe fn mmtk_conservative_scan_task_registers(ta: *const jl_task_t) {
@@ -99,12 +99,12 @@ pub fn mmtk_conservative_scan_ptls_registers(ptls: &mut _jl_tls_states_t) {
 }
 // TODO: This scans the entire context type, which is slower.
 // We actually only need to scan registers.
-fn get_range<T>(ctx: &T) -> (Address, Address) {
+pub fn get_range<T>(ctx: &T) -> (Address, Address) {
     let start = Address::from_ptr(ctx);
     let ty_size = std::mem::size_of::<T>();
     (start, start + ty_size)
 }
-fn conservative_scan_range(lo: Address, hi: Address) {
+pub fn conservative_scan_range(lo: Address, hi: Address) {
     // The high address is exclusive
     let hi = if hi.is_aligned_to(BYTES_IN_ADDRESS) {
         hi - BYTES_IN_ADDRESS
@@ -122,7 +122,7 @@ fn conservative_scan_range(lo: Address, hi: Address) {
         cursor -= BYTES_IN_ADDRESS;
     }
 }
-fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
+pub fn is_potential_mmtk_object(addr: Address) -> Option<ObjectReference> {
     if crate::object_model::is_addr_in_immixspace(addr) {
         // We only care about immix space. If the object is in other spaces, we won't move them, and we don't need to pin them.
         memory_manager::find_object_from_internal_pointer(addr, usize::MAX)

@@ -93,6 +93,51 @@ impl Scanning<JuliaVM> for VMScanning {
                 }
                 // }
 
+                // process jl_handler_t eh from task
+                unsafe {
+                    use crate::conservative::is_potential_mmtk_object;
+                    use crate::conservative::CONSERVATIVE_ROOTS;
+
+                    let mut eh = (*task).eh;
+                    loop {
+                        if !eh.is_null() {
+                            // get scope and add it as root
+                            let scope_address = Address::from_ptr((*eh).scope);
+                            if crate::object_model::is_addr_in_immixspace(scope_address) {
+                                let objref =
+                                    ObjectReference::from_raw_address_unchecked(scope_address);
+                                node_buffer.push(objref);
+                            }
+
+                            // conservatively scan eh_ctx and potentially traverse the list of handlers (_jl_handler_t *prev)
+                            let sigjump_buf = (*eh).eh_ctx[0].__jmpbuf;
+                            for buff in sigjump_buf {
+                                if let Some(obj) =
+                                    is_potential_mmtk_object(Address::from_usize(buff as usize))
+                                {
+                                    // println!(
+                                    //     "buf_addr (mmtk object) = {:x}, type = {}",
+                                    //     buff,
+                                    //     crate::julia_scanning::get_julia_object_type(
+                                    //         Address::from_usize(buff as usize)
+                                    //     )
+                                    // );
+                                    CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
+                                }
+                            }
+
+                            // Another option, call conservative_scan_range on the __jmpbuf array
+                            // use crate::conservative::conservative_scan_range;
+                            // use crate::conservative::get_range;
+                            // let (lo, hi) = get_range(&(*eh).eh_ctx[0].__jmpbuf);
+                            // conservative_scan_range(lo, hi);
+                            eh = (*eh).prev;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
                 if task_is_root {
                     // captures wrong root nodes before creating the work
                     debug_assert!(
