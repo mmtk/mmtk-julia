@@ -203,15 +203,12 @@ impl Scanning<JuliaVM> for VMScanning {
         // that have been processed before
         while !extra_root_tasks.is_empty() {
             let root_task = extra_root_tasks.pop();
-            match root_task {
-                Some(t) => {
-                    if !TASK_ROOTS.lock().unwrap().contains(&t) {
-                        let task_address = t.to_raw_address();
-                        let task = task_address.to_ptr::<_jl_task_t>();
-                        root_scan_task(task, false, &mut extra_root_tasks);
-                    }
+            if let Some(t) = root_task {
+                if !TASK_ROOTS.lock().unwrap().contains(&t) {
+                    let task_address = t.to_raw_address();
+                    let task = task_address.to_ptr::<_jl_task_t>();
+                    root_scan_task(task, false, &mut extra_root_tasks);
                 }
-                None => {}
             }
         }
 

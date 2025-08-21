@@ -248,7 +248,8 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
 
             #[cfg(debug_assertions)]
             {
-                if !cfg!(feature = "non_moving") {
+                let eh = (*ta).eh;
+                if !cfg!(feature = "non_moving") && !eh.is_null() {
                     // Panic if task has not been processed as root
                     use crate::scanning::TASK_ROOTS;
                     let task_roots = TASK_ROOTS.lock().unwrap();
