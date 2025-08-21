@@ -246,6 +246,24 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
 
             let ta = obj.to_ptr::<jl_task_t>();
 
+            #[cfg(debug_assertions)]
+            {
+                if !cfg!(feature = "non_moving") {
+                    // Panic if task has not been processed as root
+                    use crate::scanning::TASK_ROOTS;
+                    let task_roots = TASK_ROOTS.lock().unwrap();
+
+                    let task_objref =
+                        ObjectReference::from_raw_address_unchecked(Address::from_ptr(ta));
+                    if !task_roots.contains(&task_objref) {
+                        panic!(
+                            "Task {} being scanned was not processed as root!",
+                            task_objref
+                        );
+                    }
+                }
+            }
+
             mmtk_scan_gcstack(ta, closure, None);
 
             let layout = (*jl_task_type).layout;
@@ -515,6 +533,123 @@ pub unsafe fn mmtk_scan_gcpreserve_stack<EV: SlotVisitor<JuliaVMSlot>>(
             nroots = new_nroots;
             nr = nroots >> 3;
             continue;
+        }
+    }
+}
+
+// Scan the shadow stack for root tasks possibly capturing
+// more tasks that will also need to be scanned
+pub unsafe fn mmtk_scan_gcstack_roots<'a, EV: SlotVisitor<JuliaVMSlot>>(
+    ta: *const jl_task_t,
+    mut closure: &'a mut EV,
+    mut pclosure: Option<&'a mut EV>,
+    extra_root_tasks: &mut Vec<ObjectReference>,
+) {
+    // process Julia's standard shadow (GC) stack
+    let stkbuf = (*ta).ctx.stkbuf;
+    let copy_stack = (*ta).ctx.copy_stack_custom();
+
+    #[cfg(feature = "julia_copy_stack")]
+    if !stkbuf.is_null() && copy_stack != 0 {
+        let stkbuf_slot = Address::from_ptr(::std::ptr::addr_of!((*ta).ctx.stkbuf));
+        process_slot(closure, stkbuf_slot);
+    }
+
+    let mut s = (*ta).gcstack;
+    let (mut offset, mut lb, mut ub) = (0_isize, 0_u64, u64::MAX);
+
+    #[cfg(feature = "julia_copy_stack")]
+    if !stkbuf.is_null() && copy_stack != 0 && (*ta).ptls.is_null() {
+        if ((*ta).tid._M_i) < 0 {
+            panic!("tid must be positive.")
+        }
+        let stackbase = jl_gc_get_stackbase((*ta).tid._M_i);
+        ub = stackbase as u64;
+        lb = ub - ((*ta).ctx.copy_stack() as u64);
+        offset = (*ta).ctx.stkbuf as isize - lb as isize;
+    }
+
+    if !s.is_null() {
+        let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
+        let mut nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
+        debug_assert!(nroots.as_usize() as u32 <= u32::MAX);
+        let mut nr = nroots >> 3;
+
+        loop {
+            // if the 'pin' bit on the root type is not set, must transitively pin
+            // and therefore use transitive pinning closure
+            let closure_to_use: &mut &mut EV = if (nroots.as_usize() & 4) == 0 {
+                &mut closure
+            } else {
+                // otherwise, use the pinning closure (if available)
+                match &mut pclosure {
+                    Some(c) => c,
+                    None => &mut closure,
+                }
+            };
+
+            let rts = Address::from_mut_ptr(s).shift::<Address>(2);
+            let mut i = 0;
+            while i < nr {
+                if (nroots.as_usize() & 1) != 0 {
+                    let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
+                    let real_addr = get_stack_addr(slot, offset, lb, ub);
+                    process_slot(*closure_to_use, real_addr);
+                    capture_potential_task(real_addr, extra_root_tasks);
+                } else {
+                    let real_addr =
+                        get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
+
+                    let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
+                    use crate::julia_finalizer::gc_ptr_tag;
+                    // malloced pointer tagged in jl_gc_add_quiescent
+                    // skip both the next element (native function), and the object
+                    if slot & 3usize == 3 {
+                        i += 2;
+                        continue;
+                    }
+
+                    // pointer is not malloced but function is native, so skip it
+                    if gc_ptr_tag(slot, 1) {
+                        process_offset_slot(*closure_to_use, real_addr, 1);
+                        i += 2;
+                        continue;
+                    }
+
+                    process_slot(*closure_to_use, real_addr);
+                    capture_potential_task(real_addr, extra_root_tasks);
+                }
+
+                i += 1;
+            }
+
+            let s_prev_address = ::std::ptr::addr_of!((*s).prev);
+            let sprev = read_stack(Address::from_ptr(s_prev_address), offset, lb, ub);
+            if sprev.is_zero() {
+                break;
+            }
+
+            s = sprev.to_mut_ptr::<jl_gcframe_t>();
+            let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
+            let new_nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
+            nroots = new_nroots;
+            nr = nroots >> 3;
+            continue;
+        }
+    }
+}
+
+pub unsafe fn capture_potential_task(addr: Address, extra_root_tasks: &mut Vec<ObjectReference>) {
+    use mmtk::vm::slot::Slot;
+    let simple_slot = SimpleSlot::from_address(addr);
+
+    if let Some(objref) = simple_slot.load() {
+        let obj = objref.to_raw_address();
+        let vtag_usize = mmtk_jl_typetagof(obj).as_usize();
+
+        if vtag_usize == ((jl_small_typeof_tags_jl_task_tag as usize) << 4) {
+            log::info!("Task {} occurs in shadow stack!", objref);
+            extra_root_tasks.push(objref);
         }
     }
 }
