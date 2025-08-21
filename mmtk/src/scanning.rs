@@ -123,12 +123,11 @@ impl Scanning<JuliaVM> for VMScanning {
                         let mut eh = (*task).eh;
                         loop {
                             if !eh.is_null() {
-                                // get scope and add it as root
+                                // conservatively deal with the scope objects
+                                // FIXME: we could potentially just add them to the node_buffer
                                 let scope_address = Address::from_ptr((*eh).scope);
-                                if crate::object_model::is_addr_in_immixspace(scope_address) {
-                                    let objref =
-                                        ObjectReference::from_raw_address_unchecked(scope_address);
-                                    node_buffer.push(objref);
+                                if let Some(obj) = is_potential_mmtk_object(scope_address) {
+                                    CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
                                 }
 
                                 // conservatively scan eh_ctx and potentially traverse the list of handlers (_jl_handler_t *prev)
