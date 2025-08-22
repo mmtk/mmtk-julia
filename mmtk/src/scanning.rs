@@ -79,7 +79,7 @@ impl Scanning<JuliaVM> for VMScanning {
                         TASK_ROOTS.lock().unwrap().insert(
                             ObjectReference::from_raw_address_unchecked(Address::from_ptr(task)),
                         );
-                        log::info!(
+                        log::debug!(
                             "Processing root task: {:?}",
                             ObjectReference::from_raw_address_unchecked(Address::from_ptr(task))
                         );
@@ -120,43 +120,33 @@ impl Scanning<JuliaVM> for VMScanning {
                         use crate::conservative::is_potential_mmtk_object;
                         use crate::conservative::CONSERVATIVE_ROOTS;
 
-                        let mut eh = (*task).eh;
-                        loop {
-                            if !eh.is_null() {
-                                // conservatively deal with the scope objects
-                                // FIXME: we could potentially just add them to the node_buffer
-                                let scope_address = Address::from_ptr((*eh).scope);
-                                if let Some(obj) = is_potential_mmtk_object(scope_address) {
-                                    CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
-                                }
+                        // NB: task.eh has a field `struct _jl_handler_t *prev` but it does not seem
+                        // like we need to traverse the whole list to capture all the handlers.
+                        // We might need to confirm this with the Julia devs.
+                        let eh = (*task).eh;
 
-                                // conservatively scan eh_ctx and potentially traverse the list of handlers (_jl_handler_t *prev)
-                                let sigjump_buf = (*eh).eh_ctx[0].__jmpbuf;
-                                for buff in sigjump_buf {
+                        if !eh.is_null() {
+                            // FIXME: we could potentially just add these to the node_buffer
+                            let scope_address = Address::from_ptr((*eh).scope);
+                            if let Some(obj) = is_potential_mmtk_object(scope_address) {
+                                CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
+                            }
+
+                            if let Some(jmpbuf) = (*eh).eh_ctx.get(0) {
+                                for buff in jmpbuf.__jmpbuf {
                                     if let Some(obj) =
                                         is_potential_mmtk_object(Address::from_usize(buff as usize))
                                     {
-                                        // println!(
-                                        //     "buf_addr (mmtk object) = {:x} from root task = {:?}, type = {}",
-                                        //     buff,
-                                        //     task,
-                                        //     crate::julia_scanning::get_julia_object_type(
-                                        //         Address::from_usize(buff as usize)
-                                        //     )
-                                        // );
                                         CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
                                     }
                                 }
+                            };
 
-                                // Another option, call conservative_scan_range on the __jmpbuf array
-                                // use crate::conservative::conservative_scan_range;
-                                // use crate::conservative::get_range;
-                                // let (lo, hi) = get_range(&(*eh).eh_ctx[0].__jmpbuf);
-                                // conservative_scan_range(lo, hi);
-                                eh = (*eh).prev;
-                            } else {
-                                break;
-                            }
+                            // // Another option, call conservative_scan_range on the __jmpbuf array
+                            // use crate::conservative::conservative_scan_range;
+                            // use crate::conservative::get_range;
+                            // let (lo, hi) = get_range(&(*eh).eh_ctx[0].__jmpbuf);
+                            // conservative_scan_range(lo, hi);
                         }
                     }
 

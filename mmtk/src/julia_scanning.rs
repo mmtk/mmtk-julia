@@ -649,7 +649,6 @@ pub unsafe fn capture_potential_task(addr: Address, extra_root_tasks: &mut Vec<O
         let vtag_usize = mmtk_jl_typetagof(obj).as_usize();
 
         if vtag_usize == ((jl_small_typeof_tags_jl_task_tag as usize) << 4) {
-            log::info!("Task {} occurs in shadow stack!", objref);
             extra_root_tasks.push(objref);
         }
     }
