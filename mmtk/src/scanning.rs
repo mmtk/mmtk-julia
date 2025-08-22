@@ -132,7 +132,7 @@ impl Scanning<JuliaVM> for VMScanning {
                                 CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
                             }
 
-                            if let Some(jmpbuf) = (*eh).eh_ctx.get(0) {
+                            if let Some(jmpbuf) = (*eh).eh_ctx.first() {
                                 for buff in jmpbuf.__jmpbuf {
                                     if let Some(obj) =
                                         is_potential_mmtk_object(Address::from_usize(buff as usize))
