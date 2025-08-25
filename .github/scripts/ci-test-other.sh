@@ -23,9 +23,7 @@ declare -a max_moving_tests_to_skip=(
     "cmdlineargs"
     "Downloads"
     "read"
-    # "threads"
     "LibCURL"
-    # "rounding"
     "loading"
     "misc"
 )
