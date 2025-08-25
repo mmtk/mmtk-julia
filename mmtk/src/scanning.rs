@@ -132,7 +132,7 @@ impl Scanning<JuliaVM> for VMScanning {
                             use crate::conservative::get_range;
                             // conservatively pin references from __jmpbuf
                             if let Some(jmpbuf) = (*eh).eh_ctx.first() {
-                                let (lo, hi) = get_range(&jmpbuf.__jmpbuf);
+                                let (lo, hi) = get_range(&(jmpbuf.__jmpbuf));
                                 conservative_scan_range(lo, hi);
                             };
                         }

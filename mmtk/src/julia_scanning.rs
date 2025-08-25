@@ -599,7 +599,7 @@ pub unsafe fn mmtk_scan_gcstack<'a, const COLLECT_TASKS: bool, EV: SlotVisitor<J
 
                     if COLLECT_TASKS {
                         if let Some(extra_tasks) = &mut extra_root_tasks {
-                            capture_potential_task(real_addr, *extra_tasks);
+                            capture_potential_task(real_addr, extra_tasks);
                         }
                     }
                 } else {
@@ -625,7 +625,7 @@ pub unsafe fn mmtk_scan_gcstack<'a, const COLLECT_TASKS: bool, EV: SlotVisitor<J
                     process_slot(*closure_to_use, real_addr);
                     if COLLECT_TASKS {
                         if let Some(extra_tasks) = &mut extra_root_tasks {
-                            capture_potential_task(real_addr, *extra_tasks);
+                            capture_potential_task(real_addr, extra_tasks);
                         }
                     }
                 }
