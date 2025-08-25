@@ -265,7 +265,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
                 }
             }
 
-            mmtk_scan_gcstack(ta, closure, None);
+            mmtk_scan_gcstack::<false, SV>(ta, closure, None, None);
 
             let layout = (*jl_task_type).layout;
             debug_assert!((*layout).fielddesc_type_custom() == 0);
@@ -540,11 +540,11 @@ pub unsafe fn mmtk_scan_gcpreserve_stack<EV: SlotVisitor<JuliaVMSlot>>(
 
 // Scan the shadow stack for root tasks possibly capturing
 // more tasks that will also need to be scanned
-pub unsafe fn mmtk_scan_gcstack_roots<'a, EV: SlotVisitor<JuliaVMSlot>>(
+pub unsafe fn mmtk_scan_gcstack<'a, const COLLECT_TASKS: bool, EV: SlotVisitor<JuliaVMSlot>>(
     ta: *const jl_task_t,
     mut closure: &'a mut EV,
     mut pclosure: Option<&'a mut EV>,
-    extra_root_tasks: &mut Vec<ObjectReference>,
+    mut extra_root_tasks: Option<&mut Vec<ObjectReference>>,
 ) {
     // process Julia's standard shadow (GC) stack
     let stkbuf = (*ta).ctx.stkbuf;
@@ -596,7 +596,12 @@ pub unsafe fn mmtk_scan_gcstack_roots<'a, EV: SlotVisitor<JuliaVMSlot>>(
                     let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                     let real_addr = get_stack_addr(slot, offset, lb, ub);
                     process_slot(*closure_to_use, real_addr);
-                    capture_potential_task(real_addr, extra_root_tasks);
+
+                    if COLLECT_TASKS {
+                        if let Some(extra_tasks) = &mut extra_root_tasks {
+                            capture_potential_task(real_addr, *extra_tasks);
+                        }
+                    }
                 } else {
                     let real_addr =
                         get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
@@ -618,7 +623,11 @@ pub unsafe fn mmtk_scan_gcstack_roots<'a, EV: SlotVisitor<JuliaVMSlot>>(
                     }
 
                     process_slot(*closure_to_use, real_addr);
-                    capture_potential_task(real_addr, extra_root_tasks);
+                    if COLLECT_TASKS {
+                        if let Some(extra_tasks) = &mut extra_root_tasks {
+                            capture_potential_task(real_addr, *extra_tasks);
+                        }
+                    }
                 }
 
                 i += 1;
@@ -636,6 +645,17 @@ pub unsafe fn mmtk_scan_gcstack_roots<'a, EV: SlotVisitor<JuliaVMSlot>>(
             nroots = new_nroots;
             nr = nroots >> 3;
             continue;
+        }
+    }
+
+    if !COLLECT_TASKS {
+        // just call into C, since the code is cold
+        if !(*ta).excstack.is_null() {
+            jl_gc_scan_julia_exc_obj(
+                Address::from_ptr(ta),
+                Address::from_mut_ptr(closure),
+                process_slot::<EV> as _,
+            );
         }
     }
 }
@@ -651,112 +671,6 @@ pub unsafe fn capture_potential_task(addr: Address, extra_root_tasks: &mut Vec<O
         if vtag_usize == ((jl_small_typeof_tags_jl_task_tag as usize) << 4) {
             extra_root_tasks.push(objref);
         }
-    }
-}
-
-pub unsafe fn mmtk_scan_gcstack<'a, EV: SlotVisitor<JuliaVMSlot>>(
-    ta: *const jl_task_t,
-    mut closure: &'a mut EV,
-    mut pclosure: Option<&'a mut EV>,
-) {
-    // process Julia's standard shadow (GC) stack
-    let stkbuf = (*ta).ctx.stkbuf;
-    let copy_stack = (*ta).ctx.copy_stack_custom();
-
-    #[cfg(feature = "julia_copy_stack")]
-    if !stkbuf.is_null() && copy_stack != 0 {
-        let stkbuf_slot = Address::from_ptr(::std::ptr::addr_of!((*ta).ctx.stkbuf));
-        process_slot(closure, stkbuf_slot);
-    }
-
-    let mut s = (*ta).gcstack;
-    let (mut offset, mut lb, mut ub) = (0_isize, 0_u64, u64::MAX);
-
-    #[cfg(feature = "julia_copy_stack")]
-    if !stkbuf.is_null() && copy_stack != 0 && (*ta).ptls.is_null() {
-        if ((*ta).tid._M_i) < 0 {
-            panic!("tid must be positive.")
-        }
-        let stackbase = jl_gc_get_stackbase((*ta).tid._M_i);
-        ub = stackbase as u64;
-        lb = ub - ((*ta).ctx.copy_stack() as u64);
-        offset = (*ta).ctx.stkbuf as isize - lb as isize;
-    }
-
-    if !s.is_null() {
-        let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
-        let mut nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
-        debug_assert!(nroots.as_usize() as u32 <= u32::MAX);
-        let mut nr = nroots >> 3;
-
-        loop {
-            // if the 'pin' bit on the root type is not set, must transitively pin
-            // and therefore use transitive pinning closure
-            let closure_to_use: &mut &mut EV = if (nroots.as_usize() & 4) == 0 {
-                &mut closure
-            } else {
-                // otherwise, use the pinning closure (if available)
-                match &mut pclosure {
-                    Some(c) => c,
-                    None => &mut closure,
-                }
-            };
-
-            let rts = Address::from_mut_ptr(s).shift::<Address>(2);
-            let mut i = 0;
-            while i < nr {
-                if (nroots.as_usize() & 1) != 0 {
-                    let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
-                    let real_addr = get_stack_addr(slot, offset, lb, ub);
-                    process_slot(*closure_to_use, real_addr);
-                } else {
-                    let real_addr =
-                        get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
-
-                    let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
-                    use crate::julia_finalizer::gc_ptr_tag;
-                    // malloced pointer tagged in jl_gc_add_quiescent
-                    // skip both the next element (native function), and the object
-                    if slot & 3usize == 3 {
-                        i += 2;
-                        continue;
-                    }
-
-                    // pointer is not malloced but function is native, so skip it
-                    if gc_ptr_tag(slot, 1) {
-                        process_offset_slot(*closure_to_use, real_addr, 1);
-                        i += 2;
-                        continue;
-                    }
-
-                    process_slot(*closure_to_use, real_addr);
-                }
-
-                i += 1;
-            }
-
-            let s_prev_address = ::std::ptr::addr_of!((*s).prev);
-            let sprev = read_stack(Address::from_ptr(s_prev_address), offset, lb, ub);
-            if sprev.is_zero() {
-                break;
-            }
-
-            s = sprev.to_mut_ptr::<jl_gcframe_t>();
-            let s_nroots_addr = ::std::ptr::addr_of!((*s).nroots);
-            let new_nroots = read_stack(Address::from_ptr(s_nroots_addr), offset, lb, ub);
-            nroots = new_nroots;
-            nr = nroots >> 3;
-            continue;
-        }
-    }
-
-    // just call into C, since the code is cold
-    if !(*ta).excstack.is_null() {
-        jl_gc_scan_julia_exc_obj(
-            Address::from_ptr(ta),
-            Address::from_mut_ptr(closure),
-            process_slot::<EV> as _,
-        );
     }
 }
 

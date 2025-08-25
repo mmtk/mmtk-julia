@@ -91,11 +91,11 @@ impl Scanning<JuliaVM> for VMScanning {
                             task,
                             &mut tpinning_slot_buffer,
                         );
-                        crate::julia_scanning::mmtk_scan_gcstack_roots(
+                        crate::julia_scanning::mmtk_scan_gcstack::<true, SlotBuffer>(
                             task,
                             &mut tpinning_slot_buffer,
                             Some(&mut pinning_slot_buffer),
-                            extra_root_tasks,
+                            Some(extra_root_tasks),
                         );
                     }
 
@@ -117,36 +117,24 @@ impl Scanning<JuliaVM> for VMScanning {
 
                     // process jl_handler_t eh from task
                     unsafe {
-                        use crate::conservative::is_potential_mmtk_object;
-                        use crate::conservative::CONSERVATIVE_ROOTS;
-
                         // NB: task.eh has a field `struct _jl_handler_t *prev` but it does not seem
                         // like we need to traverse the whole list to capture all the handlers.
                         // We might need to confirm this with the Julia devs.
                         let eh = (*task).eh;
 
                         if !eh.is_null() {
-                            // FIXME: we could potentially just add these to the node_buffer
+                            // trace the scope object inside the handler
                             let scope_address = Address::from_ptr((*eh).scope);
-                            if let Some(obj) = is_potential_mmtk_object(scope_address) {
-                                CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
-                            }
+                            node_buffer
+                                .push(ObjectReference::from_raw_address_unchecked(scope_address));
 
+                            use crate::conservative::conservative_scan_range;
+                            use crate::conservative::get_range;
+                            // conservatively pin references from __jmpbuf
                             if let Some(jmpbuf) = (*eh).eh_ctx.first() {
-                                for buff in jmpbuf.__jmpbuf {
-                                    if let Some(obj) =
-                                        is_potential_mmtk_object(Address::from_usize(buff as usize))
-                                    {
-                                        CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
-                                    }
-                                }
+                                let (lo, hi) = get_range(&jmpbuf.__jmpbuf);
+                                conservative_scan_range(lo, hi);
                             };
-
-                            // // Another option, call conservative_scan_range on the __jmpbuf array
-                            // use crate::conservative::conservative_scan_range;
-                            // use crate::conservative::get_range;
-                            // let (lo, hi) = get_range(&(*eh).eh_ctx[0].__jmpbuf);
-                            // conservative_scan_range(lo, hi);
                         }
                     }
 
