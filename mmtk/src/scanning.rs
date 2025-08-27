@@ -123,10 +123,13 @@ impl Scanning<JuliaVM> for VMScanning {
                         let eh = (*task).eh;
 
                         if !eh.is_null() {
-                            // trace the scope object inside the handler
+                            use crate::conservative::is_potential_mmtk_object;
+
+                            // trace the scope object inside the handler (may be an internal pointer)
                             let scope_address = Address::from_ptr((*eh).scope);
-                            node_buffer
-                                .push(ObjectReference::from_raw_address_unchecked(scope_address));
+                            if let Some(obj) = is_potential_mmtk_object(scope_address) {
+                                node_buffer.push(obj);
+                            }
 
                             use crate::conservative::conservative_scan_range;
                             use crate::conservative::get_range;
