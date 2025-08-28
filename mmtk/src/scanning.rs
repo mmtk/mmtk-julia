@@ -18,13 +18,6 @@ use crate::jl_gc_scan_vm_specific_roots;
 use crate::jl_gc_sweep_stack_pools_and_mtarraylist_buffers;
 use crate::JuliaVM;
 
-use std::collections::HashSet;
-use std::sync::Mutex;
-
-lazy_static! {
-    pub static ref TASK_ROOTS: Mutex<HashSet<ObjectReference>> = Mutex::new(HashSet::new());
-}
-
 pub struct VMScanning {}
 
 impl Scanning<JuliaVM> for VMScanning {
@@ -64,106 +57,77 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut tpinning_slot_buffer = SlotBuffer { buffer: vec![] }; // need to be transitively pinned
         let mut pinning_slot_buffer = SlotBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
         let mut node_buffer = vec![];
-        let mut extra_root_tasks = vec![]; // tasks that show up in the shadow stack of other tasks
 
         // Conservatively scan registers saved with the thread
         crate::conservative::mmtk_conservative_scan_ptls_registers(ptls);
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
-        let mut root_scan_task =
-            |task: *const _jl_task_t,
-             task_is_root: bool,
-             extra_root_tasks: &mut Vec<ObjectReference>| {
-                if !task.is_null() {
-                    unsafe {
-                        TASK_ROOTS.lock().unwrap().insert(
-                            ObjectReference::from_raw_address_unchecked(Address::from_ptr(task)),
-                        );
-                        log::debug!(
-                            "Processing root task: {:?}",
-                            ObjectReference::from_raw_address_unchecked(Address::from_ptr(task))
-                        );
-                    }
 
-                    // Scan gc preserve and shadow stacks
-                    unsafe {
-                        crate::julia_scanning::mmtk_scan_gcpreserve_stack(
-                            task,
-                            &mut tpinning_slot_buffer,
-                        );
-                        crate::julia_scanning::mmtk_scan_gcstack::<true, SlotBuffer>(
-                            task,
-                            &mut tpinning_slot_buffer,
-                            Some(&mut pinning_slot_buffer),
-                            Some(extra_root_tasks),
-                        );
-                    }
-
-                    // Conservatively scan native stacks to make sure we won't move objects that the runtime is using.
-                    log::debug!(
-                        "Scanning ptls {:?}, pthread {:x}",
-                        mutator.mutator_tls,
-                        pthread
+        // scan task object to conservatively pin references from shadow,
+        // gc_preserve and regular stack and registers
+        let mut scan_root_task = |task: *const _jl_task_t| {
+            if !task.is_null() {
+                // Scan gc preserve and shadow stacks
+                unsafe {
+                    crate::julia_scanning::mmtk_scan_gcpreserve_stack(
+                        task,
+                        &mut tpinning_slot_buffer,
                     );
-                    // Conservative scan stack and registers. If the task hasn't been started, we do not need to scan its stack and registers.
-                    // We cannot use `task->start` to skip conservative scanning, as before a task is started, the runtime may evaluate the code and we need to make sure the runtime objects are properly scanned.
-                    // However, without this check, we may timeout in a test that spawns a lot of tasks.
-                    // if unsafe { (*task).start == crate::jl_true } {
-                    unsafe {
-                        crate::conservative::mmtk_conservative_scan_task_stack(task);
-                        crate::conservative::mmtk_conservative_scan_task_registers(task);
-                    }
-                    // }
-
-                    if task_is_root {
-                        // captures wrong root nodes before creating the work
-                        debug_assert!(
-                            Address::from_ptr(task).as_usize() % 16 == 0
-                                || Address::from_ptr(task).as_usize() % 8 == 0,
-                            "root node {:?} is not aligned to 8 or 16",
-                            Address::from_ptr(task)
-                        );
-
-                        // unsafe: We checked `!task.is_null()` before.
-                        let objref = unsafe {
-                            ObjectReference::from_raw_address_unchecked(Address::from_ptr(task))
-                        };
-                        node_buffer.push(objref);
-                    }
+                    crate::julia_scanning::mmtk_scan_gcstack(
+                        task,
+                        &mut tpinning_slot_buffer,
+                        Some(&mut pinning_slot_buffer),
+                    );
                 }
-            };
-        root_scan_task(ptls.root_task, true, &mut extra_root_tasks);
 
-        // need to iterate over live tasks as well to process their shadow stacks
-        // we should not set the task themselves as roots as we will know which ones are still alive after GC
+                // Conservatively scan native stacks to make sure we won't move objects that the runtime is using.
+                log::debug!(
+                    "Scanning ptls {:?}, pthread {:x}",
+                    mutator.mutator_tls,
+                    pthread
+                );
+                // Conservative scan stack and registers. If the task hasn't been started, we do not need to scan its stack and registers.
+                // We cannot use `task->start` to skip conservative scanning, as before a task is started, the runtime may evaluate the code and we need to make sure the runtime objects are properly scanned.
+                // However, without this check, we may timeout in a test that spawns a lot of tasks.
+                // if unsafe { (*task).start == crate::jl_true } {
+                unsafe {
+                    crate::conservative::mmtk_conservative_scan_task_stack(task);
+                    crate::conservative::mmtk_conservative_scan_task_registers(task);
+                }
+                // }
+            };
+        };
+
+        // adding task object as root
+        let mut add_task_as_root = |task: *const _jl_task_t| {
+            if !task.is_null() {
+                // captures wrong root nodes before creating the work
+                debug_assert!(
+                    Address::from_ptr(task).as_usize() % 16 == 0
+                        || Address::from_ptr(task).as_usize() % 8 == 0,
+                    "root node {:?} is not aligned to 8 or 16",
+                    Address::from_ptr(task)
+                );
+
+                let objref =
+                    unsafe { ObjectReference::from_raw_address_unchecked(Address::from_ptr(task)) };
+                node_buffer.push(objref);
+            }
+        };
+
+        add_task_as_root(ptls.root_task);
+        add_task_as_root(ptls.current_task as *mut _jl_task_t);
+        add_task_as_root(ptls.next_task);
+        add_task_as_root(ptls.previous_task);
+
+        // need to iterate over all tasks as well to process their shadow stacks and scan their stacks
         let mut i = 0;
-        while i < ptls.gc_tls_common.heap.live_tasks.len {
-            let mut task_address = Address::from_ptr(ptls.gc_tls_common.heap.live_tasks.items);
+        while i < ptls.gc_tls_common.heap.all_tasks.len {
+            let mut task_address = Address::from_ptr(ptls.gc_tls_common.heap.all_tasks.items);
             task_address = task_address.shift::<Address>(i as isize);
             let task = unsafe { task_address.load::<*const jl_task_t>() };
-            root_scan_task(task, false, &mut extra_root_tasks);
+            scan_root_task(task);
             i += 1;
-        }
-
-        root_scan_task(
-            ptls.current_task as *mut _jl_task_t,
-            true,
-            &mut extra_root_tasks,
-        );
-        root_scan_task(ptls.next_task, true, &mut extra_root_tasks);
-        root_scan_task(ptls.previous_task, true, &mut extra_root_tasks);
-
-        // process all tasks that appear in the shadow stack of any tasks
-        // that have been processed before
-        while !extra_root_tasks.is_empty() {
-            let root_task = extra_root_tasks.pop();
-            if let Some(t) = root_task {
-                if !TASK_ROOTS.lock().unwrap().contains(&t) {
-                    let task_address = t.to_raw_address();
-                    let task = task_address.to_ptr::<_jl_task_t>();
-                    root_scan_task(task, false, &mut extra_root_tasks);
-                }
-            }
         }
 
         if !ptls.previous_exception.is_null() {

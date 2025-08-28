@@ -246,26 +246,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
 
             let ta = obj.to_ptr::<jl_task_t>();
 
-            #[cfg(debug_assertions)]
-            {
-                let eh = (*ta).eh;
-                if !cfg!(feature = "non_moving") && !eh.is_null() {
-                    // Panic if task has not been processed as root
-                    use crate::scanning::TASK_ROOTS;
-                    let task_roots = TASK_ROOTS.lock().unwrap();
-
-                    let task_objref =
-                        ObjectReference::from_raw_address_unchecked(Address::from_ptr(ta));
-                    if !task_roots.contains(&task_objref) {
-                        panic!(
-                            "Task {} being scanned was not processed as root!",
-                            task_objref
-                        );
-                    }
-                }
-            }
-
-            mmtk_scan_gcstack::<false, SV>(ta, closure, None, None);
+            mmtk_scan_gcstack(ta, closure, None);
 
             let layout = (*jl_task_type).layout;
             debug_assert!((*layout).fielddesc_type_custom() == 0);
@@ -540,11 +521,10 @@ pub unsafe fn mmtk_scan_gcpreserve_stack<EV: SlotVisitor<JuliaVMSlot>>(
 
 // Scan the shadow stack for root tasks possibly capturing
 // more tasks that will also need to be scanned
-pub unsafe fn mmtk_scan_gcstack<'a, const COLLECT_TASKS: bool, EV: SlotVisitor<JuliaVMSlot>>(
+pub unsafe fn mmtk_scan_gcstack<'a, EV: SlotVisitor<JuliaVMSlot>>(
     ta: *const jl_task_t,
     mut closure: &'a mut EV,
     mut pclosure: Option<&'a mut EV>,
-    mut extra_root_tasks: Option<&mut Vec<ObjectReference>>,
 ) {
     // process Julia's standard shadow (GC) stack
     let stkbuf = (*ta).ctx.stkbuf;
@@ -596,12 +576,6 @@ pub unsafe fn mmtk_scan_gcstack<'a, const COLLECT_TASKS: bool, EV: SlotVisitor<J
                     let slot = read_stack(rts.shift::<Address>(i as isize), offset, lb, ub);
                     let real_addr = get_stack_addr(slot, offset, lb, ub);
                     process_slot(*closure_to_use, real_addr);
-
-                    if COLLECT_TASKS {
-                        if let Some(extra_tasks) = &mut extra_root_tasks {
-                            capture_potential_task(real_addr, extra_tasks);
-                        }
-                    }
                 } else {
                     let real_addr =
                         get_stack_addr(rts.shift::<Address>(i as isize), offset, lb, ub);
@@ -623,11 +597,6 @@ pub unsafe fn mmtk_scan_gcstack<'a, const COLLECT_TASKS: bool, EV: SlotVisitor<J
                     }
 
                     process_slot(*closure_to_use, real_addr);
-                    if COLLECT_TASKS {
-                        if let Some(extra_tasks) = &mut extra_root_tasks {
-                            capture_potential_task(real_addr, extra_tasks);
-                        }
-                    }
                 }
 
                 i += 1;
@@ -648,15 +617,13 @@ pub unsafe fn mmtk_scan_gcstack<'a, const COLLECT_TASKS: bool, EV: SlotVisitor<J
         }
     }
 
-    if !COLLECT_TASKS {
-        // just call into C, since the code is cold
-        if !(*ta).excstack.is_null() {
-            jl_gc_scan_julia_exc_obj(
-                Address::from_ptr(ta),
-                Address::from_mut_ptr(closure),
-                process_slot::<EV> as _,
-            );
-        }
+    // just call into C, since the code is cold
+    if !(*ta).excstack.is_null() {
+        jl_gc_scan_julia_exc_obj(
+            Address::from_ptr(ta),
+            Address::from_mut_ptr(closure),
+            process_slot::<EV> as _,
+        );
     }
 }
 

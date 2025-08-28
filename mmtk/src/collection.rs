@@ -92,10 +92,6 @@ impl Collection<JuliaVM> for VMCollection {
         // unpin conservative roots
         crate::conservative::unpin_conservative_roots();
 
-        // empty root tasks
-        let mut root_tasks = crate::scanning::TASK_ROOTS.lock().unwrap();
-        root_tasks.clear();
-
         // Get the end time of the GC
         let end = unsafe { jl_hrtime() };
         trace!("gc_end = {}", end);
