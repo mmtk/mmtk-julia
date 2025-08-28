@@ -34,7 +34,6 @@ declare -a tests_to_skip=(
     # see https://github.com/mmtk/mmtk-julia/issues/259
     "Downloads"
     "REPL"
-    "Random"
     "LibCURL"
     "LazyArtifacts"
 )
@@ -44,7 +43,6 @@ declare -a max_moving_tests_to_skip=(
     # see https://github.com/mmtk/mmtk-julia/issues/259
     "Downloads"
     "REPL"
-    "Random"
     "LibCURL"
     "LazyArtifacts"
 )
