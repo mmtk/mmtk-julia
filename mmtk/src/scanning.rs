@@ -115,32 +115,6 @@ impl Scanning<JuliaVM> for VMScanning {
                     }
                     // }
 
-                    // process jl_handler_t eh from task
-                    unsafe {
-                        // NB: task.eh has a field `struct _jl_handler_t *prev` but it does not seem
-                        // like we need to traverse the whole list to capture all the handlers.
-                        // We might need to confirm this with the Julia devs.
-                        let eh = (*task).eh;
-
-                        if !eh.is_null() {
-                            use crate::conservative::is_potential_mmtk_object;
-
-                            // trace the scope object inside the handler (may be an internal pointer)
-                            let scope_address = Address::from_ptr((*eh).scope);
-                            if let Some(obj) = is_potential_mmtk_object(scope_address) {
-                                node_buffer.push(obj);
-                            }
-
-                            use crate::conservative::conservative_scan_range;
-                            use crate::conservative::get_range;
-                            // conservatively pin references from __jmpbuf
-                            if let Some(jmpbuf) = (*eh).eh_ctx.first() {
-                                let (lo, hi) = get_range(&(jmpbuf.__jmpbuf));
-                                conservative_scan_range(lo, hi);
-                            };
-                        }
-                    }
-
                     if task_is_root {
                         // captures wrong root nodes before creating the work
                         debug_assert!(
