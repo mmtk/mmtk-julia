@@ -519,8 +519,6 @@ pub unsafe fn mmtk_scan_gcpreserve_stack<EV: SlotVisitor<JuliaVMSlot>>(
     }
 }
 
-// Scan the shadow stack for root tasks possibly capturing
-// more tasks that will also need to be scanned
 pub unsafe fn mmtk_scan_gcstack<'a, EV: SlotVisitor<JuliaVMSlot>>(
     ta: *const jl_task_t,
     mut closure: &'a mut EV,
@@ -624,20 +622,6 @@ pub unsafe fn mmtk_scan_gcstack<'a, EV: SlotVisitor<JuliaVMSlot>>(
             Address::from_mut_ptr(closure),
             process_slot::<EV> as _,
         );
-    }
-}
-
-pub unsafe fn capture_potential_task(addr: Address, extra_root_tasks: &mut Vec<ObjectReference>) {
-    use mmtk::vm::slot::Slot;
-    let simple_slot = SimpleSlot::from_address(addr);
-
-    if let Some(objref) = simple_slot.load() {
-        let obj = objref.to_raw_address();
-        let vtag_usize = mmtk_jl_typetagof(obj).as_usize();
-
-        if vtag_usize == ((jl_small_typeof_tags_jl_task_tag as usize) << 4) {
-            extra_root_tasks.push(objref);
-        }
     }
 }
 
