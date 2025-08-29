@@ -62,7 +62,10 @@ impl Scanning<JuliaVM> for VMScanning {
         crate::conservative::mmtk_conservative_scan_ptls_registers(ptls);
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
-        let mut root_scan_task = |task: *const _jl_task_t, task_is_root: bool| {
+
+        // scan task object to conservatively pin references from shadow,
+        // gc_preserve and regular stack and registers
+        let mut scan_root_task = |task: *const _jl_task_t| {
             if !task.is_null() {
                 // Scan gc preserve and shadow stacks
                 unsafe {
@@ -92,40 +95,41 @@ impl Scanning<JuliaVM> for VMScanning {
                     crate::conservative::mmtk_conservative_scan_task_registers(task);
                 }
                 // }
+            };
+        };
 
-                if task_is_root {
-                    // captures wrong root nodes before creating the work
-                    debug_assert!(
-                        Address::from_ptr(task).as_usize() % 16 == 0
-                            || Address::from_ptr(task).as_usize() % 8 == 0,
-                        "root node {:?} is not aligned to 8 or 16",
-                        Address::from_ptr(task)
-                    );
+        // adding task object as root
+        let mut add_task_as_root = |task: *const _jl_task_t| {
+            if !task.is_null() {
+                // captures wrong root nodes before creating the work
+                debug_assert!(
+                    Address::from_ptr(task).as_usize() % 16 == 0
+                        || Address::from_ptr(task).as_usize() % 8 == 0,
+                    "root node {:?} is not aligned to 8 or 16",
+                    Address::from_ptr(task)
+                );
 
-                    // unsafe: We checked `!task.is_null()` before.
-                    let objref = unsafe {
-                        ObjectReference::from_raw_address_unchecked(Address::from_ptr(task))
-                    };
-                    node_buffer.push(objref);
-                }
+                let objref =
+                    unsafe { ObjectReference::from_raw_address_unchecked(Address::from_ptr(task)) };
+                node_buffer.push(objref);
             }
         };
-        root_scan_task(ptls.root_task, true);
 
-        // need to iterate over live tasks as well to process their shadow stacks
-        // we should not set the task themselves as roots as we will know which ones are still alive after GC
+        add_task_as_root(ptls.root_task);
+        add_task_as_root(ptls.current_task as *mut _jl_task_t);
+        add_task_as_root(ptls.next_task);
+        add_task_as_root(ptls.previous_task);
+
+        // need to iterate over all tasks as well to process their shadow stacks and scan their stacks
         let mut i = 0;
-        while i < ptls.gc_tls_common.heap.live_tasks.len {
-            let mut task_address = Address::from_ptr(ptls.gc_tls_common.heap.live_tasks.items);
+        while i < ptls.gc_tls_common.heap.all_tasks.len {
+            let mut task_address = Address::from_ptr(ptls.gc_tls_common.heap.all_tasks.items);
             task_address = task_address.shift::<Address>(i as isize);
             let task = unsafe { task_address.load::<*const jl_task_t>() };
-            root_scan_task(task, false);
+            scan_root_task(task);
             i += 1;
         }
 
-        root_scan_task(ptls.current_task as *mut _jl_task_t, true);
-        root_scan_task(ptls.next_task, true);
-        root_scan_task(ptls.previous_task, true);
         if !ptls.previous_exception.is_null() {
             node_buffer.push(unsafe {
                 // unsafe: We have just checked `ptls.previous_exception` is not null.
