@@ -138,6 +138,11 @@ unsafe fn scan_julia_hidden_ptr_n<T>(
 // INFO: *_custom() functions are acessors to bitfields that do not use bindgen generated code.
 #[inline(always)]
 pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, closure: &mut SV) {
+    if crate::object_model::is_addr_in_immortalspace(obj) {
+        // immortal space objects do not need to be scanned
+        return;
+    }
+
     // get Julia object type
     let mut vtag = mmtk_jl_typetagof(obj);
     let mut vtag_usize = vtag.as_usize();

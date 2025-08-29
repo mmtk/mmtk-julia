@@ -318,6 +318,11 @@ pub fn is_object_in_nonmoving(object: &ObjectReference) -> bool {
         && (*object).to_raw_address().as_usize() < 0xa00_0000_0000
 }
 
+#[inline(always)]
+pub fn is_addr_in_immortalspace(addr: Address) -> bool {
+    addr.as_usize() >= 0x400_0000_0000 && addr.as_usize() < 0x600_0000_0000
+}
+
 // If an object has its type tag bits set as 'smalltag', but those bits are not recognizable,
 // very possibly the object is corrupted. This function asserts this case.
 pub fn assert_generic_datatype(obj: Address) {
