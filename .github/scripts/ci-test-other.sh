@@ -22,7 +22,6 @@ declare -a max_moving_tests_to_skip=(
     "abstractarray"
     "cmdlineargs"
     "Downloads"
-    "read"
     "LibCURL"
     "loading"
     "misc"
