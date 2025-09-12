@@ -20,8 +20,6 @@ moving_feature=${is_moving,,}
 declare -a max_moving_tests_to_skip=(
     # see https://github.com/mmtk/mmtk-julia/issues/259
     "abstractarray"
-    "cmdlineargs"
-    "loading"
     "misc"
 )
 
