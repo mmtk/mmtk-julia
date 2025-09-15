@@ -19,14 +19,6 @@ moving_feature=${is_moving,,}
 
 declare -a max_moving_tests_to_skip=(
     # see https://github.com/mmtk/mmtk-julia/issues/259
-    "abstractarray"
-    "cmdlineargs"
-    "Downloads"
-    "read"
-    "threads"
-    "LibCURL"
-    "rounding"
-    "loading"
     "misc"
 )
 
@@ -63,8 +55,24 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
                 continue
             fi
 
+            if [[ $test =~ "rounding" ]]; then
+                # Run rounding test with single thread and Julia's 
+                # heap resizing (it OOMs with a fixed heap)
+                echo "-> Run"
+                ci_run_jl_test $test 1 $moving_feature
+                continue
+            fi
+
+            if [[ $test =~ "ranges" ]]; then
+                # Run ranges test with single thread and Julia's 
+                # heap resizing (it OOMs with a fixed heap)
+                echo "-> Run"
+                ci_run_jl_test $test 1 $moving_feature
+                continue
+            fi
+
             echo "-> Run"
-            ci_run_jl_test $test 1 $moving_feature
+            ci_run_jl_test $test 2 $moving_feature
         fi
     done
 else

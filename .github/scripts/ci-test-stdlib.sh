@@ -29,21 +29,11 @@ declare -a tests_to_skip=(
     "LinearAlgebra"
     # Skipping Distributed tests
     "Distributed"
-
-    # Skipping tests that fail for max moving Immix
-    # see https://github.com/mmtk/mmtk-julia/issues/259
-    "Downloads"
-    "REPL"
-    "LibCURL"
-    "LazyArtifacts"
 )
 
 declare -a max_moving_tests_to_skip=(
     # Skipping tests that fail for max moving Immix
     # see https://github.com/mmtk/mmtk-julia/issues/259
-    "Downloads"
-    "REPL"
-    "LibCURL"
     "LazyArtifacts"
 )
 
