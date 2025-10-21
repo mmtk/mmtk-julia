@@ -59,6 +59,8 @@ impl Collection<JuliaVM> for VMCollection {
             // FIXME add wait var
         }
 
+        assert!(Self::is_collection_enabled(), "Collection is disabled when threads are stopped for a GC. This is a concurrency bug, see https://github.com/mmtk/mmtk-julia/issues/278.");
+
         trace!("Stopped the world!");
         #[cfg(feature = "heap_dump")]
         dump_heap(GC_COUNT.load(Ordering::SeqCst), 0);
