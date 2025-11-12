@@ -20,21 +20,14 @@ declare -a tests_to_skip=(
     # getnameinfo(ip"0.1.1.1") == "0.1.1.1"
     # DNSError: ip"0.1.1.1", temporary failure (EAI_AGAIN)
     "Sockets"
-    # LoadError: No active project
-    # See https://github.com/JuliaLang/julia/issues/50055.
-    # FIXME: We should run this test when the above issue is resolved.
-    "Pkg",
-    "SparseArrays"
     # Running LinearAlgebra in a separate job
     "LinearAlgebra"
     # Skipping Distributed tests
     "Distributed"
-)
-
-declare -a max_moving_tests_to_skip=(
-    # Skipping tests that fail for max moving Immix
-    # see https://github.com/mmtk/mmtk-julia/issues/259
-    "LazyArtifacts"
+    # LoadError: No active project
+    # See https://github.com/JuliaLang/julia/issues/50055.
+    # FIXME: We should run this test when the above issue is resolved.
+    "Pkg"
 )
 
 # These tests need multiple workers.
@@ -74,14 +67,6 @@ do
         if [[ "${tests_to_skip[@]}" =~ "$test" ]]; then
             echo "-> Skip"
             continue
-        fi
-
-        # Skip tests with max moving build
-        if [[ "${max_moving_tests_to_skip[@]}" =~ "$test" ]]; then
-            if [ "$moving_feature" == "max_moving" ]; then
-                    echo "-> Skip"
-                    continue
-            fi
         fi
 
         if [[ "${tests_with_multi_workers[@]}" =~ "$test" ]]; then
