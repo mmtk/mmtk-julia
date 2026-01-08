@@ -149,15 +149,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "built"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4ad8f11f288f48ca24471bbd51ac257aaeaaa07adae295591266b792902ae64"
-dependencies = [
- "git2",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -646,12 +637,12 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 [[package]]
 name = "mmtk"
 version = "0.31.0"
-source = "git+https://github.com/mmtk/mmtk-core.git?rev=c5ead72a87bcc8cc49b5e7a62cf71d848b4b4c9b#c5ead72a87bcc8cc49b5e7a62cf71d848b4b4c9b"
+source = "git+https://github.com/qinsoon/mmtk-core.git?rev=d7a06ced02c588c58a7f6064d474e5de8826f948#d7a06ced02c588c58a7f6064d474e5de8826f948"
 dependencies = [
  "atomic 0.6.0",
  "atomic-traits",
  "atomic_refcell",
- "built 0.7.7",
+ "built",
  "bytemuck",
  "bytemuck_derive",
  "cfg-if",
@@ -660,7 +651,6 @@ dependencies = [
  "downcast-rs",
  "enum-map",
  "env_logger",
- "idna_adapter",
  "is-terminal",
  "itertools 0.14.0",
  "lazy_static",
@@ -672,6 +662,7 @@ dependencies = [
  "num_cpus",
  "portable-atomic",
  "probe",
+ "rayon-core",
  "regex",
  "rustversion",
  "spin",
@@ -683,11 +674,11 @@ dependencies = [
 
 [[package]]
 name = "mmtk-julia"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "atomic 0.4.6",
  "bindgen",
- "built 0.8.0",
+ "built",
  "cc",
  "chrono",
  "enum-map",
@@ -702,7 +693,7 @@ dependencies = [
 [[package]]
 name = "mmtk-macros"
 version = "0.31.0"
-source = "git+https://github.com/mmtk/mmtk-core.git?rev=c5ead72a87bcc8cc49b5e7a62cf71d848b4b4c9b#c5ead72a87bcc8cc49b5e7a62cf71d848b4b4c9b"
+source = "git+https://github.com/qinsoon/mmtk-core.git?rev=d7a06ced02c588c58a7f6064d474e5de8826f948#d7a06ced02c588c58a7f6064d474e5de8826f948"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
