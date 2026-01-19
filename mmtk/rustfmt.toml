@@ -1,4 +1,0 @@
-# Ignore the generated Rust binding file
-ignore = [
-    "src/julia_types.rs",
-]
