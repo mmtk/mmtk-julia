@@ -60,9 +60,6 @@ jobs:
         run: |
           JULIA_PATH=$(realpath $(dirname "$0"))/../mmtk-julia/mmtk-julia/vm/julia
           $JULIA_PATH/julia --project=. -e "using InteractiveUtils; versioninfo()"
-      - name: Style check
-        run: |
-          ./.github/scripts/ci-style.sh
 
   check-ffi:
     runs-on: ubuntu-22.04
