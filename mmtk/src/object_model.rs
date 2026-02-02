@@ -500,7 +500,9 @@ pub fn test_hash_state(object: ObjectReference, state: u8) -> bool {
 }
 
 pub fn set_hash_state(object: ObjectReference, state: u8) {
-    debug_assert!(cfg!(feature = "address_based_hashing"));
+    const {
+        debug_assert!(cfg!(feature = "address_based_hashing"));
+    }
     HASH_BITS_SPEC.store_atomic::<u8>(object.to_raw_address(), state, Ordering::SeqCst);
 }
 
