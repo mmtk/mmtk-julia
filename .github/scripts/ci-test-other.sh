@@ -43,6 +43,13 @@ if [[ $CHOOSE_TESTS_JL_CONTENT =~ $REGEX_PATTERN ]]; then
                 continue
             fi
 
+            if [[ $test =~ "download" ]]; then
+                # Connection timed out after 30032 milliseconds while requesting https://httpbin.julialang.org/ip
+                # Maybe those end points are no longer reachable.
+                echo "-> Skip download"
+                continue
+            fi
+
             if [[ $test =~ "rounding" ]]; then
                 # Run rounding test with single thread and Julia's 
                 # heap resizing (it OOMs with a fixed heap)
