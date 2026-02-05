@@ -53,6 +53,10 @@ pub extern "C" fn mmtk_gc_init(
 
         if cfg!(feature = "immix_max_moving") {
             builder.options.immix_defrag_headroom_percent.set(50);
+            builder.options.immix_defrag_every_block.set(true);
+        }
+        if cfg!(feature = "immix_always_moving") {
+            builder.options.immix_always_defrag.set(true);
         }
 
         // Set heap size

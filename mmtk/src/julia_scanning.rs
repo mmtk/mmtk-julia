@@ -658,9 +658,9 @@ pub unsafe fn get_julia_object_type(obj: Address) -> String {
         // Get detailed type name
         let cstr = jl_symbol_name((*(*vt).name).name);
         // jl_symbol_name(jl_sym_t*)
-        return std::ffi::CStr::from_ptr(cstr)
+        std::ffi::CStr::from_ptr(cstr)
             .to_string_lossy()
-            .into_owned();
+            .into_owned()
         // return "datatype".to_string();
     }
 }
