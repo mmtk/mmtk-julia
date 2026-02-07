@@ -105,6 +105,11 @@ pub extern "C" fn mmtk_gc_init(
             let success = builder.options.threads.set(n_gcthreads);
             assert!(success, "Failed to set GC threads to {}", n_gcthreads);
         }
+
+        if cfg!(feature = "print_fragmentation") {
+            let success = builder.options.count_live_bytes_in_gc.set(true);
+            assert!(success, "Failed to enable live byte counting in GC");
+        }
     }
 
     // Make sure that we haven't initialized MMTk (by accident) yet
@@ -647,7 +652,7 @@ pub extern "C" fn get_mmtk_version() -> *const c_char {
 pub extern "C" fn print_fragmentation() {
     let map = memory_manager::live_bytes_in_last_gc(&SINGLETON);
     for (space, stats) in map {
-        println!(
+        eprintln!(
             "Utilization in space {:?}: {} live bytes, {} total bytes, {:.2} %",
             space,
             stats.live_bytes,
