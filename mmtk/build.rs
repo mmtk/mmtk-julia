@@ -87,9 +87,11 @@ fn main() {
             .clang_arg("c++")
             .clang_arg("-std=c++14")
             // using MMTK types
-            .clang_arg("-DWITH_THIRD_PARTY_HEAP=1")
+            .clang_arg("-DWITH_THIRD_PARTY_HEAP=mmtk")
+            // select MMTk GC TLS layout
+            .clang_arg("-DMMTK_GC")
             // using sticky, but it should not matter for the FFI bindings
-            .clang_arg("-DMMTK_PLAN_STICKYIMMIX")
+            .clang_arg("-DMMTK_PLAN=StickyImmix")
             // Finish the builder and generate the bindings.
             .generate()
             // Unwrap the Result and panic on failure.

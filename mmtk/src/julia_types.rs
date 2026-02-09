@@ -252,6 +252,11 @@ const _: () = {
 pub type sigjmp_buf = [__jmp_buf_tag; 1usize];
 pub type jl_taggedvalue_t = _jl_taggedvalue_t;
 pub type jl_ptls_t = *mut _jl_tls_states_t;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _jl_value_t {
+    _unused: [u8; 0],
+}
 pub type sig_atomic_t = __sig_atomic_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -380,11 +385,6 @@ const _: () = {
         [::std::mem::offset_of!(ucontext_t, __fpregs_mem) - 424usize];
     ["Offset of field: ucontext_t::__ssp"][::std::mem::offset_of!(ucontext_t, __ssp) - 936usize];
 };
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _jl_value_t {
-    _unused: [u8; 0],
-}
 pub type jl_value_t = _jl_value_t;
 #[repr(C)]
 #[repr(align(8))]
@@ -1070,20 +1070,19 @@ const _: () = {
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _jl_genericmemory_t {
+pub struct jl_genericmemory_t {
     pub length: usize,
     pub ptr: *mut ::std::os::raw::c_void,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _jl_genericmemory_t"][::std::mem::size_of::<_jl_genericmemory_t>() - 16usize];
-    ["Alignment of _jl_genericmemory_t"][::std::mem::align_of::<_jl_genericmemory_t>() - 8usize];
-    ["Offset of field: _jl_genericmemory_t::length"]
-        [::std::mem::offset_of!(_jl_genericmemory_t, length) - 0usize];
-    ["Offset of field: _jl_genericmemory_t::ptr"]
-        [::std::mem::offset_of!(_jl_genericmemory_t, ptr) - 8usize];
+    ["Size of jl_genericmemory_t"][::std::mem::size_of::<jl_genericmemory_t>() - 16usize];
+    ["Alignment of jl_genericmemory_t"][::std::mem::align_of::<jl_genericmemory_t>() - 8usize];
+    ["Offset of field: jl_genericmemory_t::length"]
+        [::std::mem::offset_of!(jl_genericmemory_t, length) - 0usize];
+    ["Offset of field: jl_genericmemory_t::ptr"]
+        [::std::mem::offset_of!(jl_genericmemory_t, ptr) - 8usize];
 };
-pub type jl_genericmemory_t = _jl_genericmemory_t;
 pub type jl_hidden_ptr_ptr_or_offset_t = *mut ::std::os::raw::c_void;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
