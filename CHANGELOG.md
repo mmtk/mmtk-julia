@@ -1,3 +1,15 @@
+0.32.0 (2026-02-04)
+===
+
+## What's Changed
+* Update to MMTk core PR #1308 by @qinsoon in https://github.com/mmtk/mmtk-julia/pull/238
+* Fix the scan for module usings field: use 4 as the step instead of 3 by @qinsoon in https://github.com/mmtk/mmtk-julia/pull/281
+* Update the Rust binding for upstream changes by @qinsoon in https://github.com/mmtk/mmtk-julia/pull/284
+* Move to Rust 1.92 by @qinsoon in https://github.com/mmtk/mmtk-julia/pull/287
+* Bump version to 0.31.2 by @qinsoon in https://github.com/mmtk/mmtk-julia/pull/289
+
+**Full Changelog**: https://github.com/mmtk/mmtk-julia/compare/v0.31.0...v0.32.0
+
 0.31.0 (2025-04-17)
 ===
 
