@@ -8,6 +8,7 @@ on:
       - v1.9.2\+RAI
       - dev
       - mmtk-support-moving-upstream
+      - v1.12.4\+RAI\+MMTK
 
 concurrency:
   # Cancels pending runs when a PR gets updated.
@@ -19,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       JULIA_REPO_DEFAULT: mmtk/julia
-      JULIA_REF_DEFAULT: mmtk-support-moving-upstream
+      JULIA_REF_DEFAULT: v1.12.4\+RAI\+MMTK
     outputs:
       julia_repo: ${{ steps.print.outputs.julia_repo }}
       julia_ref: ${{ steps.print.outputs.julia_ref }}
