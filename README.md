@@ -23,7 +23,7 @@ Below, we provide some instructions on how to build the mmtk-julia binding from 
 
 ### Checking out and Building Julia with MMTk
 
-If you'd like to try out Julia with MMTk, simply clone the Julia repository from https://github.com/JuliaLang/julia and create a `Make.user` file inside the `julia` folder containing `MMTK_PLAN=Immix`. This will automatically checkout the latest release of the mmtk-julia binding and link it while building Julia itself.
+If you'd like to try out Julia with MMTk, simply clone the Julia repository from https://github.com/JuliaLang/julia and create a `Make.user` file inside the `julia` folder containing `MMTK_PLAN=StickyImmix`. This will automatically checkout the latest release of the mmtk-julia binding and link it while building Julia itself.
 
 To build the binding from source, besides checking out this repository, it is also necessary to checkout a version of the Julia repository (https://github.com/JuliaLang/julia). We recommend checking out the latest master, but any commit after [this](https://github.com/JuliaLang/julia/commit/22134ca28e92df321bdd08502ddd86ad2d6d614f) should work.
 For example, we check out Julia as a sibling of `mmtk-julia`.
@@ -40,7 +40,7 @@ Your working directory/
 
 #### Build Julia binding in Rust
 
-Before building Julia, set `MMTK_JULIA_DIR` to the absolute path containing the binding's top-level directory. Run `make -C $MMTK_JULIA_DIR clean` to make sure you have a fresh version of the binding, and to force it to be built when building Julia. We currently only support a (non-moving) Immix implementation. We hope to add support for non-moving StickyImmix and the respective moving versions of both collectors in the near future. We also only support x86_64 Linux, more architectures should also be supported in the near future.
+Before building Julia, set `MMTK_JULIA_DIR` to the absolute path containing the binding's top-level directory. Run `make -C $MMTK_JULIA_DIR clean` to make sure you have a fresh version of the binding, and to force it to be built when building Julia. We currently only support (non-moving) `Immix`, and `StickyImmix` implementations. We hope to add the respective moving versions of both collectors in the near future. We also only support x86_64 Linux, more architectures should also be supported in the near future.
 For a release build with debugging information, first add `debug = true` under `[profile.release]` in `mmtk/Cargo.toml`.
 Make sure you have the prerequisites for building [MMTk](https://github.com/mmtk/mmtk-core#requirements).
 
@@ -51,7 +51,7 @@ To build Julia with MMTk using the version built in the previous step, first ens
 Next create a `Make.user` file in the top-level directory of the Julia repository consisting of the lines:
 
 ```
-MMTK_PLAN=Immix
+MMTK_PLAN=StickyImmix
 USE_BINARYBUILDER_MMTK_JULIA=0
 ```
 
@@ -66,7 +66,7 @@ Alternatively you can set the environment variables in your `Make.user`
 
 ```
 export MMTK_JULIA_DIR := <path-to-mmtk-julia>
-export MMTK_PLAN := Immix
+export MMTK_PLAN := StickyImmix
 ```
 
 If you would like to do a debug build of the binding, make sure to also set `MMTK_BUILD=debug` before building Julia.
