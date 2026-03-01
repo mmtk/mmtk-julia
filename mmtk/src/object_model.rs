@@ -19,12 +19,12 @@ pub struct VMObjectModel {}
 pub(crate) const LOGGING_SIDE_METADATA_SPEC: VMGlobalLogBitSpec = VMGlobalLogBitSpec::side_first();
 
 use mmtk::util::constants::LOG_MIN_OBJECT_SIZE;
-use mmtk::util::metadata::side_metadata::SideMetadataOffset;
 use mmtk::util::metadata::side_metadata::SideMetadataSpec;
+use mmtk::util::metadata::side_metadata::side_metadata_offset_after;
 pub(crate) const HASH_BITS_SPEC: SideMetadataSpec = SideMetadataSpec {
     name: "julia_hash_bits",
     is_global: true,
-    offset: SideMetadataOffset::layout_after(
+    offset: side_metadata_offset_after(
         LOGGING_SIDE_METADATA_SPEC.as_spec().extract_side_spec(),
     ),
     log_num_of_bits: 1,
