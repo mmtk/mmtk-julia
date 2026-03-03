@@ -57,6 +57,7 @@ extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
 
 // Write barriers
 extern void mmtk_memory_region_copy(MMTk_Mutator mutator, void* src_obj, void* src_addr, void* dst_obj, void* dst_addr, size_t size);
+extern void mmtk_object_reference_write_pre(MMTk_Mutator mutator, const void* src, const void* target);
 extern void mmtk_object_reference_write_post(MMTk_Mutator mutator, const void* src, const void* target);
 extern void mmtk_object_reference_write_slow(MMTk_Mutator mutator, const void* src, const void* target);
 extern const void* MMTK_SIDE_LOG_BIT_BASE_ADDRESS;
