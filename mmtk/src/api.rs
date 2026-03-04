@@ -44,6 +44,8 @@ pub extern "C" fn mmtk_gc_init(
             Some(PlanSelector::Immix)
         } else if cfg!(feature = "stickyimmix") {
             Some(PlanSelector::StickyImmix)
+        } else if cfg!(feature = "concurrentimmix") {
+            Some(PlanSelector::ConcurrentImmix)
         } else {
             None
         };
@@ -391,6 +393,21 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
         mmtk::util::metadata::MetadataSpec::OnSide(side) => side.bset_metadata(start, size),
         _ => unimplemented!(),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_object_reference_write_pre(
+    mutator: *mut Mutator<JuliaVM>,
+    src: ObjectReference,
+    target: NullableObjectReference,
+) {
+    let mutator = unsafe { &mut *mutator };
+    memory_manager::object_reference_write_pre(
+        mutator,
+        src,
+        crate::slots::JuliaVMSlot::Simple(mmtk::vm::slot::SimpleSlot::from_address(Address::ZERO)),
+        target.into(),
+    )
 }
 
 #[no_mangle]
