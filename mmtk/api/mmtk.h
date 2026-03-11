@@ -76,6 +76,9 @@ extern bool mmtk_will_never_move(void* object);
 extern bool mmtk_process(char* name, char* value);
 extern void mmtk_scan_region(void);
 extern void mmtk_handle_user_collection_request(void *tls, uint8_t collection);
+extern void mmtk_disable_collection(void);
+extern void mmtk_enable_collection(void);
+extern bool mmtk_is_collection_enabled(void);
 extern void mmtk_initialize_collection(void* tls);
 extern void mmtk_start_control_collector(void *tls);
 extern void mmtk_start_worker(void *tls, void* worker, void* mmtk);
@@ -123,4 +126,3 @@ extern void* MMTK_SIDE_VO_BIT_BASE_ADDRESS;
 #endif
 
 #endif // MMTK_H
-

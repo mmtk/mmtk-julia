@@ -3,7 +3,7 @@
 use crate::JuliaVM;
 use crate::JULIA_HEADER_SIZE;
 use crate::SINGLETON;
-use crate::{BUILDER, DISABLED_GC, MUTATORS, USER_TRIGGERED_GC};
+use crate::{BUILDER, MUTATORS, USER_TRIGGERED_GC};
 
 use libc::c_char;
 use log::*;
@@ -16,7 +16,7 @@ use mmtk::AllocationSemantics;
 use mmtk::Mutator;
 use std::ffi::CStr;
 use std::sync::atomic::AtomicIsize;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[no_mangle]
 pub extern "C" fn mmtk_gc_init(
@@ -279,7 +279,7 @@ pub extern "C" fn mmtk_is_mapped_address(address: Address) -> bool {
 #[no_mangle]
 pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread, collection: u8) {
     AtomicIsize::fetch_add(&USER_TRIGGERED_GC, 1, Ordering::SeqCst);
-    if AtomicBool::load(&DISABLED_GC, Ordering::SeqCst) {
+    if !memory_manager::is_collection_enabled(&SINGLETON) {
         AtomicIsize::fetch_add(&USER_TRIGGERED_GC, -1, Ordering::SeqCst);
         return;
     }
@@ -293,6 +293,21 @@ pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread, coll
         2 => SINGLETON.handle_user_collection_request(tls, true, false),
         _ => unreachable!(),
     };
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_disable_collection() {
+    memory_manager::disable_collection(&SINGLETON);
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_enable_collection() {
+    memory_manager::enable_collection(&SINGLETON);
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_is_collection_enabled() -> bool {
+    memory_manager::is_collection_enabled(&SINGLETON)
 }
 
 #[no_mangle]
