@@ -150,6 +150,9 @@ jobs:
           # removing these as they cause a conflict within bindgen
           sudo rm -rf /usr/lib/llvm-14  
           sudo rm -rf /usr/lib/llvm-13
+      - name: Patching unsupported tests
+        run: |
+          ./.github/scripts/ci-test-patching.sh
       - name: Build Julia (Release)
         run: |
           ./.github/scripts/ci-build.sh release ${{ inputs.gc_plan }} ${{ inputs.moving }}

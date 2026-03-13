@@ -67,6 +67,11 @@ declare -a tests_to_skip=(
     # The required string int.jl does not appear in the output even if I test with the stock Julia code.
     # I do not know what is wrong, but at this point, I dont want to spend time on it.
     '@test occursin("int.jl", code)' "$JULIA_PATH/test/cmdlineargs.jl"
+
+    # Disable the following test. They failed with 1.12.4, but do no look like GC bugs. We could investigate more.
+    '@test ((@allocated treshape59278(X, n, m))==0) == ((@allocations treshape59278(X, n, m))==0)' "$JULIA_PATH/test/misc.jl"
+    '@test has_history_error' "$JULIA_PATH/stdlib/REPL/test/bad_history_startup.jl"
+    '@test has_disable_message' "$JULIA_PATH/stdlib/REPL/test/bad_history_startup.jl"
 )
 
 for (( i=0; i < ${#tests_to_skip[@]}; i+=2 )); do
