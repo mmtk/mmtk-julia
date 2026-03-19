@@ -535,6 +535,26 @@ pub extern "C" fn mmtk_is_pinned(_object: ObjectReference) -> bool {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_set_concurrent_marking_enabled(enabled: bool) {
+    #[cfg(feature = "concurrentimmix")]
+    {
+        let mut builder = BUILDER.lock().unwrap();
+        let success = builder
+            .options
+            .concurrent_immix_disable_concurrent_marking
+            .set(!enabled);
+        assert!(
+            success,
+            "Failed to set concurrent_immix_disable_concurrent_marking"
+        );
+    }
+    #[cfg(not(feature = "concurrentimmix"))]
+    {
+        let _ = enabled;
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn get_mmtk_version() -> *const c_char {
     crate::build_info::MMTK_JULIA_FULL_VERSION_STRING
         .as_c_str()
