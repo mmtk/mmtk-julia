@@ -33,6 +33,8 @@ else
     MOVING=0
 fi
 
+export RUST_LOG=off
+
 cd $JULIA_PATH
 # Clean first
 make cleanall
