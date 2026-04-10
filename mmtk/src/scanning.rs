@@ -194,7 +194,7 @@ impl Scanning<JuliaVM> for VMScanning {
         let sweep_vm_specific_work = SweepVMSpecific::new();
         memory_manager::add_work_packet(
             &SINGLETON,
-            WorkBucketStage::VMRefClosure,
+            WorkBucketStage::Release, // This has to happen after VMRefClosure.
             sweep_vm_specific_work,
         );
 
