@@ -31,6 +31,10 @@ pub extern "C" fn mmtk_gc_init(
         crate::JULIA_BUFF_TAG = buffer_tag;
     };
 
+    // We don't need the env var, as we will overwrite the plan with the defined feature.
+    // Besides we may use a plan like StickyImmixPreWrite which doesn not exist in mmtk-core.
+    std::env::remove_var("MMTK_PLAN");
+
     {
         let mut builder = BUILDER.lock().unwrap();
 
@@ -43,6 +47,10 @@ pub extern "C" fn mmtk_gc_init(
         } else if cfg!(feature = "immix") {
             Some(PlanSelector::Immix)
         } else if cfg!(feature = "stickyimmix") {
+            Some(PlanSelector::StickyImmix)
+        } else if cfg!(feature = "concurrentimmix") {
+            Some(PlanSelector::ConcurrentImmix)
+        } else if cfg!(feature = "stickyimmix_prewrite") {
             Some(PlanSelector::StickyImmix)
         } else {
             None
@@ -348,7 +356,7 @@ pub extern "C" fn mmtk_set_vm_space(start: Address, size: usize) {
     let mmtk_mut: &mut mmtk::MMTK<JuliaVM> = unsafe { std::mem::transmute(mmtk) };
     memory_manager::set_vm_space(mmtk_mut, start, size);
 
-    #[cfg(feature = "stickyimmix")]
+    #[cfg(any(feature = "stickyimmix", feature = "stickyimmix_prewrite"))]
     set_side_log_bit_for_region(start, size);
 }
 
@@ -379,11 +387,11 @@ pub extern "C" fn mmtk_memory_region_copy(
 #[no_mangle]
 #[allow(unused_variables)] // Args are only used for sticky immix.
 pub extern "C" fn mmtk_immortal_region_post_alloc(start: Address, size: usize) {
-    #[cfg(feature = "stickyimmix")]
+    #[cfg(any(feature = "stickyimmix", feature = "stickyimmix_prewrite"))]
     set_side_log_bit_for_region(start, size);
 }
 
-#[cfg(feature = "stickyimmix")]
+#[cfg(any(feature = "stickyimmix", feature = "stickyimmix_prewrite"))]
 fn set_side_log_bit_for_region(start: Address, size: usize) {
     debug!("Bulk set {} to {} ({} bytes)", start, start + size, size);
     use crate::mmtk::vm::ObjectModel;
@@ -391,6 +399,21 @@ fn set_side_log_bit_for_region(start: Address, size: usize) {
         mmtk::util::metadata::MetadataSpec::OnSide(side) => side.bset_metadata(start, size),
         _ => unimplemented!(),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_object_reference_write_pre(
+    mutator: *mut Mutator<JuliaVM>,
+    src: ObjectReference,
+    target: NullableObjectReference,
+) {
+    let mutator = unsafe { &mut *mutator };
+    memory_manager::object_reference_write_pre(
+        mutator,
+        src,
+        crate::slots::JuliaVMSlot::Simple(mmtk::vm::slot::SimpleSlot::from_address(Address::ZERO)),
+        target.into(),
+    )
 }
 
 #[no_mangle]
@@ -515,6 +538,26 @@ pub extern "C" fn mmtk_unpin_object(_object: ObjectReference) -> bool {
 #[no_mangle]
 pub extern "C" fn mmtk_is_pinned(_object: ObjectReference) -> bool {
     false
+}
+
+#[no_mangle]
+pub extern "C" fn mmtk_set_concurrent_marking_enabled(enabled: bool) {
+    #[cfg(feature = "concurrentimmix")]
+    {
+        let mut builder = BUILDER.lock().unwrap();
+        let success = builder
+            .options
+            .concurrent_immix_disable_concurrent_marking
+            .set(!enabled);
+        assert!(
+            success,
+            "Failed to set concurrent_immix_disable_concurrent_marking"
+        );
+    }
+    #[cfg(not(feature = "concurrentimmix"))]
+    {
+        let _ = enabled;
+    }
 }
 
 #[no_mangle]

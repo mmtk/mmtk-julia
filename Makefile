@@ -25,6 +25,10 @@ ifeq (${MMTK_PLAN},Immix)
 CARGO_FEATURES = immix
 else ifeq (${MMTK_PLAN},StickyImmix)
 CARGO_FEATURES = stickyimmix
+else ifeq (${MMTK_PLAN},ConcurrentImmix)
+CARGO_FEATURES = concurrentimmix
+else ifeq (${MMTK_PLAN},StickyImmixPreWrite)
+CARGO_FEATURES = stickyimmix_prewrite
 else
 $(error "Unsupported MMTk plan: $(MMTK_PLAN)")
 endif
