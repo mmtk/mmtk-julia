@@ -46,6 +46,8 @@ pub extern "C" fn mmtk_gc_init(
             Some(PlanSelector::StickyImmix)
         } else if cfg!(feature = "concurrentimmix") {
             Some(PlanSelector::ConcurrentImmix)
+        } else if cfg!(feature = "stickyimmix_prewrite") {
+            Some(PlanSelector::StickyImmix)
         } else {
             None
         };
@@ -350,7 +352,7 @@ pub extern "C" fn mmtk_set_vm_space(start: Address, size: usize) {
     let mmtk_mut: &mut mmtk::MMTK<JuliaVM> = unsafe { std::mem::transmute(mmtk) };
     memory_manager::set_vm_space(mmtk_mut, start, size);
 
-    #[cfg(feature = "stickyimmix")]
+    #[cfg(any(feature = "stickyimmix", feature = "stickyimmix_prewrite"))]
     set_side_log_bit_for_region(start, size);
 }
 
@@ -381,11 +383,11 @@ pub extern "C" fn mmtk_memory_region_copy(
 #[no_mangle]
 #[allow(unused_variables)] // Args are only used for sticky immix.
 pub extern "C" fn mmtk_immortal_region_post_alloc(start: Address, size: usize) {
-    #[cfg(feature = "stickyimmix")]
+    #[cfg(any(feature = "stickyimmix", feature = "stickyimmix_prewrite"))]
     set_side_log_bit_for_region(start, size);
 }
 
-#[cfg(feature = "stickyimmix")]
+#[cfg(any(feature = "stickyimmix", feature = "stickyimmix_prewrite"))]
 fn set_side_log_bit_for_region(start: Address, size: usize) {
     debug!("Bulk set {} to {} ({} bytes)", start, start + size, size);
     use crate::mmtk::vm::ObjectModel;
