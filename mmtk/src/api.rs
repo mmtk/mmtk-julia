@@ -31,6 +31,10 @@ pub extern "C" fn mmtk_gc_init(
         crate::JULIA_BUFF_TAG = buffer_tag;
     };
 
+    // We don't need the env var, as we will overwrite the plan with the defined feature.
+    // Besides we may use a plan like StickyImmixPreWrite which doesn not exist in mmtk-core.
+    std::env::remove_var("MMTK_PLAN");
+
     {
         let mut builder = BUILDER.lock().unwrap();
 
