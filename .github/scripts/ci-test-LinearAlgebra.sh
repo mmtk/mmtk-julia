@@ -17,7 +17,7 @@ num_workers=1
 export JULIA_TEST_MAXRSS_MB=$((total_mem_restricted/ num_workers))
 
 # Allow larger heap size for this test.
-export MMTK_MAX_HSIZE_G=15
+export MMTK_MAX_HSIZE_G=16
 
 echo "-> Run single threaded"
 ci_run_jl_test "LinearAlgebra" $num_workers
