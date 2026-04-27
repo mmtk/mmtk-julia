@@ -95,6 +95,30 @@ impl Scanning<JuliaVM> for VMScanning {
         root_scan_task(ptls.current_task as *mut _jl_task_t, true);
         root_scan_task(ptls.next_task, true);
         root_scan_task(ptls.previous_task, true);
+
+        // For concurrent Immix, take a snapshot of the stack here.
+        #[cfg(feature = "concurrentimmix")]
+        {
+            let snapshot_gc_stack_roots = |task: *const _jl_task_t| {
+                if !task.is_null() {
+                    let mut snapshot_roots = SlotBuffer { buffer: vec![] };
+                    unsafe {
+                        crate::julia_scanning::mmtk_scan_gcstack(task, &mut snapshot_roots);
+                    }
+                    log::info!("Took snapshot of stack roots for task {:?}, num roots = {}", task, snapshot_roots.buffer.len());
+                    GC_STACK_SNAPSHOTS.insert_snapshot(task, snapshot_roots.buffer);
+                }
+            };
+            let mut i = 0;
+            while i < ptls.gc_tls_common.heap.all_tasks.len {
+                let mut task_address = Address::from_ptr(ptls.gc_tls_common.heap.all_tasks.items);
+                task_address = task_address.shift::<Address>(i as isize);
+                let task = unsafe { task_address.load::<*const jl_task_t>() };
+                snapshot_gc_stack_roots(task);
+                i += 1;
+            }
+        }
+
         if !ptls.previous_exception.is_null() {
             node_buffer.push(unsafe {
                 // unsafe: We have just checked `ptls.previous_exception` is not null.
@@ -245,5 +269,47 @@ impl<C: ObjectTracerContext<JuliaVM>> GCWork<JuliaVM> for ScanFinalizersSingleTh
         self.tracer_context.with_tracer(worker, |tracer| {
             crate::julia_finalizer::scan_finalizers_in_rust(tracer);
         });
+    }
+}
+
+lazy_static! {
+    pub static ref GC_STACK_SNAPSHOTS: GCStackSnapshots = GCStackSnapshots::new();
+}
+
+use std::collections::HashMap;
+use std::cell::UnsafeCell;
+use std::sync::Mutex;
+use crate::julia_types::_jl_task_t;
+pub struct GCStackSnapshots {
+    lock: Mutex<()>,
+    snapshots: UnsafeCell<HashMap<*const _jl_task_t, Vec<ObjectReference>>>,
+}
+
+unsafe impl Sync for GCStackSnapshots {}
+
+impl GCStackSnapshots {
+    fn new() -> Self {
+        Self {
+            lock: Mutex::new(()),
+            snapshots: UnsafeCell::new(HashMap::new()),
+        }
+    }
+
+    pub fn insert_snapshot(&self, task: *const _jl_task_t, snapshot: Vec<ObjectReference>) {
+        let _guard = self.lock.lock().unwrap();
+        unsafe {
+            (*self.snapshots.get()).insert(task, snapshot);
+        }
+    }
+
+    pub fn get_snapshot_unsafe(&self, task: *const _jl_task_t) -> Option<&Vec<ObjectReference>> {
+        unsafe { (*self.snapshots.get()).get(&task) }
+    }
+
+    pub fn clear_snapshots(&self) {
+        let _guard = self.lock.lock().unwrap();
+        unsafe {
+            (*self.snapshots.get()).clear();
+        }
     }
 }
