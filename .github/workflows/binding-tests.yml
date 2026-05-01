@@ -28,6 +28,8 @@ jobs:
           # removing these as they cause a conflict within bindgen
           sudo rm -rf /usr/lib/llvm-14
           sudo rm -rf /usr/lib/llvm-13
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
       - name: Build Julia (Debug)
         run: |
           ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
