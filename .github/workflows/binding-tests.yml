@@ -19,7 +19,6 @@ on:
 jobs:
   build-debug:
     runs-on: ubuntu-22.04
-    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v2
       - name: Setup environments
@@ -30,9 +29,6 @@ jobs:
           sudo rm -rf /usr/lib/llvm-14
           sudo rm -rf /usr/lib/llvm-13
       - name: Build Julia (Debug)
-        env:
-          # Dump stacks after 5h30m, before the 6h job timeout.
-          CI_STACK_DUMP_AFTER_SECS: 19800
         run: |
           ./.github/scripts/ci-build.sh debug ${{ inputs.gc_plan }} ${{ inputs.moving }}
       - name: Print Julia version info

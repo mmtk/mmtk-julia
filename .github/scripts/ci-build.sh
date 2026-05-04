@@ -1,7 +1,6 @@
 set -xe
 
 . $(dirname "$0")/common.sh
-. $(dirname "$0")/ci-stack-dump-watchdog.sh
 
 # Need a build_type argument
 if [ $# -eq 0 ]
