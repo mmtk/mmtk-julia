@@ -169,6 +169,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
 
             let ta = obj.to_ptr::<jl_task_t>();
 
+            #[cfg(feature = "concurrentimmix")]
             if crate::collection::CONCURRENT_MARKING_ACTIVE.load(Ordering::SeqCst) {
                 // For concurrent marking, we cannot the stack of the task, as it's being pushed/popped
                 // so the slots will be invalidated when the stacks are modified.
@@ -187,6 +188,8 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             } else {
                 mmtk_scan_gcstack(ta, closure);
             }
+            #[cfg(not(feature = "concurrentimmix"))]
+            mmtk_scan_gcstack(ta, closure);
 
             let layout = (*jl_task_type).layout;
             debug_assert!((*layout).fielddesc_type_custom() == 0);
