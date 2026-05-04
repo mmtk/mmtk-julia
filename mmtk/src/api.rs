@@ -451,6 +451,10 @@ pub extern "C" fn mmtk_object_reference_write_slow(
     );
 }
 
+/// Runtime base address for Julia's side log bit metadata fast path.
+#[no_mangle]
+pub static mut MMTK_SIDE_LOG_BIT_BASE_ADDRESS: Address = Address::ZERO;
+
 #[no_mangle]
 pub extern "C" fn mmtk_object_is_managed_by_mmtk(addr: usize) -> bool {
     crate::api::mmtk_is_mapped_address(unsafe { Address::from_usize(addr) })
