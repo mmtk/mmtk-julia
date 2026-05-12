@@ -146,7 +146,7 @@ impl Collection<JuliaVM> for VMCollection {
 
     fn create_gc_trigger() -> Box<dyn GCTriggerPolicy<JuliaVM>> {
         use crate::gc_trigger::*;
-        use mmtk::util::os::{OS, OSMemory};
+        use mmtk::util::os::{OSMemory, OS};
         // max_memory can be unrealistically large if no heap size hint is set for Julia, e.g. 2PB for 64 bits.
         // We want to set MMTk's heap size to a more reasonable value.
         let max_memory = unsafe { jl_gc_get_max_memory() };
