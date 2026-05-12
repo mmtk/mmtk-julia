@@ -33,7 +33,9 @@ else
     MOVING=0
 fi
 
-export RUST_LOG=off
+# Just use default herustics.
+unset MMTK_MIN_HSIZE_G
+unset MMTK_MAX_HSIZE_G
 
 cd $JULIA_PATH
 # Clean first
