@@ -428,7 +428,6 @@ pub extern "C" fn mmtk_object_reference_write_slow(
     );
 }
 
-
 #[no_mangle]
 pub extern "C" fn mmtk_object_is_managed_by_mmtk(addr: usize) -> bool {
     crate::api::mmtk_is_mapped_address(unsafe { Address::from_usize(addr) })
