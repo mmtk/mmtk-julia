@@ -183,6 +183,26 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
 
             let ta = obj.to_ptr::<jl_task_t>();
 
+            #[cfg(feature = "concurrentimmix")]
+            if crate::collection::CONCURRENT_MARKING_ACTIVE.load(Ordering::SeqCst) {
+                // For concurrent marking, we cannot the stack of the task, as it's being pushed/popped
+                // so the slots will be invalidated when the stacks are modified.
+                // Instead we use a snapshot we got earlier in the initial pause
+                match crate::scanning::GC_STACK_SNAPSHOTS
+                    .get_snapshot_unsafe(ta)
+                {
+                    Some(snapshot) => {
+                        snapshot.iter().for_each(|slot| process_slot(closure, Address::from_ptr(slot as *const _)));
+                    }
+                    None => {
+                        // The task is not in the snapshots, it must be newly allocated and marked alive.
+                        assert!(ObjectReference::from_raw_address(obj).unwrap().is_live(), "Task {:?} is not in the snapshot and is not alive, which should be impossible", ta);
+                    }
+                }
+            } else {
+                mmtk_scan_gcstack(ta, closure);
+            }
+            #[cfg(not(feature = "concurrentimmix"))]
             mmtk_scan_gcstack(ta, closure);
 
             let layout = (*jl_task_type).layout;
@@ -389,6 +409,9 @@ pub unsafe fn mmtk_scan_gcstack<EV: SlotVisitor<JuliaVMSlot>>(
     ta: *const jl_task_t,
     closure: &mut EV,
 ) {
+    #[cfg(feature = "concurrentimmix")]
+    assert!(!crate::collection::CONCURRENT_MARKING_ACTIVE.load(Ordering::SeqCst), "mmtk_scan_gcstack should not be called when concurrent marking is active");
+
     let stkbuf = (*ta).ctx.stkbuf;
     let copy_stack = (*ta).ctx.copy_stack_custom();
 

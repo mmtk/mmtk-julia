@@ -27,7 +27,7 @@ lazy_static = "1.1"
 # - change branch
 # - change repo name
 # But other changes including adding/removing whitespaces in commented lines may break the CI
-mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "37d81218028d788f7a24158aac0588c3f6925d08" }
+mmtk = { git = "https://github.com/mmtk/mmtk-core.git", rev = "c46f340b18917bceee812c0e59920d2faf98f3d2" }
 # Uncomment the following to build locally
 # mmtk = { path = "../repos/mmtk-core" }
 log = {version = "0.4", features = ["max_level_trace", "release_max_level_off"] }
@@ -46,6 +46,8 @@ default = ["mmtk/vm_space", "julia_copy_stack", "object_pinning"]
 nogc = []
 immix = []
 stickyimmix = ["mmtk/sticky_immix_non_moving_nursery", "mmtk/immix_smaller_block", "mmtk/set_unlog_bits_vm_space"]
+stickyimmix_prewrite = ["mmtk/sticky_immix_non_moving_nursery", "mmtk/immix_smaller_block", "mmtk/set_unlog_bits_vm_space"]
+concurrentimmix = ["mmtk/immix_smaller_block", "mmtk/set_unlog_bits_vm_space"]
 marksweep = []
 object_pinning = ["mmtk/object_pinning"]
 
