@@ -105,7 +105,11 @@ impl Scanning<JuliaVM> for VMScanning {
                     unsafe {
                         crate::julia_scanning::mmtk_scan_gcstack(task, &mut snapshot_roots);
                     }
-                    log::info!("Took snapshot of stack roots for task {:?}, num roots = {}", task, snapshot_roots.buffer.len());
+                    log::info!(
+                        "Took snapshot of stack roots for task {:?}, num roots = {}",
+                        task,
+                        snapshot_roots.buffer.len()
+                    );
                     GC_STACK_SNAPSHOTS.insert_snapshot(task, snapshot_roots.buffer);
                 }
             };
@@ -276,10 +280,10 @@ lazy_static! {
     pub static ref GC_STACK_SNAPSHOTS: GCStackSnapshots = GCStackSnapshots::new();
 }
 
-use std::collections::HashMap;
-use std::cell::UnsafeCell;
-use std::sync::Mutex;
 use crate::julia_types::_jl_task_t;
+use std::cell::UnsafeCell;
+use std::collections::HashMap;
+use std::sync::Mutex;
 pub struct GCStackSnapshots {
     lock: Mutex<()>,
     snapshots: UnsafeCell<HashMap<*const _jl_task_t, Vec<ObjectReference>>>,
