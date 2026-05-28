@@ -11,6 +11,7 @@ use mmtk::vm::Scanning;
 use mmtk::vm::SlotVisitor;
 use mmtk::vm::VMBinding;
 use mmtk::Mutator;
+use mmtk::MutatorContext;
 use mmtk::MMTK;
 
 use crate::jl_gc_mmtk_sweep_malloced_memory;
@@ -174,6 +175,12 @@ impl Scanning<JuliaVM> for VMScanning {
         for nodes in node_buffer.chunks(CAPACITY_PER_PACKET).map(|c| c.to_vec()) {
             factory.create_process_pinning_roots_work(nodes);
         }
+
+        // Flush per-mutator barrier/remset buffers before this scan packet is considered done.
+        // mmtk-core will be moving this responsibility to the binding (see Task 2 of the plan).
+        // For now we double-flush; that's safe because flush is idempotent (drains an empty
+        // buffer the second time).
+        mutator.flush();
     }
 
     fn scan_vm_specific_roots(
