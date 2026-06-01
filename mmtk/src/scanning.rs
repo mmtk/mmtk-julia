@@ -177,10 +177,28 @@ impl Scanning<JuliaVM> for VMScanning {
         }
 
         // Flush per-mutator barrier/remset buffers before this scan packet is considered done.
-        // mmtk-core will be moving this responsibility to the binding (see Task 2 of the plan).
-        // For now we double-flush; that's safe because flush is idempotent (drains an empty
-        // buffer the second time).
+        // mmtk-core's ScanMutatorRoots no longer flushes on the binding's behalf; this is the
+        // canonical flush. Required before any per-mutator early release happens.
         mutator.flush();
+
+        // Incremental stack snapshots: release this mutator individually so it can
+        // resume execution before sibling mutators have finished being scanned.
+        //
+        // Correctness: this mutator's roots are already published to the factory
+        // and its barrier buffers have been flushed above, so its snapshot is
+        // finalized in the mark queue. SATB barriers cover any subsequent heap
+        // writes by this mutator. Sibling mutators that are still parked remain
+        // unaffected by this thread's release.
+        //
+        // SAFETY: mutator.mutator_tls wraps the ptls pointer for this mutator.
+        // jl_gc_mmtk_release_mutator sets the per-ptls gc_early_release flag
+        // and broadcasts the safepoint condvar; the target thread observes the
+        // flag on its next condvar wakeup and exits jl_safepoint_wait_gc
+        // independently of jl_gc_running.
+        let ptls_addr: Address = unsafe { std::mem::transmute(mutator.mutator_tls) };
+        unsafe {
+            crate::jl_gc_mmtk_release_mutator(ptls_addr);
+        }
     }
 
     fn scan_vm_specific_roots(
