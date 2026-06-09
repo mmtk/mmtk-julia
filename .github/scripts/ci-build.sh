@@ -33,6 +33,10 @@ else
     MOVING=0
 fi
 
+# Just use default herustics.
+unset MMTK_MIN_HSIZE_G
+unset MMTK_MAX_HSIZE_G
+
 cd $JULIA_PATH
 # Clean first
 make cleanall

@@ -2164,9 +2164,20 @@ pub const jl_small_typeof_tags_jl_uint64_tag: jl_small_typeof_tags = 21;
 pub const jl_small_typeof_tags_jl_uint8_tag: jl_small_typeof_tags = 22;
 pub const jl_small_typeof_tags_jl_addrspacecore_tag: jl_small_typeof_tags = 23;
 pub const jl_small_typeof_tags_jl_intrinsic_tag: jl_small_typeof_tags = 24;
-pub const jl_small_typeof_tags_jl_slotnumber_tag: jl_small_typeof_tags = 25;
-pub const jl_small_typeof_tags_jl_ssavalue_tag: jl_small_typeof_tags = 26;
-pub const jl_small_typeof_tags_jl_tags_count: jl_small_typeof_tags = 27;
+pub const jl_small_typeof_tags_jl_argument_tag: jl_small_typeof_tags = 25;
+pub const jl_small_typeof_tags_jl_slotnumber_tag: jl_small_typeof_tags = 26;
+pub const jl_small_typeof_tags_jl_ssavalue_tag: jl_small_typeof_tags = 27;
+pub const jl_small_typeof_tags_jl_gotoifnot_tag: jl_small_typeof_tags = 28;
+pub const jl_small_typeof_tags_jl_returnnode_tag: jl_small_typeof_tags = 29;
+pub const jl_small_typeof_tags_jl_enternode_tag: jl_small_typeof_tags = 30;
+pub const jl_small_typeof_tags_jl_pinode_tag: jl_small_typeof_tags = 31;
+pub const jl_small_typeof_tags_jl_phinode_tag: jl_small_typeof_tags = 32;
+pub const jl_small_typeof_tags_jl_phicnode_tag: jl_small_typeof_tags = 33;
+pub const jl_small_typeof_tags_jl_upsilonnode_tag: jl_small_typeof_tags = 34;
+pub const jl_small_typeof_tags_jl_globalref_tag: jl_small_typeof_tags = 35;
+pub const jl_small_typeof_tags_jl_gotonode_tag: jl_small_typeof_tags = 36;
+pub const jl_small_typeof_tags_jl_quotenode_tag: jl_small_typeof_tags = 37;
+pub const jl_small_typeof_tags_jl_tags_count: jl_small_typeof_tags = 38;
 pub const jl_small_typeof_tags_jl_bitstags_first: jl_small_typeof_tags = 14;
 pub const jl_small_typeof_tags_jl_max_tags: jl_small_typeof_tags = 64;
 pub type jl_small_typeof_tags = ::std::os::raw::c_uint;
@@ -2191,15 +2202,15 @@ pub struct _jl_handler_t {
     pub gcstack: *mut jl_gcframe_t,
     pub scope: *mut jl_value_t,
     pub prev: *mut _jl_handler_t,
-    pub gc_state: i8,
     pub locks_len: usize,
-    pub defer_signal: sig_atomic_t,
     pub timing_stack: *mut jl_timing_block_t,
     pub world_age: usize,
+    pub defer_signal: sig_atomic_t,
+    pub gc_state: i8,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _jl_handler_t"][::std::mem::size_of::<_jl_handler_t>() - 264usize];
+    ["Size of _jl_handler_t"][::std::mem::size_of::<_jl_handler_t>() - 256usize];
     ["Alignment of _jl_handler_t"][::std::mem::align_of::<_jl_handler_t>() - 8usize];
     ["Offset of field: _jl_handler_t::eh_ctx"]
         [::std::mem::offset_of!(_jl_handler_t, eh_ctx) - 0usize];
@@ -2209,16 +2220,16 @@ const _: () = {
         [::std::mem::offset_of!(_jl_handler_t, scope) - 208usize];
     ["Offset of field: _jl_handler_t::prev"]
         [::std::mem::offset_of!(_jl_handler_t, prev) - 216usize];
-    ["Offset of field: _jl_handler_t::gc_state"]
-        [::std::mem::offset_of!(_jl_handler_t, gc_state) - 224usize];
     ["Offset of field: _jl_handler_t::locks_len"]
-        [::std::mem::offset_of!(_jl_handler_t, locks_len) - 232usize];
-    ["Offset of field: _jl_handler_t::defer_signal"]
-        [::std::mem::offset_of!(_jl_handler_t, defer_signal) - 240usize];
+        [::std::mem::offset_of!(_jl_handler_t, locks_len) - 224usize];
     ["Offset of field: _jl_handler_t::timing_stack"]
-        [::std::mem::offset_of!(_jl_handler_t, timing_stack) - 248usize];
+        [::std::mem::offset_of!(_jl_handler_t, timing_stack) - 232usize];
     ["Offset of field: _jl_handler_t::world_age"]
-        [::std::mem::offset_of!(_jl_handler_t, world_age) - 256usize];
+        [::std::mem::offset_of!(_jl_handler_t, world_age) - 240usize];
+    ["Offset of field: _jl_handler_t::defer_signal"]
+        [::std::mem::offset_of!(_jl_handler_t, defer_signal) - 248usize];
+    ["Offset of field: _jl_handler_t::gc_state"]
+        [::std::mem::offset_of!(_jl_handler_t, gc_state) - 252usize];
 };
 #[repr(C)]
 #[derive(Copy, Clone)]

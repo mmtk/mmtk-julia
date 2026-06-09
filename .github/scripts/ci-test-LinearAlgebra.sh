@@ -10,12 +10,15 @@ plan=$1
 
 export MMTK_PLAN=$plan
 
-export MMTK_MAX_HSIZE_G=8
 total_mem=$(free -m | awk '/^Mem:/ {print $2}')
 mem_threshold=512 # use 0.5Gb as a threshold for the max rss based on the total free memory
 total_mem_restricted=$((total_mem- mem_threshold))
-num_workers=2
+num_workers=1
 export JULIA_TEST_MAXRSS_MB=$((total_mem_restricted/ num_workers))
 
+# Just use default herustics.
+unset MMTK_MIN_HSIZE_G
+unset MMTK_MAX_HSIZE_G
+
 echo "-> Run single threaded"
-ci_run_jl_test "LinearAlgebra" 2
+ci_run_jl_test "LinearAlgebra" $num_workers
