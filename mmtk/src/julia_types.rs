@@ -754,13 +754,13 @@ impl _jl_taggedvalue_bits {
     }
     #[inline]
     pub fn in_image(&self) -> usize {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(2usize, 1u8) as u64) }
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(2usize, 2u8) as u64) }
     }
     #[inline]
     pub fn set_in_image(&mut self, val: usize) {
         unsafe {
             let val: u64 = ::std::mem::transmute(val);
-            self._bitfield_1.set(2usize, 1u8, val as u64)
+            self._bitfield_1.set(2usize, 2u8, val as u64)
         }
     }
     #[inline]
@@ -769,7 +769,7 @@ impl _jl_taggedvalue_bits {
             ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 8usize]>>::raw_get(
                 ::std::ptr::addr_of!((*this)._bitfield_1),
                 2usize,
-                1u8,
+                2u8,
             ) as u64)
         }
     }
@@ -780,40 +780,7 @@ impl _jl_taggedvalue_bits {
             <__BindgenBitfieldUnit<[u8; 8usize]>>::raw_set(
                 ::std::ptr::addr_of_mut!((*this)._bitfield_1),
                 2usize,
-                1u8,
-                val as u64,
-            )
-        }
-    }
-    #[inline]
-    pub fn unused(&self) -> usize {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(3usize, 1u8) as u64) }
-    }
-    #[inline]
-    pub fn set_unused(&mut self, val: usize) {
-        unsafe {
-            let val: u64 = ::std::mem::transmute(val);
-            self._bitfield_1.set(3usize, 1u8, val as u64)
-        }
-    }
-    #[inline]
-    pub unsafe fn unused_raw(this: *const Self) -> usize {
-        unsafe {
-            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 8usize]>>::raw_get(
-                ::std::ptr::addr_of!((*this)._bitfield_1),
-                3usize,
-                1u8,
-            ) as u64)
-        }
-    }
-    #[inline]
-    pub unsafe fn set_unused_raw(this: *mut Self, val: usize) {
-        unsafe {
-            let val: u64 = ::std::mem::transmute(val);
-            <__BindgenBitfieldUnit<[u8; 8usize]>>::raw_set(
-                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
-                3usize,
-                1u8,
+                2u8,
                 val as u64,
             )
         }
@@ -855,7 +822,6 @@ impl _jl_taggedvalue_bits {
     pub fn new_bitfield_1(
         gc: usize,
         in_image: usize,
-        unused: usize,
         tag: usize,
     ) -> __BindgenBitfieldUnit<[u8; 8usize]> {
         let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 8usize]> = Default::default();
@@ -863,13 +829,9 @@ impl _jl_taggedvalue_bits {
             let gc: u64 = unsafe { ::std::mem::transmute(gc) };
             gc as u64
         });
-        __bindgen_bitfield_unit.set(2usize, 1u8, {
+        __bindgen_bitfield_unit.set(2usize, 2u8, {
             let in_image: u64 = unsafe { ::std::mem::transmute(in_image) };
             in_image as u64
-        });
-        __bindgen_bitfield_unit.set(3usize, 1u8, {
-            let unused: u64 = unsafe { ::std::mem::transmute(unused) };
-            unused as u64
         });
         __bindgen_bitfield_unit.set(4usize, 60u8, {
             let tag: u64 = unsafe { ::std::mem::transmute(tag) };
@@ -2177,7 +2139,8 @@ pub const jl_small_typeof_tags_jl_upsilonnode_tag: jl_small_typeof_tags = 34;
 pub const jl_small_typeof_tags_jl_globalref_tag: jl_small_typeof_tags = 35;
 pub const jl_small_typeof_tags_jl_gotonode_tag: jl_small_typeof_tags = 36;
 pub const jl_small_typeof_tags_jl_quotenode_tag: jl_small_typeof_tags = 37;
-pub const jl_small_typeof_tags_jl_tags_count: jl_small_typeof_tags = 38;
+pub const jl_small_typeof_tags_jl_typeeq_tag: jl_small_typeof_tags = 38;
+pub const jl_small_typeof_tags_jl_tags_count: jl_small_typeof_tags = 39;
 pub const jl_small_typeof_tags_jl_bitstags_first: jl_small_typeof_tags = 14;
 pub const jl_small_typeof_tags_jl_max_tags: jl_small_typeof_tags = 64;
 pub type jl_small_typeof_tags = ::std::os::raw::c_uint;
