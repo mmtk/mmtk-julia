@@ -332,6 +332,17 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
     }
 
     if vt == jl_weakref_type {
+        #[cfg(feature = "concurrentimmix")]
+        if crate::collection::CONCURRENT_MARKING_ACTIVE.load(Ordering::SeqCst) {
+            // Treat weak ref as strong
+            let wr = obj.to_ptr::<jl_weakref_t>();
+            let slot = Address::from_ptr(std::ptr::addr_of!((*wr).value));
+            process_slot(closure, slot);
+            return;
+        } else {
+            return;
+        }
+        #[cfg(not(feature = "concurrentimmix"))]
         return;
     }
 
