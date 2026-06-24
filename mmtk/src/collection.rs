@@ -180,3 +180,20 @@ pub extern "C" fn mmtk_block_thread_for_gc() {
 
     AtomicIsize::store(&USER_TRIGGERED_GC, 0, Ordering::SeqCst);
 }
+
+/// True iff a GC cycle is currently in progress: either a stop-the-world pause is
+/// happening or a (potentially concurrent) mark / sweep phase is active.
+#[no_mangle]
+pub extern "C" fn mmtk_collection_in_progress() -> bool {
+    if AtomicBool::load(&WORLD_HAS_STOPPED, Ordering::SeqCst)
+        || AtomicBool::load(&BLOCK_FOR_GC, Ordering::SeqCst)
+    {
+        return true;
+    }
+    if let Some(c) = SINGLETON.get_plan().concurrent() {
+        if c.concurrent_work_in_progress() || c.current_pause().is_some() {
+            return true;
+        }
+    }
+    false
+}
