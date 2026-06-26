@@ -17,7 +17,56 @@ use mmtk::MMTK;
 use crate::jl_gc_mmtk_sweep_malloced_memory;
 use crate::jl_gc_scan_vm_specific_roots;
 use crate::jl_gc_sweep_stack_pools_and_mtarraylist_buffers;
+use crate::julia_types::_jl_task_t;
 use crate::JuliaVM;
+#[cfg(feature = "concurrentimmix")]
+use std::collections::HashMap;
+#[cfg(feature = "concurrentimmix")]
+use std::sync::{Arc, RwLock};
+
+pub(crate) struct StackRootBuffer {
+    pub buffer: Vec<ObjectReference>,
+}
+
+impl SlotVisitor<JuliaVMSlot> for StackRootBuffer {
+    fn visit_slot(&mut self, slot: JuliaVMSlot) {
+        match slot {
+            JuliaVMSlot::Simple(se) => {
+                if let Some(object) = se.load() {
+                    self.buffer.push(object);
+                }
+            }
+            JuliaVMSlot::Offset(oe) => {
+                if let Some(object) = oe.load() {
+                    self.buffer.push(object);
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "concurrentimmix")]
+lazy_static! {
+    pub static ref GC_STACK_SNAPSHOTS: GCStackSnapshots = GCStackSnapshots::new();
+}
+
+#[cfg(feature = "concurrentimmix")]
+pub(crate) fn snapshot_task_gcstack(task: *const _jl_task_t) {
+    if task.is_null() {
+        return;
+    }
+
+    let mut snapshot_roots = StackRootBuffer { buffer: vec![] };
+    unsafe {
+        crate::julia_scanning::mmtk_scan_gcstack(task, &mut snapshot_roots);
+    }
+    log::info!(
+        "Took snapshot of stack roots for task {:?}, num roots = {}",
+        task,
+        snapshot_roots.buffer.len()
+    );
+    GC_STACK_SNAPSHOTS.insert_snapshot(task, snapshot_roots.buffer);
+}
 
 pub struct VMScanning {}
 
@@ -27,34 +76,12 @@ impl Scanning<JuliaVM> for VMScanning {
         mutator: &'static mut Mutator<JuliaVM>,
         mut factory: impl RootsWorkFactory<JuliaVMSlot>,
     ) {
-        // This allows us to reuse mmtk_scan_gcstack which expectes an SlotVisitor
-        // Push the nodes as they need to be transitively pinned
-        struct SlotBuffer {
-            pub buffer: Vec<ObjectReference>,
-        }
-        impl mmtk::vm::SlotVisitor<JuliaVMSlot> for SlotBuffer {
-            fn visit_slot(&mut self, slot: JuliaVMSlot) {
-                match slot {
-                    JuliaVMSlot::Simple(se) => {
-                        if let Some(object) = se.load() {
-                            self.buffer.push(object);
-                        }
-                    }
-                    JuliaVMSlot::Offset(oe) => {
-                        if let Some(object) = oe.load() {
-                            self.buffer.push(object);
-                        }
-                    }
-                }
-            }
-        }
-
         use crate::julia_scanning::*;
         use crate::julia_types::*;
         use mmtk::util::Address;
 
         let ptls: &mut _jl_tls_states_t = unsafe { std::mem::transmute(mutator.mutator_tls) };
-        let mut slot_buffer = SlotBuffer { buffer: vec![] }; // need to be tpinned as they're all from the shadow stack
+        let mut slot_buffer = StackRootBuffer { buffer: vec![] }; // need to be tpinned as they're all from the shadow stack
         let mut node_buffer = vec![];
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
@@ -97,32 +124,9 @@ impl Scanning<JuliaVM> for VMScanning {
         root_scan_task(ptls.next_task, true);
         root_scan_task(ptls.previous_task, true);
 
-        // For concurrent Immix, take a snapshot of the stack here.
+        // Snap shot the current task
         #[cfg(feature = "concurrentimmix")]
-        {
-            let snapshot_gc_stack_roots = |task: *const _jl_task_t| {
-                if !task.is_null() {
-                    let mut snapshot_roots = SlotBuffer { buffer: vec![] };
-                    unsafe {
-                        crate::julia_scanning::mmtk_scan_gcstack(task, &mut snapshot_roots);
-                    }
-                    log::info!(
-                        "Took snapshot of stack roots for task {:?}, num roots = {}",
-                        task,
-                        snapshot_roots.buffer.len()
-                    );
-                    GC_STACK_SNAPSHOTS.insert_snapshot(task, snapshot_roots.buffer);
-                }
-            };
-            let mut i = 0;
-            while i < ptls.gc_tls_common.heap.all_tasks.len {
-                let mut task_address = Address::from_ptr(ptls.gc_tls_common.heap.all_tasks.items);
-                task_address = task_address.shift::<Address>(i as isize);
-                let task = unsafe { task_address.load::<*const jl_task_t>() };
-                snapshot_gc_stack_roots(task);
-                i += 1;
-            }
-        }
+        crate::scanning::snapshot_task_gcstack(ptls.current_task as *const _jl_task_t);
 
         if !ptls.previous_exception.is_null() {
             node_buffer.push(unsafe {
@@ -283,44 +287,53 @@ impl<C: ObjectTracerContext<JuliaVM>> GCWork<JuliaVM> for ScanFinalizersSingleTh
     }
 }
 
-lazy_static! {
-    pub static ref GC_STACK_SNAPSHOTS: GCStackSnapshots = GCStackSnapshots::new();
-}
-
-use crate::julia_types::_jl_task_t;
-use std::cell::UnsafeCell;
-use std::collections::HashMap;
-use std::sync::Mutex;
+#[cfg(feature = "concurrentimmix")]
 pub struct GCStackSnapshots {
-    lock: Mutex<()>,
-    snapshots: UnsafeCell<HashMap<*const _jl_task_t, Vec<ObjectReference>>>,
+    snapshots: RwLock<HashMap<usize, Arc<[ObjectReference]>>>,
 }
 
-unsafe impl Sync for GCStackSnapshots {}
-
+#[cfg(feature = "concurrentimmix")]
 impl GCStackSnapshots {
     fn new() -> Self {
         Self {
-            lock: Mutex::new(()),
-            snapshots: UnsafeCell::new(HashMap::new()),
+            snapshots: RwLock::new(HashMap::new()),
         }
     }
 
     pub fn insert_snapshot(&self, task: *const _jl_task_t, snapshot: Vec<ObjectReference>) {
-        let _guard = self.lock.lock().unwrap();
-        unsafe {
-            (*self.snapshots.get()).insert(task, snapshot);
-        }
+        self.snapshots
+            .write()
+            .unwrap()
+            .insert(task as usize, Arc::from(snapshot.into_boxed_slice()));
     }
 
-    pub fn get_snapshot_unsafe(&self, task: *const _jl_task_t) -> Option<&Vec<ObjectReference>> {
-        unsafe { (*self.snapshots.get()).get(&task) }
+    pub fn get_snapshot(&self, task: *const _jl_task_t) -> Option<Arc<[ObjectReference]>> {
+        self.snapshots
+            .read()
+            .unwrap()
+            .get(&(task as usize))
+            .cloned()
+    }
+
+    pub fn get_snapshot_or_scan_live(
+        &self,
+        task: *const _jl_task_t,
+        scan_live: impl FnOnce(),
+    ) -> Option<Arc<[ObjectReference]>> {
+        if let Some(snapshot) = self.get_snapshot(task) {
+            return Some(snapshot);
+        }
+
+        let snapshots = self.snapshots.read().unwrap();
+        if let Some(snapshot) = snapshots.get(&(task as usize)) {
+            Some(snapshot.clone())
+        } else {
+            scan_live();
+            None
+        }
     }
 
     pub fn clear_snapshots(&self) {
-        let _guard = self.lock.lock().unwrap();
-        unsafe {
-            (*self.snapshots.get()).clear();
-        }
+        self.snapshots.write().unwrap().clear();
     }
 }

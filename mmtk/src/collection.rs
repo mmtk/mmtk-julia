@@ -93,12 +93,12 @@ impl Collection<JuliaVM> for VMCollection {
             let concurrent_plan = SINGLETON.get_plan().concurrent().unwrap();
             let concurrent_marking_active = concurrent_plan.concurrent_work_in_progress();
 
-            CONCURRENT_MARKING_ACTIVE.store(concurrent_marking_active, Ordering::SeqCst);
-            log::info!("Set CONCURRENT_MARKING_ACTIVE to {concurrent_marking_active}");
-
             if !concurrent_marking_active {
                 crate::scanning::GC_STACK_SNAPSHOTS.clear_snapshots();
             }
+
+            CONCURRENT_MARKING_ACTIVE.store(concurrent_marking_active, Ordering::SeqCst);
+            log::info!("Set CONCURRENT_MARKING_ACTIVE to {concurrent_marking_active}");
         }
 
         AtomicBool::store(&BLOCK_FOR_GC, false, Ordering::SeqCst);

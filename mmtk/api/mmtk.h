@@ -85,7 +85,7 @@ extern void mmtk_set_concurrent_marking_enabled(bool enabled);
 extern void* mmtk_new_mutator_iterator(void);
 extern void* mmtk_get_next_mutator_tls(void*);
 extern void* mmtk_close_mutator_iterator(void*);
-
+extern void mmtk_notify_task_resume(void *mutator, const void *task);
 
 /**
  * VM Accounting

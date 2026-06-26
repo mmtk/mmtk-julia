@@ -185,6 +185,30 @@ pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<JuliaVM>) {
 }
 
 #[no_mangle]
+pub extern "C" fn mmtk_notify_task_resume(
+    mutator: *mut Mutator<JuliaVM>,
+    task: *const crate::julia_types::_jl_task_t,
+) {
+    #[cfg(feature = "concurrentimmix")]
+    {
+        if !crate::collection::CONCURRENT_MARKING_ACTIVE.load(Ordering::SeqCst)
+            || task.is_null()
+            || mutator.is_null()
+        {
+            return;
+        }
+
+        crate::scanning::snapshot_task_gcstack(task);
+    }
+
+    #[cfg(not(feature = "concurrentimmix"))]
+    {
+        let _ = (mutator, task);
+        panic!("mmtk_notify_task_resume should not be called for non-concurrent plans");
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn mmtk_alloc(
     mutator: *mut Mutator<JuliaVM>,
     size: usize,
