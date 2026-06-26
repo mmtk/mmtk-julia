@@ -56,6 +56,7 @@ pub(crate) fn snapshot_task_gcstack(task: *const _jl_task_t) {
         return;
     }
 
+    let mut snapshots = GC_STACK_SNAPSHOTS.snapshots.write().unwrap();
     let mut snapshot_roots = StackRootBuffer { buffer: vec![] };
     unsafe {
         crate::julia_scanning::mmtk_scan_gcstack(task, &mut snapshot_roots);
@@ -65,7 +66,10 @@ pub(crate) fn snapshot_task_gcstack(task: *const _jl_task_t) {
         task,
         snapshot_roots.buffer.len()
     );
-    GC_STACK_SNAPSHOTS.insert_snapshot(task, snapshot_roots.buffer);
+    snapshots.insert(
+        task as usize,
+        Arc::from(snapshot_roots.buffer.into_boxed_slice()),
+    );
 }
 
 pub struct VMScanning {}
@@ -123,10 +127,6 @@ impl Scanning<JuliaVM> for VMScanning {
         root_scan_task(ptls.current_task as *mut _jl_task_t, true);
         root_scan_task(ptls.next_task, true);
         root_scan_task(ptls.previous_task, true);
-
-        // Snap shot the current task
-        #[cfg(feature = "concurrentimmix")]
-        crate::scanning::snapshot_task_gcstack(ptls.current_task as *const _jl_task_t);
 
         if !ptls.previous_exception.is_null() {
             node_buffer.push(unsafe {
@@ -298,13 +298,6 @@ impl GCStackSnapshots {
         Self {
             snapshots: RwLock::new(HashMap::new()),
         }
-    }
-
-    pub fn insert_snapshot(&self, task: *const _jl_task_t, snapshot: Vec<ObjectReference>) {
-        self.snapshots
-            .write()
-            .unwrap()
-            .insert(task as usize, Arc::from(snapshot.into_boxed_slice()));
     }
 
     pub fn get_snapshot(&self, task: *const _jl_task_t) -> Option<Arc<[ObjectReference]>> {

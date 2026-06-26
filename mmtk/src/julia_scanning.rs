@@ -177,17 +177,6 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
                 // cannot race with the live-stack scan.
                 if let Some(snapshot) = crate::scanning::GC_STACK_SNAPSHOTS
                     .get_snapshot_or_scan_live(ta, || {
-                        if !unsafe { (*ta).ptls.is_null() } {
-                            panic!(
-                                "Concurrent task fallback attempted to scan live gcstack for resumed task {:?}: ptls={:?} tid={} gcstack={:?} stkbuf={:?} copy_stack={}",
-                                ta,
-                                unsafe { (*ta).ptls },
-                                unsafe { (*ta).tid._M_i },
-                                unsafe { (*ta).gcstack },
-                                unsafe { (*ta).ctx.stkbuf },
-                                unsafe { (*ta).ctx.copy_stack_custom() }
-                            );
-                        }
                         mmtk_scan_gcstack(ta, closure);
                     })
                 {
