@@ -21,9 +21,9 @@ use crate::jl_gc_sweep_stack_pools_and_mtarraylist_buffers;
 use crate::julia_types::_jl_task_t;
 use crate::JuliaVM;
 #[cfg(feature = "concurrentimmix")]
-use std::collections::HashMap;
+use dashmap::DashMap;
 #[cfg(feature = "concurrentimmix")]
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
 pub(crate) struct StackRootBuffer {
     pub buffer: Vec<ObjectReference>,
@@ -49,28 +49,6 @@ impl SlotVisitor<JuliaVMSlot> for StackRootBuffer {
 #[cfg(feature = "concurrentimmix")]
 lazy_static! {
     pub static ref GC_STACK_SNAPSHOTS: GCStackSnapshots = GCStackSnapshots::new();
-}
-
-#[cfg(feature = "concurrentimmix")]
-pub(crate) fn snapshot_task_gcstack(task: *const _jl_task_t) {
-    if task.is_null() {
-        return;
-    }
-
-    let mut snapshots = GC_STACK_SNAPSHOTS.snapshots.write().unwrap();
-    let mut snapshot_roots = StackRootBuffer { buffer: vec![] };
-    unsafe {
-        crate::julia_scanning::mmtk_scan_gcstack(task, &mut snapshot_roots);
-    }
-    log::info!(
-        "Took snapshot of stack roots for task {:?}, num roots = {}",
-        task,
-        snapshot_roots.buffer.len()
-    );
-    snapshots.insert(
-        task as usize,
-        Arc::from(snapshot_roots.buffer.into_boxed_slice()),
-    );
 }
 
 pub struct VMScanning {}
@@ -290,44 +268,81 @@ impl<C: ObjectTracerContext<JuliaVM>> GCWork<JuliaVM> for ScanFinalizersSingleTh
 
 #[cfg(feature = "concurrentimmix")]
 pub struct GCStackSnapshots {
-    snapshots: RwLock<HashMap<usize, Arc<[ObjectReference]>>>,
+    snapshots: DashMap<usize, Arc<[ObjectReference]>>,
+    task_scan_locks: DashMap<usize, Arc<Mutex<()>>>,
 }
 
 #[cfg(feature = "concurrentimmix")]
 impl GCStackSnapshots {
     fn new() -> Self {
         Self {
-            snapshots: RwLock::new(HashMap::new()),
+            snapshots: DashMap::new(),
+            task_scan_locks: DashMap::new(),
         }
     }
 
-    pub fn get_snapshot(&self, task: *const _jl_task_t) -> Option<Arc<[ObjectReference]>> {
-        self.snapshots
-            .read()
-            .unwrap()
-            .get(&(task as usize))
-            .cloned()
+    fn get_task_scan_lock(&self, task_key: usize) -> Arc<Mutex<()>> {
+        self.task_scan_locks
+            .entry(task_key)
+            .or_insert_with(|| Arc::new(Mutex::new(())))
+            .clone()
     }
 
-    pub fn get_snapshot_or_scan_live(
-        &self,
-        task: *const _jl_task_t,
-        scan_live: impl FnOnce(),
-    ) -> Option<Arc<[ObjectReference]>> {
+    fn get_snapshot(&self, task: *const _jl_task_t) -> Option<Arc<[ObjectReference]>> {
+        assert!(!task.is_null());
+
+        self.snapshots
+            .get(&(task as usize))
+            .map(|snapshot| snapshot.clone())
+    }
+
+    pub fn gc_thread_scan_stack(&self, task: *const _jl_task_t) -> Option<Arc<[ObjectReference]>> {
+        assert!(!task.is_null());
+
         if let Some(snapshot) = self.get_snapshot(task) {
             return Some(snapshot);
         }
 
-        let snapshots = self.snapshots.read().unwrap();
-        if let Some(snapshot) = snapshots.get(&(task as usize)) {
+        let task_key = task as usize;
+        let task_lock = self.get_task_scan_lock(task_key);
+        let _task_lock_guard = task_lock.lock().unwrap();
+
+        if let Some(snapshot) = self.snapshots.get(&task_key) {
             Some(snapshot.clone())
         } else {
-            scan_live();
-            None
+            let snapshot = self.capture_snapshot(task);
+            self.snapshots.insert(task_key, snapshot.clone());
+            Some(snapshot)
         }
     }
 
+    pub fn resume_barrier_scan_task(&self, task: *const _jl_task_t) {
+        assert!(!task.is_null());
+
+        let task_key = task as usize;
+        let task_lock = self.get_task_scan_lock(task_key);
+        let _task_lock_guard = task_lock.lock().unwrap();
+        if self.snapshots.contains_key(&task_key) {
+            return;
+        }
+        self.snapshots.insert(task_key, self.capture_snapshot(task));
+    }
+
+    fn capture_snapshot(&self, task: *const _jl_task_t) -> Arc<[ObjectReference]> {
+        let mut snapshot_roots = StackRootBuffer { buffer: vec![] };
+        unsafe {
+            crate::julia_scanning::mmtk_scan_gcstack(task, &mut snapshot_roots);
+        }
+        log::info!(
+            "Took snapshot of stack roots for task {:?}, num roots = {}",
+            task,
+            snapshot_roots.buffer.len()
+        );
+        Arc::from(snapshot_roots.buffer.into_boxed_slice())
+    }
+
     pub fn clear_snapshots(&self) {
-        self.snapshots.write().unwrap().clear();
+        self.snapshots.clear();
+        self.task_scan_locks.clear();
     }
 }

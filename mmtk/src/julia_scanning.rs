@@ -172,13 +172,10 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             #[cfg(feature = "concurrentimmix")]
             if crate::collection::CONCURRENT_MARKING_ACTIVE.load(Ordering::SeqCst) {
                 // For concurrent marking, prefer a stable snapshot captured before the task runs.
-                // If no snapshot exists, re-check under the snapshot lock and, if still absent,
-                // scan the saved gcstack while holding that lock so resume-time snapshotting
-                // cannot race with the live-stack scan.
-                if let Some(snapshot) = crate::scanning::GC_STACK_SNAPSHOTS
-                    .get_snapshot_or_scan_live(ta, || {
-                        mmtk_scan_gcstack(ta, closure);
-                    })
+                // If no snapshot exists, create one while holding the per-task scan lock so
+                // resume-time snapshotting for the same task waits only until the live task scan
+                // finishes. The snapshot itself is then processed outside the lock.
+                if let Some(snapshot) = crate::scanning::GC_STACK_SNAPSHOTS.gc_thread_scan_stack(ta)
                 {
                     snapshot.iter().for_each(|slot| {
                         process_slot(closure, Address::from_ptr(slot as *const _))

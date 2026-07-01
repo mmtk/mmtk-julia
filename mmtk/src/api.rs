@@ -195,7 +195,7 @@ pub extern "C" fn mmtk_notify_task_resume(
             return;
         }
 
-        crate::scanning::snapshot_task_gcstack(task);
+        crate::scanning::GC_STACK_SNAPSHOTS.resume_barrier_scan_task(task);
     }
 
     #[cfg(not(feature = "concurrentimmix"))]
