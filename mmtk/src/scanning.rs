@@ -23,7 +23,16 @@ use crate::JuliaVM;
 #[cfg(feature = "concurrentimmix")]
 use dashmap::DashMap;
 #[cfg(feature = "concurrentimmix")]
+use mmtk::util::Address;
+#[cfg(feature = "concurrentimmix")]
 use std::sync::{Arc, Mutex};
+
+#[cfg(feature = "concurrentimmix")]
+unsafe extern "C" {
+    fn jl_gc_get_all_tasks_list(
+        ptls: *mut crate::julia_types::_jl_tls_states_t,
+    ) -> *mut crate::julia_types::small_arraylist_t;
+}
 
 pub(crate) struct StackRootBuffer {
     pub buffer: Vec<ObjectReference>,
@@ -106,6 +115,21 @@ impl Scanning<JuliaVM> for VMScanning {
         root_scan_task(ptls.current_task as *mut _jl_task_t, true);
         root_scan_task(ptls.next_task, true);
         root_scan_task(ptls.previous_task, true);
+
+        #[cfg(feature = "concurrentimmix")]
+        {
+            let all_tasks = unsafe { jl_gc_get_all_tasks_list(ptls) };
+            assert!(!all_tasks.is_null());
+            let all_tasks = unsafe { &*all_tasks };
+            let mut i = 0;
+            while i < all_tasks.len {
+                let mut task_address = Address::from_ptr(all_tasks.items);
+                task_address = task_address.shift::<Address>(i as isize);
+                let task = unsafe { task_address.load::<*const jl_task_t>() };
+                GC_STACK_SNAPSHOTS.record_all_tasks_snapshot(task);
+                i += 1;
+            }
+        }
 
         if !ptls.previous_exception.is_null() {
             node_buffer.push(unsafe {
@@ -267,8 +291,27 @@ impl<C: ObjectTracerContext<JuliaVM>> GCWork<JuliaVM> for ScanFinalizersSingleTh
 }
 
 #[cfg(feature = "concurrentimmix")]
+fn capture_task_gcstack_snapshot(task: *const _jl_task_t, log_snapshot: bool) -> Arc<[ObjectReference]> {
+    assert!(!task.is_null());
+
+    let mut snapshot_roots = StackRootBuffer { buffer: vec![] };
+    unsafe {
+        crate::julia_scanning::mmtk_scan_gcstack(task, &mut snapshot_roots);
+    }
+    if log_snapshot {
+        log::info!(
+            "Took snapshot of stack roots for task {:?}, num roots = {}",
+            task,
+            snapshot_roots.buffer.len()
+        );
+    }
+    Arc::from(snapshot_roots.buffer.into_boxed_slice())
+}
+
+#[cfg(feature = "concurrentimmix")]
 pub struct GCStackSnapshots {
     snapshots: DashMap<usize, Arc<[ObjectReference]>>,
+    all_tasks_snapshots: DashMap<usize, Arc<[ObjectReference]>>,
     task_scan_locks: DashMap<usize, Arc<Mutex<()>>>,
 }
 
@@ -277,6 +320,7 @@ impl GCStackSnapshots {
     fn new() -> Self {
         Self {
             snapshots: DashMap::new(),
+            all_tasks_snapshots: DashMap::new(),
             task_scan_locks: DashMap::new(),
         }
     }
@@ -296,6 +340,44 @@ impl GCStackSnapshots {
             .map(|snapshot| snapshot.clone())
     }
 
+    pub fn record_all_tasks_snapshot(&self, task: *const _jl_task_t) {
+        if task.is_null() {
+            return;
+        }
+
+        self.all_tasks_snapshots
+            .entry(task as usize)
+            .or_insert_with(|| capture_task_gcstack_snapshot(task, false));
+    }
+
+    fn assert_matches_all_tasks_snapshot(
+        &self,
+        task: *const _jl_task_t,
+        snapshot: &[ObjectReference],
+    ) {
+        let Some(all_tasks_snapshot) = self.all_tasks_snapshots.get(&(task as usize)) else {
+            return;
+        };
+
+        assert_eq!(
+            snapshot.len(),
+            all_tasks_snapshot.len(),
+            "snapshot length mismatch for task {:?}: new={}, all_tasks={}",
+            task,
+            snapshot.len(),
+            all_tasks_snapshot.len()
+        );
+
+        for (index, (actual, expected)) in snapshot.iter().zip(all_tasks_snapshot.iter()).enumerate()
+        {
+            assert_eq!(
+                *actual, *expected,
+                "snapshot mismatch for task {:?} at root {}: new={:?}, all_tasks={:?}",
+                task, index, actual, expected
+            );
+        }
+    }
+
     pub fn gc_thread_scan_stack(&self, task: *const _jl_task_t) -> Option<Arc<[ObjectReference]>> {
         assert!(!task.is_null());
 
@@ -310,7 +392,8 @@ impl GCStackSnapshots {
         if let Some(snapshot) = self.snapshots.get(&task_key) {
             Some(snapshot.clone())
         } else {
-            let snapshot = self.capture_snapshot(task);
+            let snapshot = capture_task_gcstack_snapshot(task, true);
+            self.assert_matches_all_tasks_snapshot(task, &snapshot);
             self.snapshots.insert(task_key, snapshot.clone());
             Some(snapshot)
         }
@@ -325,24 +408,34 @@ impl GCStackSnapshots {
         if self.snapshots.contains_key(&task_key) {
             return;
         }
-        self.snapshots.insert(task_key, self.capture_snapshot(task));
+        let snapshot = capture_task_gcstack_snapshot(task, true);
+        self.assert_matches_all_tasks_snapshot(task, &snapshot);
+        self.snapshots.insert(task_key, snapshot);
     }
 
-    fn capture_snapshot(&self, task: *const _jl_task_t) -> Arc<[ObjectReference]> {
-        let mut snapshot_roots = StackRootBuffer { buffer: vec![] };
-        unsafe {
-            crate::julia_scanning::mmtk_scan_gcstack(task, &mut snapshot_roots);
+    fn assert_all_live_tasks_have_snapshots(&self) {
+        for all_tasks_snapshot in self.all_tasks_snapshots.iter() {
+            let task_key = *all_tasks_snapshot.key();
+            let original_task = unsafe {
+                ObjectReference::from_raw_address_unchecked(Address::from_usize(task_key))
+            };
+            let task = original_task
+                .get_forwarded_object()
+                .unwrap_or(original_task);
+            if task.is_live() {
+                assert!(
+                    self.snapshots.contains_key(&task_key),
+                    "live task {:#x} has an all_tasks snapshot but no normal snapshot",
+                    task_key
+                );
+            }
         }
-        log::info!(
-            "Took snapshot of stack roots for task {:?}, num roots = {}",
-            task,
-            snapshot_roots.buffer.len()
-        );
-        Arc::from(snapshot_roots.buffer.into_boxed_slice())
     }
 
     pub fn clear_snapshots(&self) {
+        self.assert_all_live_tasks_have_snapshots();
         self.snapshots.clear();
+        self.all_tasks_snapshots.clear();
         self.task_scan_locks.clear();
     }
 }

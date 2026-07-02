@@ -93,7 +93,8 @@ impl Collection<JuliaVM> for VMCollection {
             let concurrent_plan = SINGLETON.get_plan().concurrent().unwrap();
             let concurrent_marking_active = concurrent_plan.concurrent_work_in_progress();
 
-            if !concurrent_marking_active {
+            // We just finished concurrent marking
+            if CONCURRENT_MARKING_ACTIVE.load(Ordering::SeqCst) && !concurrent_marking_active {
                 crate::scanning::GC_STACK_SNAPSHOTS.clear_snapshots();
             }
 
