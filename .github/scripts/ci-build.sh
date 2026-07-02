@@ -37,6 +37,8 @@ fi
 unset MMTK_MIN_HSIZE_G
 unset MMTK_MAX_HSIZE_G
 
+export RUST_LOG=off
+
 cd $JULIA_PATH
 # Clean first
 make cleanall
