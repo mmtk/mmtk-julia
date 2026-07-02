@@ -24,6 +24,9 @@ lazy_static! {
     static ref GC_THREADS: RwLock<HashSet<ThreadId>> = RwLock::new(HashSet::new());
 }
 
+#[cfg(feature = "concurrentimmix")]
+pub static CONCURRENT_MARKING_ACTIVE: AtomicBool = AtomicBool::new(false);
+
 pub(crate) fn register_gc_thread() {
     let id = std::thread::current().id();
     GC_THREADS.write().unwrap().insert(id);
@@ -52,6 +55,10 @@ impl Collection<JuliaVM> for VMCollection {
 
         trace!("Stopped the world!");
 
+        // STW -- concurrent marking is not active.
+        #[cfg(feature = "concurrentimmix")]
+        CONCURRENT_MARKING_ACTIVE.store(false, Ordering::SeqCst);
+
         // Tell MMTk the stacks are ready.
         {
             use mmtk::vm::ActivePlan;
@@ -78,6 +85,20 @@ impl Collection<JuliaVM> for VMCollection {
                 crate::api::mmtk_used_bytes(),
                 is_current_gc_nursery(),
             )
+        }
+
+        #[cfg(feature = "concurrentimmix")]
+        {
+            // For concurrent Immix, we need to check if SATB is active
+            let concurrent_plan = SINGLETON.get_plan().concurrent().unwrap();
+            let concurrent_marking_active = concurrent_plan.concurrent_work_in_progress();
+
+            if !concurrent_marking_active {
+                crate::scanning::GC_STACK_SNAPSHOTS.clear_snapshots();
+            }
+
+            CONCURRENT_MARKING_ACTIVE.store(concurrent_marking_active, Ordering::SeqCst);
+            log::info!("Set CONCURRENT_MARKING_ACTIVE to {concurrent_marking_active}");
         }
 
         AtomicBool::store(&BLOCK_FOR_GC, false, Ordering::SeqCst);
