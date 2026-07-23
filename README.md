@@ -1,3 +1,13 @@
+# This repository has moved
+
+The MMTk binding for Julia has been moved to the [Julia repository](https://github.com/JuliaLang/julia), under [`src/gc-mmtk`](https://github.com/JuliaLang/julia/tree/master/src/gc-mmtk).
+
+Documentation for MMTk is now available in the Julia developer documentation [here](https://github.com/JuliaLang/julia/blob/master/doc/src/devdocs/gc-mmtk.md).
+
+This repository is in maintenance mode and will be archived soon.
+Please open all new issues and pull requests in the Julia repository.
+
+
 ## An MMTk binding for the Julia programming language.
 
 ### Quick Building Guide
