@@ -14,6 +14,8 @@ export MMTK_MAX_HSIZE_G=16
 total_mem=$(free -m | awk '/^Mem:/ {print $2}')
 export JULIA_TEST_MAXRSS_MB=$total_mem
 
+export RUST_BACKTRACE=1
+
 ci_run_jl_test() {
     test=$1
     threads=$2
